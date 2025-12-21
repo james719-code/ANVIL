@@ -1,5 +1,6 @@
 package com.james.anvil.core
 
+import android.os.SystemClock
 import com.james.anvil.data.TaskDao
 import java.util.Calendar
 
@@ -9,6 +10,8 @@ class DecisionEngine(
     private val bonusManager: BonusManager
 ) {
 
+    private val timeGuard = TimeIntegrityGuard()
+
     // 1️⃣ No tasks today/tomorrow → Clear penalty → Unblock
     // 2️⃣ Active penalty → Block
     // 3️⃣ Overdue tasks exist → Penalty would trigger → Check grace
@@ -16,10 +19,27 @@ class DecisionEngine(
     //    ✖ No grace → start penalty → block
 
     /**
-     * Calculates the current blocking status.
-     * This is a suspend function and should NOT be called on the main thread.
+     * Updates the system state (Penalty/Grace consumption).
+     * Should be called periodically (e.g., Hourly Worker) or on significant events.
      */
-    suspend fun checkBlockingStatus(): Boolean {
+    suspend fun updateState() {
+        // Phase 3.3: Time Integrity Check
+        val lastSystem = penaltyManager.getLastSystemTime()
+        val lastElapsed = penaltyManager.getLastElapsedRealtime()
+        
+        // Only check if we have previous data
+        if (lastSystem > 0 && lastElapsed > 0) {
+            if (timeGuard.isTimeManipulated(lastSystem, lastElapsed)) {
+                // Clock rollback detected -> Immediate Penalty
+                penaltyManager.startPenalty()
+                // Punishment: Grace wipe
+                // For now, simpler to just start penalty.
+            }
+        }
+        
+        // Update checkpoints
+        penaltyManager.saveTimeCheckpoints(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+
         val now = System.currentTimeMillis()
         
         // 1. Check Tasks Today/Tomorrow
@@ -33,34 +53,47 @@ class DecisionEngine(
             if (penaltyManager.isPenaltyActive()) {
                 penaltyManager.clearPenalty()
             }
-            return false // Unblock
+            return
+        }
+
+        // 2. Check Overdue Tasks (only if not already in penalty)
+        if (!penaltyManager.isPenaltyActive()) {
+            val overdueTasks = taskDao.getOverdueIncomplete(now)
+            if (overdueTasks.isNotEmpty()) {
+                // Check grace
+                if (bonusManager.consumeGraceDay()) {
+                    // Grace consumed.
+                } else {
+                    // No grace left.
+                    penaltyManager.startPenalty()
+                }
+            }
+        }
+    }
+
+    /**
+     * Pure query: Is the system currently in a blocking state?
+     * Does NOT modify state (no side effects).
+     */
+    suspend fun isBlocked(): Boolean {
+        val now = System.currentTimeMillis()
+        
+        // 1. Check Tasks Today/Tomorrow
+        val startToday = getStartOfDay(now)
+        val endTomorrow = getEndOfNextDay(now)
+        val activeTasksCount = taskDao.countActiveTodayTomorrow(startToday, endTomorrow)
+        
+        if (activeTasksCount == 0) {
+            return false // Idle
         }
 
         // 2. Check Active Penalty
         if (penaltyManager.isPenaltyActive()) {
-            // Rule: Bonuses never cancel an active penalty
-            return true // Block
+            return true
         }
 
-        // 3. Check Overdue Tasks
-        val overdueTasks = taskDao.getOverdueIncomplete(now)
-        if (overdueTasks.isNotEmpty()) {
-            // Penalty would trigger
-            if (bonusManager.consumeGraceDay()) {
-                // Grace consumed, no penalty start, unblock (or allow usage until next check)
-                // Note: Real implementation might need to flag that grace was used for this period 
-                // to avoid consuming all grace days in rapid succession. 
-                return false 
-            } else {
-                // No grace
-                penaltyManager.startPenalty()
-                return true
-            }
-        }
-        
-        // If tasks exist (activeTasksCount > 0) but not overdue, and no penalty:
-        // Requirement: "Blocks apps and websites unless tasks are done"
-        // Implicitly: Tasks exist → System Active → Blocked
+        // 3. Tasks exist but no penalty active.
+        // As per Anvil philosophy: Tasks Exist -> Focus Mode -> Blocked.
         return true
     }
 

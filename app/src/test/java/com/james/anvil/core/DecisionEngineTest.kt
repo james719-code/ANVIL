@@ -9,6 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
@@ -28,34 +29,45 @@ class DecisionEngineTest {
     }
 
     @Test
-    fun `should unblock when no tasks today or tomorrow`() = runBlocking {
+    fun `isBlocked should be false when no tasks today or tomorrow`() = runBlocking {
         // Arrange
         whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(true) // Should clear penalty
 
         // Act
-        val shouldBlock = decisionEngine.checkBlockingStatus()
+        val isBlocked = decisionEngine.isBlocked()
 
         // Assert
-        assertFalse(shouldBlock)
-        verify(penaltyManager).clearPenalty()
+        assertFalse(isBlocked)
     }
 
     @Test
-    fun `should block when penalty is active`() = runBlocking {
+    fun `isBlocked should be true when penalty is active`() = runBlocking {
         // Arrange
         whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
         whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
 
         // Act
-        val shouldBlock = decisionEngine.checkBlockingStatus()
+        val isBlocked = decisionEngine.isBlocked()
 
         // Assert
-        assertTrue(shouldBlock)
+        assertTrue(isBlocked)
+    }
+    
+    @Test
+    fun `isBlocked should be true when tasks exist even without penalty`() = runBlocking {
+        // Arrange
+        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+
+        // Act
+        val isBlocked = decisionEngine.isBlocked()
+
+        // Assert
+        assertTrue(isBlocked)
     }
 
     @Test
-    fun `should block and start penalty when overdue tasks exist and no grace`() = runBlocking {
+    fun `updateState should start penalty when overdue tasks exist and no grace`() = runBlocking {
         // Arrange
         whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
         whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
@@ -63,15 +75,14 @@ class DecisionEngineTest {
         whenever(bonusManager.consumeGraceDay()).thenReturn(false)
 
         // Act
-        val shouldBlock = decisionEngine.checkBlockingStatus()
+        decisionEngine.updateState()
 
         // Assert
-        assertTrue(shouldBlock)
         verify(penaltyManager).startPenalty()
     }
 
     @Test
-    fun `should unblock (temporarily) when overdue tasks exist but grace consumes`() = runBlocking {
+    fun `updateState should consume grace and NOT start penalty when overdue tasks exist and grace available`() = runBlocking {
         // Arrange
         whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
         whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
@@ -79,10 +90,23 @@ class DecisionEngineTest {
         whenever(bonusManager.consumeGraceDay()).thenReturn(true)
 
         // Act
-        val shouldBlock = decisionEngine.checkBlockingStatus()
+        decisionEngine.updateState()
 
         // Assert
-        assertFalse(shouldBlock)
-        verify(penaltyManager, org.mockito.kotlin.times(0)).startPenalty()
+        verify(penaltyManager, never()).startPenalty()
+        verify(bonusManager).consumeGraceDay()
+    }
+    
+    @Test
+    fun `updateState should clear penalty if no tasks exist`() = runBlocking {
+        // Arrange
+        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+
+        // Act
+        decisionEngine.updateState()
+
+        // Assert
+        verify(penaltyManager).clearPenalty()
     }
 }

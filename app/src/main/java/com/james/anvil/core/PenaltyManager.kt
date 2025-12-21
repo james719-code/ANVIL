@@ -47,4 +47,20 @@ class PenaltyManager(context: Context) {
             .remove("penalty_end_time")
             .apply()
     }
+
+    // Time Integrity Persistence
+    fun saveTimeCheckpoints(systemTime: Long, elapsedRealtime: Long) {
+        sharedPreferences.edit()
+            .putLong("last_system_time", systemTime)
+            .putLong("last_elapsed_time", elapsedRealtime)
+            .apply()
+    }
+
+    fun getLastSystemTime(): Long {
+        return sharedPreferences.getLong("last_system_time", 0)
+    }
+
+    fun getLastElapsedRealtime(): Long {
+        return sharedPreferences.getLong("last_elapsed_time", 0)
+    }
 }

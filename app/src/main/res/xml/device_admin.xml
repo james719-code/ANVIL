@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+        <watch-login />
+        <!-- Prevent uninstall implies generic admin presence, actual uninstall blocking requires Device Owner or specific OEM flags, 
+             but Admin prevents standard uninstall via drag-and-drop on many launchers. -->
+    </uses-policies>
+</device-admin>
