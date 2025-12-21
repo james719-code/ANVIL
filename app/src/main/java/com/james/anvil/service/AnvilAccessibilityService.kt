@@ -105,7 +105,11 @@ class AnvilAccessibilityService : AccessibilityService() {
 
     private fun shouldEnforce(packageName: String, currentUrl: String?): Boolean {
         // Phase 10.2: Always block Settings/Accessibility when penalty active
-        if (packageName == "com.android.settings") return true
+        // Only block Settings if explicitly in blocklist OR logic dictates stricter lockout.
+        // For general use, we should allow Settings unless the user added it.
+        // If we want to prevent disabling the app during penalty, we can check for penalty state specifically.
+        // For now, let's treat it like any other app unless blockedPackages contains it.
+        // if (packageName == "com.android.settings") return true 
         
         // Phase 7: YouTube Shorts detection
         // Note: Simple URL/Text check. YouTube Shorts usually have "/shorts/" in URL

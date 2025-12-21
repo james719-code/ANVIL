@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.coil.compose)
 
     // Anvil Core Dependencies
     implementation(libs.androidx.room.runtime)
@@ -70,8 +72,3 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
-
-// Add KSP or KAPT if needed, but for now I'll just rely on what's available.
-// Since I haven't added KSP plugin, I should add KAPT plugin to plugins block or use KSP.
-// Let's modify plugins block in next step if compilation fails, but since I can't compile...
-// I will just add "kapt" plugin to build.gradle.kts to be safe.
