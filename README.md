@@ -105,4 +105,4 @@ ANVIL is built for personal use. **All data stays on your device.** There are no
 
 ---
 
-**Would you like me to help you generate a `LICENSE` file or a `CONTRIBUTING.md` to go along with this?**
+Developed By: James Ryan Gallego
