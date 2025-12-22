@@ -6,14 +6,15 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [Task::class, BlockedApp::class, BlockedLink::class, VisitedLink::class],
-    version = 1,
+    entities = [Task::class, BlockedApp::class, BlockedLink::class, VisitedLink::class, AppCategory::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AnvilDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun blocklistDao(): BlocklistDao
     abstract fun historyDao(): HistoryDao
+    abstract fun appCategoryDao(): AppCategoryDao
 
     companion object {
         @Volatile
@@ -25,7 +26,9 @@ abstract class AnvilDatabase : RoomDatabase() {
                     context.applicationContext,
                     AnvilDatabase::class.java,
                     "anvil_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -9,5 +9,6 @@ data class Task(
     val title: String,
     val deadline: Long, // Timestamp in milliseconds
     val isCompleted: Boolean = false,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val category: String = "General"
 )

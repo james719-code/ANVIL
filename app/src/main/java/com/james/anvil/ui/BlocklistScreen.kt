@@ -8,13 +8,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
+import com.james.anvil.ui.components.BlocklistItem
 import com.james.anvil.ui.components.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,7 +26,8 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(title = { Text("Blocklist") })
+                // Simplified Header matching design vibe (just tab row if cleaner)
+                // Or a large "Blocklist" header. For now, Tabs.
                 TabRow(selectedTabIndex = selectedTabIndex) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -50,43 +51,88 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
 
 @Composable
 fun BlockedAppsTab(viewModel: TaskViewModel) {
-    val installedApps by viewModel.installedApps.collectAsState(initial = emptyList())
-    val blockedPackages by viewModel.blockedApps.collectAsState(initial = emptyList())
+    val appListWithCategories by viewModel.appListWithCategories.collectAsState(initial = emptyList())
+    var showCategoryDialog by remember { mutableStateOf(false) }
+    var selectedAppForCategory by remember { mutableStateOf<AppInfoWithCategory?>(null) }
 
-    if (installedApps.isEmpty()) {
+    if (appListWithCategories.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
              CircularProgressIndicator()
         }
     } else {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(installedApps) { app ->
-                val isBlocked = blockedPackages.contains(app.packageName)
-                ListItem(
-                    headlineContent = { Text(app.name) },
-                    supportingContent = { Text(app.packageName) },
-                    leadingContent = {
-                        Image(
-                            painter = rememberAsyncImagePainter(app.icon),
-                            contentDescription = app.name,
-                            modifier = Modifier.size(40.dp)
-                        )
+        // Group by category if we wanted to match "Section Headers", but design seemed flat list with category subtitle.
+        // We will stick to flat list for now but sort by blocked status or name.
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            item {
+                Text(
+                    text = "Manage Apps",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+            items(appListWithCategories, key = { it.appInfo.packageName }) { app ->
+                BlocklistItem(
+                    app = app,
+                    onToggleBlock = { isBlocked ->
+                        if (isBlocked) viewModel.blockApp(app.appInfo.packageName)
+                        else viewModel.unblockApp(app.appInfo.packageName)
                     },
-                    trailingContent = {
-                        Switch(
-                            checked = isBlocked,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    viewModel.blockApp(app.packageName)
-                                } else {
-                                    viewModel.unblockApp(app.packageName)
-                                }
-                            }
-                        )
+                    onCategoryClick = {
+                        selectedAppForCategory = app
+                        showCategoryDialog = true
                     }
                 )
             }
         }
     }
+
+    if (showCategoryDialog && selectedAppForCategory != null) {
+        CategoryEditDialog(
+            app = selectedAppForCategory!!,
+            onDismiss = { showCategoryDialog = false },
+            onSave = { newCategory ->
+                viewModel.setAppCategory(selectedAppForCategory!!.appInfo.packageName, newCategory)
+                showCategoryDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun CategoryEditDialog(
+    app: AppInfoWithCategory,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var category by remember { mutableStateOf(app.category) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Category") },
+        text = {
+            Column {
+                Text("Category for ${app.appInfo.name}")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = category,
+                    onValueChange = { category = it },
+                    label = { Text("Category Name") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(category) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -102,16 +148,31 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(blockedLinks) { link ->
-                    ListItem(
-                        headlineContent = { Text(link) },
-                        trailingContent = {
-                            IconButton(onClick = { viewModel.unblockLink(link) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove")
-                            }
-                        }
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                item {
+                    Text(
+                        text = "Blocked URLs",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 16.dp)
                     )
+                }
+                items(blockedLinks) { link ->
+                    Card(
+                         modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(link) },
+                            trailingContent = {
+                                IconButton(onClick = { viewModel.unblockLink(link) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
