@@ -1,5 +1,7 @@
 package com.james.anvil.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -10,25 +12,24 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.james.anvil.MainActivity
+import androidx.compose.ui.window.Dialog
 import com.james.anvil.data.Task
 import com.james.anvil.formatDate
 import com.james.anvil.ui.components.ConsistencyChart
 import com.james.anvil.ui.components.EmptyState
-import java.util.*
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.window.Dialog
+import com.james.anvil.ui.components.MotivationCard
+import com.james.anvil.ui.components.TaskItem
 import kotlinx.coroutines.launch
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,22 +45,18 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     
     val scope = rememberCoroutineScope()
+    
+    // ViewModel state
+    val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
+    val pendingCount by viewModel.dailyPendingCount.collectAsState(initial = 0)
+    val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
+    val tasks by viewModel.tasks.collectAsState(initial = emptyList())
+    // Extract unique categories from tasks to use as suggestions
+    val existingCategories = remember(tasks) {
+        tasks.map { it.category }.distinct().filter { it != "General" }.sorted()
+    }
 
     Scaffold(
-        topBar = {
-            Column {
-                // Removed the "ANVIL: Forge Your Will" TopAppBar as requested
-                TabRow(selectedTabIndex = selectedTabIndex) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) }
-                        )
-                    }
-                }
-            }
-        },
         floatingActionButton = {
             if (selectedTabIndex == 0) {
                 FloatingActionButton(onClick = { showAddTaskDialog = true }) {
@@ -68,29 +65,75 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTabIndex) {
-                0 -> PendingTasksTab(
-                    viewModel = viewModel, 
-                    onTaskClick = { task ->
-                        selectedTask = task
-                        showInfoDialog = true
-                    },
-                    onTaskLongClick = { task ->
-                        selectedTask = task
-                        showOptionsDialog = true
-                    }
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            // Header with Motivation Card
+            if (selectedTabIndex == 0) {
+                MotivationCard(
+                    dailyProgress = dailyProgress,
+                    pendingCount = pendingCount,
+                    quote = dailyQuote,
+                    modifier = Modifier.padding(16.dp)
                 )
-                1 -> DoneTasksTab(viewModel)
+            }
+
+            // Tabs
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            // Content
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTabIndex) {
+                    0 -> PendingTasksTab(
+                        viewModel = viewModel, 
+                        onTaskClick = { task ->
+                            selectedTask = task
+                            showInfoDialog = true
+                        },
+                        onTaskLongClick = { task ->
+                            selectedTask = task
+                            showOptionsDialog = true
+                        },
+                        onEdit = { task ->
+                            selectedTask = task
+                            showEditDialog = true
+                        },
+                        onDelete = { task ->
+                            viewModel.deleteTask(task)
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Task deleted",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.undoDeleteTask(task)
+                                }
+                            }
+                        }
+                    )
+                    1 -> DoneTasksTab(viewModel)
+                }
             }
         }
     }
 
     if (showAddTaskDialog) {
         AddTaskDialog(
+            existingCategories = existingCategories,
             onDismiss = { showAddTaskDialog = false },
-            onTaskAdded = { title, deadline ->
-                viewModel.addTask(title, deadline)
+            onTaskAdded = { title, deadline, category ->
+                viewModel.addTask(title, deadline, category)
                 showAddTaskDialog = false
             }
         )
@@ -132,6 +175,7 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
     if (showEditDialog && selectedTask != null) {
         EditTaskDialog(
             task = selectedTask!!,
+            existingCategories = existingCategories,
             onDismiss = { showEditDialog = false },
             onTaskUpdated = { updatedTask ->
                 viewModel.updateTask(updatedTask)
@@ -145,11 +189,13 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
 fun PendingTasksTab(
     viewModel: TaskViewModel,
     onTaskClick: (Task) -> Unit,
-    onTaskLongClick: (Task) -> Unit
+    onTaskLongClick: (Task) -> Unit,
+    onEdit: (Task) -> Unit,
+    onDelete: (Task) -> Unit
 ) {
     val tasks by viewModel.tasks.collectAsState(initial = emptyList())
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         if (tasks.isEmpty()) {
             EmptyState(
                 message = "No pending tasks. You are free.",
@@ -162,9 +208,14 @@ fun PendingTasksTab(
                     TaskItem(
                         task = task, 
                         onComplete = { viewModel.completeTask(task) },
-                        onClick = { onTaskClick(task) },
-                        onLongClick = { onTaskLongClick(task) },
-                        modifier = Modifier.animateItem()
+                        onEdit = { onEdit(task) },
+                        onDelete = { onDelete(task) },
+                        modifier = Modifier
+                            .animateItem()
+                            .combinedClickable(
+                                onClick = { onTaskClick(task) },
+                                onLongClick = { onTaskLongClick(task) }
+                            )
                     )
                 }
             }
@@ -204,9 +255,8 @@ fun DoneTasksTab(viewModel: TaskViewModel) {
             items(completedTasks) { task ->
                 ListItem(
                     headlineContent = { Text(task.title, style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) },
-                    // Change line 128 to this:
                     supportingContent = {
-                        Text("Completed: ${formatDate(task.completedAt ?: System.currentTimeMillis())}")
+                        Text("Completed: ${formatDate(task.completedAt ?: System.currentTimeMillis())} • ${task.category}")
                     },
                     leadingContent = { Icon(Icons.Default.Check, contentDescription = null) }
                 )
@@ -215,63 +265,53 @@ fun DoneTasksTab(viewModel: TaskViewModel) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TaskItem(
-    task: Task, 
-    onComplete: () -> Unit,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
+fun CategorySelectionInput(
+    category: String,
+    onCategoryChange: (String) -> Unit,
+    existingCategories: List<String>
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Deadline: ${formatDate(task.deadline)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (task.deadline < System.currentTimeMillis()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
-                )
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = category,
+            onValueChange = { onCategoryChange(it) },
+            label = { Text("Category (e.g. Work, Health)") },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Category")
+                }
             }
-            FilledIconButton(
-                onClick = onComplete,
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Complete", tint = MaterialTheme.colorScheme.onPrimary)
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth(0.8f) // Optional width adjustment
+        ) {
+            val suggestions = (existingCategories + listOf("Work", "Personal", "Health", "Education", "Finance")).distinct().sorted()
+            suggestions.forEach { suggestion ->
+                DropdownMenuItem(
+                    text = { Text(suggestion) },
+                    onClick = {
+                        onCategoryChange(suggestion)
+                        expanded = false
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun AddTaskDialog(onDismiss: () -> Unit, onTaskAdded: (String, Long) -> Unit) {
+fun AddTaskDialog(
+    existingCategories: List<String>,
+    onDismiss: () -> Unit,
+    onTaskAdded: (String, Long, String) -> Unit
+) {
     var title by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     
@@ -309,8 +349,17 @@ fun AddTaskDialog(onDismiss: () -> Unit, onTaskAdded: (String, Long) -> Unit) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Task Title") }
+                    label = { Text("Task Title") },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                CategorySelectionInput(
+                    category = category,
+                    onCategoryChange = { category = it },
+                    existingCategories = existingCategories
+                )
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Deadline:")
                 Button(onClick = { datePickerDialog.show() }) {
@@ -321,7 +370,7 @@ fun AddTaskDialog(onDismiss: () -> Unit, onTaskAdded: (String, Long) -> Unit) {
         confirmButton = {
             Button(onClick = { 
                 if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline) 
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }) 
                 }
             }) {
                 Text("Forge")
@@ -342,6 +391,8 @@ fun TaskInfoDialog(task: Task, onDismiss: () -> Unit) {
         title = { Text(text = task.title, fontWeight = FontWeight.Bold) },
         text = {
             Column {
+                Text(text = "Category: ${task.category}")
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Deadline: ${formatDate(task.deadline)}")
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Status: ${if (task.isCompleted) "Completed" else "Pending"}")
@@ -365,7 +416,6 @@ fun TaskOptionsDialog(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // A simple Dialog with a list of options
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
@@ -401,8 +451,14 @@ fun TaskOptionsDialog(
 }
 
 @Composable
-fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onTaskUpdated: (Task) -> Unit) {
+fun EditTaskDialog(
+    task: Task, 
+    existingCategories: List<String>,
+    onDismiss: () -> Unit, 
+    onTaskUpdated: (Task) -> Unit
+) {
     var title by remember { mutableStateOf(task.title) }
+    var category by remember { mutableStateOf(task.category) }
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     
@@ -440,8 +496,17 @@ fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onTaskUpdated: (Task) -> U
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Task Title") }
+                    label = { Text("Task Title") },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                CategorySelectionInput(
+                    category = category,
+                    onCategoryChange = { category = it },
+                    existingCategories = existingCategories
+                )
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Deadline:")
                 Button(onClick = { datePickerDialog.show() }) {
@@ -452,7 +517,7 @@ fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onTaskUpdated: (Task) -> U
         confirmButton = {
             Button(onClick = { 
                 if (title.isNotBlank()) {
-                    onTaskUpdated(task.copy(title = title, deadline = selectedDeadline)) 
+                    onTaskUpdated(task.copy(title = title, deadline = selectedDeadline, category = category.ifBlank { "General" })) 
                 }
             }) {
                 Text("Save")

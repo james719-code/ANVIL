@@ -72,54 +72,47 @@ class AnvilAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         val packageName = event.packageName?.toString() ?: return
+        val rootNode = rootInActiveWindow ?: return
 
         // 1. Capture Browser URLs (Phase 5)
         var currentUrl: String? = null
         if (isBrowserPackage(packageName)) {
-            val rootNode = rootInActiveWindow
-            if (rootNode != null) {
-                currentUrl = findUrl(rootNode)
-                if (currentUrl != null) {
-                    val browserPkg = packageName
-                    val urlToSave = currentUrl
-                    scope.launch {
-                        val visitedLink = VisitedLink(
-                            domain = extractDomain(urlToSave),
-                            fullUrl = urlToSave,
-                            timestamp = System.currentTimeMillis(),
-                            browserPackage = browserPkg
-                        )
-                        db.historyDao().insert(visitedLink)
-                    }
+            currentUrl = findUrl(rootNode)
+            if (currentUrl != null) {
+                val browserPkg = packageName
+                val urlToSave = currentUrl
+                scope.launch {
+                    val visitedLink = VisitedLink(
+                        domain = extractDomain(urlToSave),
+                        fullUrl = urlToSave,
+                        timestamp = System.currentTimeMillis(),
+                        browserPackage = browserPkg
+                    )
+                    db.historyDao().insert(visitedLink)
                 }
             }
         }
 
         // 2. Check Decision Engine (Phase 7)
         if (isBlocked) {
-            if (shouldEnforce(packageName, currentUrl)) {
+            if (shouldEnforce(packageName, currentUrl, rootNode)) {
                 enforce()
             }
         }
     }
 
-    private fun shouldEnforce(packageName: String, currentUrl: String?): Boolean {
+    private fun shouldEnforce(packageName: String, currentUrl: String?, rootNode: AccessibilityNodeInfo): Boolean {
         // Phase 10.2: Always block Settings/Accessibility when penalty active
         // Only block Settings if explicitly in blocklist OR logic dictates stricter lockout.
-        // For general use, we should allow Settings unless the user added it.
-        // If we want to prevent disabling the app during penalty, we can check for penalty state specifically.
-        // For now, let's treat it like any other app unless blockedPackages contains it.
-        // if (packageName == "com.android.settings") return true 
         
         // Phase 7: YouTube Shorts detection
-        // Note: Simple URL/Text check. YouTube Shorts usually have "/shorts/" in URL
-        // or Accessibility Description. 
         if (packageName == "com.google.android.youtube") {
-             // In a real implementation, we would inspect the node tree for "Shorts" text/ID.
-             // For now, if user added YouTube to blocklist, it's covered below.
-             // If we want SPECIFIC shorts blocking while allowing YouTube, that's harder.
-             // Requirement says "Detect: YouTube Shorts".
-             if (currentUrl != null && currentUrl.contains("/shorts/")) return true
+            // Check via URL if available (e.g. if YouTube app exposes it or it's a browser)
+            if (currentUrl != null && currentUrl.contains("/shorts/")) return true
+            
+            // Check via UI Structure: Check for "Shorts" text in description or specific View IDs
+            // Note: This is heuristic and depends on YouTube's current UI structure.
+            if (checkForShortsContent(rootNode)) return true
         }
 
         // Check App Blocklist
@@ -134,6 +127,24 @@ class AnvilAccessibilityService : AccessibilityService() {
             }
         }
 
+        return false
+    }
+
+    private fun checkForShortsContent(node: AccessibilityNodeInfo): Boolean {
+        // Depth-first search for "Shorts" indicators
+        if (node.contentDescription?.toString()?.contains("Shorts", ignoreCase = true) == true) {
+            return true
+        }
+        // Sometimes the tab bar has "Shorts" text
+        if (node.text?.toString()?.equals("Shorts", ignoreCase = true) == true) {
+            // Checking if this is the *selected* tab might be needed, but for now simple detection:
+            if (node.isSelected) return true
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            if (checkForShortsContent(child)) return true
+        }
         return false
     }
 
@@ -158,9 +169,16 @@ class AnvilAccessibilityService : AccessibilityService() {
     }
 
     private fun findUrl(node: AccessibilityNodeInfo): String? {
+        // Some browsers put URL in text, some in content description, some in custom view IDs.
+        // Chrome typically puts it in a node with resource id 'com.android.chrome:id/url_bar'
+        
+        if (node.viewIdResourceName?.contains("url_bar") == true) {
+             return node.text?.toString()
+        }
+
         if (node.text != null) {
             val text = node.text.toString()
-            if (text.startsWith("http") || text.contains(".com") || text.contains("www.")) {
+            if (text.startsWith("http") || text.contains("www.")) {
                  return text
             }
         }

@@ -17,6 +17,14 @@ val PrimaryBlue = Color(0xFF1976D2)
 val SecondaryGrey = Color(0xFFECEFF1)
 val TextBlack = Color(0xFF212121)
 
+// New Design Colors
+val DeepSkyBlue = Color(0xFF4A90E2) // Approximate for Motivation Card
+val LightBlueAccent = Color(0xFFE3F2FD) // Lighter blue for backgrounds/accents
+val CardBackgroundLight = Color(0xFFFFFFFF)
+val CardBackgroundDark = Color(0xFF2C2C2C)
+val ProgressTrackLight = Color(0x80FFFFFF)
+val ProgressTrackDark = Color(0x40FFFFFF)
+
 // Legacy for fallback
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
