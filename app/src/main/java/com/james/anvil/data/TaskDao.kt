@@ -26,4 +26,7 @@ interface TaskDao {
 
     @Update
     suspend fun update(task: Task)
+
+    @androidx.room.Delete
+    suspend fun delete(task: Task)
 }

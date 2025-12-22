@@ -41,7 +41,7 @@ fun ConsistencyChart(completedTasks: List<Task>) {
              val end = start + 24 * 60 * 60 * 1000
              
              counts[i] = completedTasks.count { 
-                 it.completedAt in start until end
+                 (it.completedAt ?: 0L) in start until end
              }
              calendar.add(Calendar.DAY_OF_YEAR, -1)
         }

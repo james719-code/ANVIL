@@ -35,16 +35,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs: SharedPreferences = application.getSharedPreferences("anvil_settings", Context.MODE_PRIVATE)
 
     val tasks: Flow<List<Task>> = taskDao.observeIncompleteTasks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     val completedTasks: Flow<List<Task>> = taskDao.observeCompletedTasks(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     val blockedApps: Flow<List<String>> = blocklistDao.observeEnabledBlockedAppPackages()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     val blockedLinks: Flow<List<String>> = blocklistDao.observeEnabledBlockedLinkPatterns()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
     val installedApps: StateFlow<List<AppInfo>> = _installedApps.asStateFlow()
@@ -98,6 +98,29 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    fun updateTask(task: Task) {
+        viewModelScope.launch {
+            taskDao.update(task)
+        }
+    }
+
+    fun deleteTask(task: Task) {
+        viewModelScope.launch {
+            taskDao.delete(task)
+        }
+    }
+
+    fun undoDeleteTask(task: Task) {
+        viewModelScope.launch {
+            // Re-inserting the task. Since ID is auto-generated, we might want to clear it to get a new one,
+            // or keep it if we want to restore exactly.
+            // If we keep the ID, REPLACE strategy in Insert will handle it if it still exists (which it shouldn't after delete).
+            // However, it is safer to let Room handle the ID if it's auto-generated, but for "Undo" we often want to put it back exactly.
+            // Let's try to insert it as is.
+            taskDao.insert(task)
+        }
+    }
+
     fun blockApp(packageName: String) {
         viewModelScope.launch {
             blocklistDao.insertApp(BlockedApp(packageName = packageName, isEnabled = true))

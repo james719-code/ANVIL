@@ -8,12 +8,17 @@ import com.james.anvil.ui.TaskViewModel
 import com.james.anvil.ui.TasksScreen
 import com.james.anvil.ui.BlocklistScreen
 import com.james.anvil.ui.SettingsScreen
+import androidx.compose.material3.SnackbarHostState
 
 @Composable
-fun NavigationGraph(navController: NavHostController, viewModel: TaskViewModel) {
+fun NavigationGraph(
+    navController: NavHostController, 
+    viewModel: TaskViewModel,
+    snackbarHostState: SnackbarHostState
+) {
     NavHost(navController = navController, startDestination = Screen.Tasks.route) {
         composable(Screen.Tasks.route) {
-            TasksScreen(viewModel)
+            TasksScreen(viewModel, snackbarHostState)
         }
         composable(Screen.Blocklist.route) {
             BlocklistScreen(viewModel)
