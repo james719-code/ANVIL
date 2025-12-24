@@ -19,7 +19,7 @@ class AnvilWorker(
         val bonusManager = BonusManager(applicationContext)
         val decisionEngine = DecisionEngine(db.taskDao(), penaltyManager, bonusManager)
 
-        // Only trigger state updates (penalties/grace) from the worker
+        
         decisionEngine.updateState()
         
         return Result.success()

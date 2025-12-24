@@ -41,7 +41,7 @@ fun BlocklistItem(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // App Icon
+            
             if (app.appInfo.icon != null) {
                 Image(
                     painter = rememberAsyncImagePainter(app.appInfo.icon),

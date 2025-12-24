@@ -34,9 +34,9 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ANVILTheme(
-    // We will pass the theme state from above, or default to system
+    
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
+    
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {

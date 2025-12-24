@@ -7,7 +7,7 @@ class BonusManager(context: Context) {
 
     companion object {
         const val MAX_GRACE_DAYS = 3
-        const val GRACE_EXPIRY_MILLIS = 7 * 24 * 60 * 60 * 1000L // 7 days
+        const val GRACE_EXPIRY_MILLIS = 7 * 24 * 60 * 60 * 1000L 
     }
 
     fun getGraceDays(): Int {

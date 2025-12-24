@@ -15,6 +15,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE deadline < :now AND isCompleted = 0")
     suspend fun getOverdueIncomplete(now: Long): List<Task>
 
+    
+    @Query("SELECT * FROM tasks WHERE isCompleted = 0")
+    suspend fun getAllIncompleteTasks(): List<Task>
+
     @Query("SELECT * FROM tasks WHERE isCompleted = 0 ORDER BY deadline ASC")
     fun observeIncompleteTasks(): Flow<List<Task>>
 

@@ -28,85 +28,80 @@ class DecisionEngineTest {
         decisionEngine = DecisionEngine(taskDao, penaltyManager, bonusManager)
     }
 
+    // FIX: Changed from "= runBlocking" to "{ runBlocking { } }"
     @Test
-    fun `isBlocked should be false when no tasks today or tomorrow`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
+    fun `isBlocked should be false when no tasks today or tomorrow`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
 
-        // Act
-        val isBlocked = decisionEngine.isBlocked()
+            val isBlocked = decisionEngine.isBlocked()
 
-        // Assert
-        assertFalse(isBlocked)
+            assertFalse(isBlocked)
+        }
     }
 
     @Test
-    fun `isBlocked should be true when penalty is active`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+    fun `isBlocked should be true when penalty is active`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
+            whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
 
-        // Act
-        val isBlocked = decisionEngine.isBlocked()
+            val isBlocked = decisionEngine.isBlocked()
 
-        // Assert
-        assertTrue(isBlocked)
-    }
-    
-    @Test
-    fun `isBlocked should be true when tasks exist even without penalty`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
-
-        // Act
-        val isBlocked = decisionEngine.isBlocked()
-
-        // Assert
-        assertTrue(isBlocked)
+            assertTrue(isBlocked)
+        }
     }
 
     @Test
-    fun `updateState should start penalty when overdue tasks exist and no grace`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
-        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
-        whenever(bonusManager.consumeGraceDay()).thenReturn(false)
+    fun `isBlocked should be true when tasks exist even without penalty`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
+            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
 
-        // Act
-        decisionEngine.updateState()
+            val isBlocked = decisionEngine.isBlocked()
 
-        // Assert
-        verify(penaltyManager).startPenalty()
+            assertTrue(isBlocked)
+        }
     }
 
     @Test
-    fun `updateState should consume grace and NOT start penalty when overdue tasks exist and grace available`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
-        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
-        whenever(bonusManager.consumeGraceDay()).thenReturn(true)
+    fun `updateState should start penalty when overdue tasks exist and no grace`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
+            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+            whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
+            whenever(bonusManager.consumeGraceDay()).thenReturn(false)
 
-        // Act
-        decisionEngine.updateState()
+            decisionEngine.updateState()
 
-        // Assert
-        verify(penaltyManager, never()).startPenalty()
-        verify(bonusManager).consumeGraceDay()
+            verify(penaltyManager).startPenalty()
+        }
     }
-    
+
     @Test
-    fun `updateState should clear penalty if no tasks exist`() = runBlocking {
-        // Arrange
-        whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
-        whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+    fun `updateState should consume grace and NOT start penalty when overdue tasks exist and grace available`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
+            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+            whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
+            whenever(bonusManager.consumeGraceDay()).thenReturn(true)
 
-        // Act
-        decisionEngine.updateState()
+            decisionEngine.updateState()
 
-        // Assert
-        verify(penaltyManager).clearPenalty()
+            verify(penaltyManager, never()).startPenalty()
+            verify(bonusManager).consumeGraceDay()
+        }
+    }
+
+    @Test
+    fun `updateState should clear penalty if no tasks exist`() {
+        runBlocking {
+            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
+            whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+
+            decisionEngine.updateState()
+
+            verify(penaltyManager).clearPenalty()
+        }
     }
 }

@@ -22,7 +22,7 @@ class PenaltyManager(context: Context) {
         )
     }
 
-    fun startPenalty(durationMillis: Long = 24 * 60 * 60 * 1000L) { // Default 24 hours
+    fun startPenalty(durationMillis: Long = 24 * 60 * 60 * 1000L) { 
         val endTime = System.currentTimeMillis() + durationMillis
         sharedPreferences.edit()
             .putLong("penalty_end_time", endTime)
@@ -48,7 +48,7 @@ class PenaltyManager(context: Context) {
             .apply()
     }
 
-    // Time Integrity Persistence
+    
     fun saveTimeCheckpoints(systemTime: Long, elapsedRealtime: Long) {
         sharedPreferences.edit()
             .putLong("last_system_time", systemTime)

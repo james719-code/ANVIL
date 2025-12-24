@@ -26,6 +26,9 @@ interface BlocklistDao {
     @Query("SELECT pattern FROM blocked_links WHERE isEnabled = 1")
     fun observeEnabledBlockedLinkPatterns(): Flow<List<String>>
 
+    @Query("SELECT * FROM blocked_links WHERE isEnabled = 1")
+    fun observeEnabledBlockedLinks(): Flow<List<BlockedLink>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLink(link: BlockedLink)
     

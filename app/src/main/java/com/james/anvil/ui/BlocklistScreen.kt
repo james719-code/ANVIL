@@ -26,8 +26,8 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
     Scaffold(
         topBar = {
             Column {
-                // Simplified Header matching design vibe (just tab row if cleaner)
-                // Or a large "Blocklist" header. For now, Tabs.
+                
+                
                 TabRow(selectedTabIndex = selectedTabIndex) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -60,8 +60,8 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
              CircularProgressIndicator()
         }
     } else {
-        // Group by category if we wanted to match "Section Headers", but design seemed flat list with category subtitle.
-        // We will stick to flat list for now but sort by blocked status or name.
+        
+        
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             item {
                 Text(
@@ -137,7 +137,7 @@ fun CategoryEditDialog(
 
 @Composable
 fun BlockedLinksTab(viewModel: TaskViewModel) {
-    val blockedLinks by viewModel.blockedLinks.collectAsState(initial = emptyList())
+    val blockedLinks by viewModel.blockedLinkObjects.collectAsState(initial = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -164,10 +164,11 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
                             .padding(vertical = 4.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
+                        val displayText = if (link.isEncrypted) "****** (Hidden)" else link.pattern
                         ListItem(
-                            headlineContent = { Text(link) },
+                            headlineContent = { Text(displayText) },
                             trailingContent = {
-                                IconButton(onClick = { viewModel.unblockLink(link) }) {
+                                IconButton(onClick = { viewModel.unblockLink(link.pattern) }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Remove")
                                 }
                             }
@@ -190,8 +191,8 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
     if (showAddDialog) {
         AddLinkDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { link ->
-                viewModel.blockLink(link)
+            onAdd = { link, isEncrypted ->
+                viewModel.blockLink(link, isEncrypted)
                 showAddDialog = false
             }
         )
@@ -199,24 +200,35 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
 }
 
 @Composable
-fun AddLinkDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
+fun AddLinkDialog(onDismiss: () -> Unit, onAdd: (String, Boolean) -> Unit) {
     var link by remember { mutableStateOf("") }
+    var isEncrypted by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Block Link") },
         text = {
-            OutlinedTextField(
-                value = link,
-                onValueChange = { link = it },
-                label = { Text("URL or Domain") },
-                placeholder = { Text("example.com") }
-            )
+            Column {
+                OutlinedTextField(
+                    value = link,
+                    onValueChange = { link = it },
+                    label = { Text("URL or Domain") },
+                    placeholder = { Text("example.com") }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = isEncrypted,
+                        onCheckedChange = { isEncrypted = it }
+                    )
+                    Text("Encrypt (Hide in list)")
+                }
+            }
         },
         confirmButton = {
             Button(onClick = { 
                 if (link.isNotBlank()) {
-                    onAdd(link) 
+                    onAdd(link, isEncrypted) 
                 }
             }) {
                 Text("Block")

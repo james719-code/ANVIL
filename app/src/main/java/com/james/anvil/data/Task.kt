@@ -7,8 +7,13 @@ import androidx.room.PrimaryKey
 data class Task(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val deadline: Long, // Timestamp in milliseconds
+    val deadline: Long, 
     val isCompleted: Boolean = false,
     val completedAt: Long? = null,
-    val category: String = "General"
+    val category: String = "General",
+    val steps: List<TaskStep> = emptyList(),
+
+    
+    val createdAt: Long = System.currentTimeMillis(),
+    val reminderSent: Boolean = false
 )

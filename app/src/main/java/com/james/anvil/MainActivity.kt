@@ -142,7 +142,7 @@ fun BatteryOptimizationCheck() {
                     Text("Cancel")
                 }
             },
-            // Add extra button for help if Android 13+
+            
             icon = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     TextButton(onClick = { showRestrictedGuide = true }) {
@@ -164,7 +164,7 @@ fun RestrictedSettingsGuideDialog(onDismiss: () -> Unit) {
         Card(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().height(600.dp) // Fixed height to ensure scrolling
+            modifier = Modifier.fillMaxWidth().height(600.dp) 
         ) {
             Column(
                 modifier = Modifier
@@ -225,6 +225,7 @@ fun MainScreen(viewModel: TaskViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
     
     val screens = listOf(
+        Screen.Dashboard,
         Screen.Tasks,
         Screen.Blocklist,
         Screen.Settings
@@ -256,9 +257,9 @@ fun MainScreen(viewModel: TaskViewModel) {
                 }
             }
         ) { innerPadding ->
-            // Passing padding to NavigationGraph isn't standard, usually Scaffold is inside screens or we apply padding to NavHost
-            // But NavHost should be the content.
-            // Let's wrap NavHost in a Box or similar with padding
+            
+            
+            
             Surface(modifier = Modifier.padding(innerPadding)) {
                 NavigationGraph(
                     navController = navController, 
