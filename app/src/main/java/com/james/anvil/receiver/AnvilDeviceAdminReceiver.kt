@@ -16,5 +16,5 @@ class AnvilDeviceAdminReceiver : DeviceAdminReceiver() {
         Toast.makeText(context, "Anvil Device Admin Disabled", Toast.LENGTH_SHORT).show()
     }
     
-    // In strict mode, onDisableRequested can warn the user or try to delay (though mostly deprecated/limited)
+    
 }

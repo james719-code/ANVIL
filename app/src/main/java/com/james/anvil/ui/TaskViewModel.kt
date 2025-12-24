@@ -12,6 +12,7 @@ import com.james.anvil.data.AppCategory
 import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
 import com.james.anvil.data.Task
+import com.james.anvil.data.TaskStep
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,7 +47,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val appCategoryDao = db.appCategoryDao()
     private val prefs: SharedPreferences = application.getSharedPreferences("anvil_settings", Context.MODE_PRIVATE)
 
-    // --- FIX: Quotes moved here (TOP) so they are initialized BEFORE the init block runs ---
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
         "The only way to do great work is to love what you do.",
@@ -79,7 +79,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         "Discipline is the bridge between goals and accomplishment.",
         "Action is the foundational key to all success."
     )
-    // ---------------------------------------------------------------------------------------
 
     val tasks: Flow<List<Task>> = taskDao.observeIncompleteTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
@@ -93,24 +92,31 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     val blockedLinks: Flow<List<String>> = blocklistDao.observeEnabledBlockedLinkPatterns()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
+    val blockedLinkObjects: Flow<List<BlockedLink>> = blocklistDao.observeEnabledBlockedLinks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
-    // Quote Management
+    
     private val _dailyQuote = MutableStateFlow("")
     val dailyQuote: StateFlow<String> = _dailyQuote.asStateFlow()
 
-    // Daily Progress
+    
     val dailyProgress: Flow<Float> = combine(tasks, completedTasks) { pending, completed ->
-        calculateDailyProgress(pending, completed)
+        calculateTotalProgress(pending, completed)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0f)
 
     val dailyPendingCount: Flow<Int> = tasks.map { list ->
         list.count { isDueToday(it.deadline) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
+    val totalPendingCount: Flow<Int> = tasks.map { list ->
+        list.size
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
     private val allCategories: Flow<List<AppCategory>> = appCategoryDao.getAllCategories()
 
-    // Combined list for Blocklist Screen
+    
     val appListWithCategories: Flow<List<AppInfoWithCategory>> = combine(
         _installedApps,
         blockedApps,
@@ -120,7 +126,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         apps.map { app ->
             AppInfoWithCategory(
                 appInfo = app,
-                category = categoryMap[app.packageName] ?: "Uncategorized", // Default category
+                category = categoryMap[app.packageName] ?: "Uncategorized",
                 isBlocked = blocked.contains(app.packageName)
             )
         }
@@ -148,6 +154,13 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
         val total = todayPending + todayCompleted
         return if (total == 0) 0f else todayCompleted.toFloat() / total
+    }
+
+    private fun calculateTotalProgress(pending: List<Task>, completed: List<Task>): Float {
+        val totalPending = pending.size
+        val totalCompleted = completed.size
+        val total = totalPending + totalCompleted
+        return if (total == 0) 0f else totalCompleted.toFloat() / total
     }
 
     private fun fetchInstalledApps() {
@@ -196,9 +209,17 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putBoolean("dark_theme", isDark).apply()
     }
 
-    fun addTask(title: String, deadlineTimestamp: Long, category: String) {
+    
+    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList()) {
         viewModelScope.launch {
-            val task = Task(title = title, deadline = deadlineTimestamp, category = category)
+            
+            val task = Task(
+                title = title,
+                deadline = deadlineTimestamp,
+                category = category,
+                steps = steps,
+                createdAt = System.currentTimeMillis() 
+            )
             taskDao.insert(task)
         }
     }
@@ -207,6 +228,29 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val completedTask = task.copy(isCompleted = true, completedAt = System.currentTimeMillis())
             taskDao.update(completedTask)
+        }
+    }
+
+    fun toggleTaskStep(task: Task, stepId: String, isCompleted: Boolean) {
+        viewModelScope.launch {
+            val updatedSteps = task.steps.map {
+                if (it.id == stepId) it.copy(isCompleted = isCompleted) else it
+            }
+
+            val allStepsCompleted = updatedSteps.isNotEmpty() && updatedSteps.all { it.isCompleted }
+
+            val updatedTask = if (allStepsCompleted && !task.isCompleted) {
+                
+                task.copy(steps = updatedSteps, isCompleted = true, completedAt = System.currentTimeMillis())
+            } else if (!allStepsCompleted && task.isCompleted) {
+                
+                task.copy(steps = updatedSteps, isCompleted = false, completedAt = null)
+            } else {
+                
+                task.copy(steps = updatedSteps)
+            }
+
+            taskDao.update(updatedTask)
         }
     }
 
@@ -246,9 +290,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun blockLink(pattern: String) {
+    fun blockLink(pattern: String, isEncrypted: Boolean = false) {
         viewModelScope.launch {
-            blocklistDao.insertLink(BlockedLink(pattern = pattern, isEnabled = true))
+            blocklistDao.insertLink(BlockedLink(pattern = pattern, isEnabled = true, isEncrypted = isEncrypted))
         }
     }
 

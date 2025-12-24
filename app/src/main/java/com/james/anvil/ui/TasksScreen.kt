@@ -3,63 +3,81 @@ package com.james.anvil.ui
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.navigation.NavController
 import com.james.anvil.data.Task
+import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
 import com.james.anvil.ui.components.ConsistencyChart
 import com.james.anvil.ui.components.EmptyState
-import com.james.anvil.ui.components.MotivationCard
 import com.james.anvil.ui.components.TaskItem
+import com.james.anvil.ui.navigation.Screen
 import kotlinx.coroutines.launch
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) {
-    var showAddTaskDialog by remember { mutableStateOf(false) }
+fun TasksScreen(
+    viewModel: TaskViewModel,
+    snackbarHostState: SnackbarHostState,
+    navController: NavController
+) {
+    var showAddTaskSheet by remember { mutableStateOf(false) }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Deadlines", "Done")
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // New State for Dialogs and Selection
+    
     var showInfoDialog by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
-    var selectedTask by remember { mutableStateOf<Task?>(null) }
-    
+    var selectedTaskId by remember { mutableStateOf<Long?>(null) }
+    var editingTaskId by remember { mutableStateOf<Long?>(null) }
+
     val scope = rememberCoroutineScope()
+
     
-    // ViewModel state
-    val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
-    val pendingCount by viewModel.dailyPendingCount.collectAsState(initial = 0)
-    val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
-    val tasks by viewModel.tasks.collectAsState(initial = emptyList())
-    // Extract unique categories from tasks to use as suggestions
-    val existingCategories = remember(tasks) {
-        tasks.map { it.category }.distinct().filter { it != "General" }.sorted()
+    val allTasks by viewModel.tasks.collectAsState(initial = emptyList())
+    val selectedTask = remember(allTasks, selectedTaskId) {
+        allTasks.find { it.id == selectedTaskId }
+    }
+    val editingTask = remember(allTasks, editingTaskId) {
+        allTasks.find { it.id == editingTaskId }
+    }
+    
+    val existingCategories = remember(allTasks) {
+        allTasks.map { it.category }.distinct().filter { it != "General" }.sorted()
+    }
+
+    
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    val tasks = remember(allTasks, selectedCategory) {
+        if (selectedCategory == null) allTasks
+        else allTasks.filter { it.category == selectedCategory }
     }
 
     Scaffold(
         floatingActionButton = {
             if (selectedTabIndex == 0) {
-                FloatingActionButton(onClick = { showAddTaskDialog = true }) {
+                FloatingActionButton(onClick = { showAddTaskSheet = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Add Task")
                 }
             }
@@ -70,17 +88,7 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // Header with Motivation Card
-            if (selectedTabIndex == 0) {
-                MotivationCard(
-                    dailyProgress = dailyProgress,
-                    pendingCount = pendingCount,
-                    quote = dailyQuote,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-
-            // Tabs
+            
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -91,22 +99,30 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
                 }
             }
 
-            // Content
+            if (selectedTabIndex == 0) {
+                CategoryFilterRow(
+                    categories = listOf("All") + existingCategories,
+                    selectedCategory = selectedCategory ?: "All",
+                    onCategorySelected = { selectedCategory = if (it == "All") null else it }
+                )
+            }
+
+            
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedTabIndex) {
                     0 -> PendingTasksTab(
-                        viewModel = viewModel, 
+                        viewModel = viewModel,
+                        tasks = tasks,
                         onTaskClick = { task ->
-                            selectedTask = task
+                            selectedTaskId = task.id
                             showInfoDialog = true
                         },
                         onTaskLongClick = { task ->
-                            selectedTask = task
+                            selectedTaskId = task.id
                             showOptionsDialog = true
                         },
                         onEdit = { task ->
-                            selectedTask = task
-                            showEditDialog = true
+                            editingTaskId = task.id
                         },
                         onDelete = { task ->
                             viewModel.deleteTask(task)
@@ -128,34 +144,82 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
         }
     }
 
-    if (showAddTaskDialog) {
-        AddTaskDialog(
-            existingCategories = existingCategories,
-            onDismiss = { showAddTaskDialog = false },
-            onTaskAdded = { title, deadline, category ->
-                viewModel.addTask(title, deadline, category)
-                showAddTaskDialog = false
-            }
-        )
+    
+
+    if (showAddTaskSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddTaskSheet = false },
+            sheetState = sheetState
+        ) {
+            AddTaskBottomSheetContent(
+                existingCategories = existingCategories,
+                onDismiss = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) showAddTaskSheet = false
+                    }
+                },
+                onTaskAdded = { title, deadline, category, steps ->
+                    viewModel.addTask(title, deadline, category, steps)
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) showAddTaskSheet = false
+                    }
+                }
+            )
+        }
     }
 
     if (showInfoDialog && selectedTask != null) {
-        TaskInfoDialog(
-            task = selectedTask!!,
-            onDismiss = { showInfoDialog = false }
-        )
+        ModalBottomSheet(
+            onDismissRequest = { showInfoDialog = false },
+            sheetState = sheetState
+        ) {
+            TaskInfoBottomSheetContent(
+                task = selectedTask,
+                onDismiss = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) showInfoDialog = false
+                    }
+                },
+                onToggleStep = { stepId, isDone ->
+                    viewModel.toggleTaskStep(selectedTask, stepId, isDone)
+                }
+            )
+        }
+    }
+
+    if (editingTask != null) {
+        ModalBottomSheet(
+            onDismissRequest = { editingTaskId = null },
+            sheetState = sheetState
+        ) {
+            EditTaskBottomSheetContent(
+                task = editingTask,
+                existingCategories = existingCategories,
+                onDismiss = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) editingTaskId = null
+                    }
+                },
+                onSave = { updatedTask ->
+                    viewModel.updateTask(updatedTask)
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) editingTaskId = null
+                    }
+                }
+            )
+        }
     }
 
     if (showOptionsDialog && selectedTask != null) {
         TaskOptionsDialog(
-            task = selectedTask!!,
+            task = selectedTask,
             onDismiss = { showOptionsDialog = false },
             onEdit = {
                 showOptionsDialog = false
-                showEditDialog = true
+                editingTaskId = selectedTask.id
             },
             onDelete = {
-                val taskToDelete = selectedTask!!
+                val taskToDelete = selectedTask
                 showOptionsDialog = false
                 viewModel.deleteTask(taskToDelete)
                 scope.launch {
@@ -171,17 +235,30 @@ fun TasksScreen(viewModel: TaskViewModel, snackbarHostState: SnackbarHostState) 
             }
         )
     }
+}
 
-    if (showEditDialog && selectedTask != null) {
-        EditTaskDialog(
-            task = selectedTask!!,
-            existingCategories = existingCategories,
-            onDismiss = { showEditDialog = false },
-            onTaskUpdated = { updatedTask ->
-                viewModel.updateTask(updatedTask)
-                showEditDialog = false
-            }
-        )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryFilterRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(categories) { category ->
+            FilterChip(
+                selected = category == selectedCategory,
+                onClick = { onCategorySelected(category) },
+                label = { Text(category) },
+                leadingIcon = if (category == selectedCategory) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                } else null
+            )
+        }
     }
 }
 
@@ -191,10 +268,9 @@ fun PendingTasksTab(
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
     onEdit: (Task) -> Unit,
-    onDelete: (Task) -> Unit
+    onDelete: (Task) -> Unit,
+    tasks: List<Task>
 ) {
-    val tasks by viewModel.tasks.collectAsState(initial = emptyList())
-
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         if (tasks.isEmpty()) {
             EmptyState(
@@ -206,7 +282,7 @@ fun PendingTasksTab(
             LazyColumn {
                 items(tasks, key = { it.id }) { task ->
                     TaskItem(
-                        task = task, 
+                        task = task,
                         onComplete = { viewModel.completeTask(task) },
                         onEdit = { onEdit(task) },
                         onDelete = { onDelete(task) },
@@ -230,14 +306,6 @@ fun DoneTasksTab(viewModel: TaskViewModel) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Text(
-                text = "Consistency (Last 7 Days)",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-            ConsistencyChart(completedTasks = completedTasks)
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            Text(
                 text = "History",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -252,17 +320,67 @@ fun DoneTasksTab(viewModel: TaskViewModel) {
                 }
             }
         } else {
-            items(completedTasks) { task ->
-                ListItem(
-                    headlineContent = { Text(task.title, style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) },
-                    supportingContent = {
-                        Text("Completed: ${formatDate(task.completedAt ?: System.currentTimeMillis())} • ${task.category}")
-                    },
-                    leadingContent = { Icon(Icons.Default.Check, contentDescription = null) }
-                )
+            items(completedTasks, key = { it.id }) { task ->
+                SwipeToDismissItem(
+                    onDismiss = { viewModel.deleteTask(task) }
+                ) {
+                    ListItem(
+                        headlineContent = { Text(task.title, style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) },
+                        supportingContent = {
+                            Text("Completed: ${formatDate(task.completedAt ?: System.currentTimeMillis())} • ${task.category}")
+                        },
+                        leadingContent = { Icon(Icons.Default.Check, contentDescription = null) }
+                    )
+                }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeToDismissItem(
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart) {
+                onDismiss()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart)
+                MaterialTheme.colorScheme.errorContainer
+            else Color.Transparent
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        content = {
+            content()
+        },
+        enableDismissFromEndToStart = true,
+        enableDismissFromStartToEnd = false
+    )
 }
 
 @Composable
@@ -288,7 +406,7 @@ fun CategorySelectionInput(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth(0.8f) // Optional width adjustment
+            modifier = Modifier.fillMaxWidth(0.8f)
         ) {
             val suggestions = (existingCategories + listOf("Work", "Personal", "Health", "Education", "Finance")).distinct().sorted()
             suggestions.forEach { suggestion ->
@@ -304,26 +422,84 @@ fun CategorySelectionInput(
     }
 }
 
+
+
 @Composable
-fun AddTaskDialog(
+fun TaskInfoBottomSheetContent(
+    task: Task,
+    onDismiss: () -> Unit,
+    onToggleStep: (String, Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(text = task.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(text = "Category: ${task.category}")
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "Deadline: ${formatDate(task.deadline)}")
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "Status: ${if (task.isCompleted) "Completed" else "Pending"}")
+        if (task.isCompleted && task.completedAt != null) {
+            Text(text = "Completed at: ${formatDate(task.completedAt)}")
+        }
+
+        if (task.steps.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Steps:", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            task.steps.forEach { step ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Checkbox(
+                        checked = step.isCompleted,
+                        onCheckedChange = { isChecked ->
+                            onToggleStep(step.id, isChecked)
+                        }
+                    )
+                    Text(
+                        text = step.title,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Close")
+        }
+    }
+}
+
+@Composable
+fun EditTaskBottomSheetContent(
+    task: Task,
     existingCategories: List<String>,
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Long, String) -> Unit
+    onSave: (Task) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(task.title) }
+    var category by remember { mutableStateOf(task.category) }
+    var steps by remember { mutableStateOf(task.steps) }
+    var currentStepTitle by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
-    
-    // Initial state
-    var selectedDeadline by remember { mutableStateOf(System.currentTimeMillis()) }
-    
-    // Updates
+    var selectedDeadline by remember { mutableStateOf(task.deadline) }
+
     val datePickerDialog = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
             calendar.set(year, month, dayOfMonth)
-            // After date picked, show time picker
             TimePickerDialog(
                 context,
                 { _, hourOfDay, minute ->
@@ -341,72 +517,208 @@ fun AddTaskDialog(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Task") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Task Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                CategorySelectionInput(
-                    category = category,
-                    onCategoryChange = { category = it },
-                    existingCategories = existingCategories
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Deadline:")
-                Button(onClick = { datePickerDialog.show() }) {
-                    Text(text = formatDate(selectedDeadline))
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { 
-                if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }) 
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text("Edit Task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Task Title") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CategorySelectionInput(
+            category = category,
+            onCategoryChange = { category = it },
+            existingCategories = existingCategories
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Deadline:")
+        Button(onClick = { datePickerDialog.show() }) {
+            Text(text = formatDate(selectedDeadline))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Steps:")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = currentStepTitle,
+                onValueChange = { currentStepTitle = it },
+                label = { Text("Add Step") },
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = {
+                if (currentStepTitle.isNotBlank()) {
+                    steps = steps + TaskStep(title = currentStepTitle)
+                    currentStepTitle = ""
                 }
             }) {
-                Text("Forge")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Icon(Icons.Default.Add, contentDescription = "Add Step")
             }
         }
-    )
+
+        steps.forEach { step ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "• ${step.title}" + if (step.isCompleted) " (Done)" else "",
+                    modifier = Modifier.weight(1f),
+                    color = if (step.isCompleted) MaterialTheme.colorScheme.primary else Color.Unspecified
+                )
+                IconButton(onClick = {
+                    val newSteps = steps.toMutableList()
+                    newSteps.remove(step)
+                    steps = newSteps
+                }) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove Step", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                if (title.isNotBlank()) {
+                    onSave(task.copy(title = title, deadline = selectedDeadline, category = category.ifBlank { "General" }, steps = steps))
+                }
+            }) {
+                Text("Save")
+            }
+        }
+    }
 }
 
 @Composable
-fun TaskInfoDialog(task: Task, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = task.title, fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                Text(text = "Category: ${task.category}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Deadline: ${formatDate(task.deadline)}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Status: ${if (task.isCompleted) "Completed" else "Pending"}")
-                if (task.isCompleted && task.completedAt != null) {
-                    Text(text = "Completed at: ${formatDate(task.completedAt)}")
-                }
-            }
+fun AddTaskBottomSheetContent(
+    existingCategories: List<String>,
+    onDismiss: () -> Unit,
+    onTaskAdded: (String, Long, String, List<TaskStep>) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
+    var steps by remember { mutableStateOf(listOf<TaskStep>()) }
+    var currentStepTitle by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    var selectedDeadline by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            TimePickerDialog(
+                context,
+                { _, hourOfDay, minute ->
+                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    calendar.set(Calendar.MINUTE, minute)
+                    selectedDeadline = calendar.timeInMillis
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                false
+            ).show()
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text("New Task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Task Title") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CategorySelectionInput(
+            category = category,
+            onCategoryChange = { category = it },
+            existingCategories = existingCategories
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Deadline:")
+        Button(onClick = { datePickerDialog.show() }) {
+            Text(text = formatDate(selectedDeadline))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Steps:")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = currentStepTitle,
+                onValueChange = { currentStepTitle = it },
+                label = { Text("Add Step") },
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = {
+                if (currentStepTitle.isNotBlank()) {
+                    steps = steps + TaskStep(title = currentStepTitle)
+                    currentStepTitle = ""
+                }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Step")
             }
         }
-    )
+
+        steps.forEach { step ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "• ${step.title}", modifier = Modifier.weight(1f))
+                IconButton(onClick = {
+                    val newSteps = steps.toMutableList()
+                    newSteps.remove(step)
+                    steps = newSteps
+                }) {
+                    Icon(Icons.Default.Close, contentDescription = "Remove Step", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                if (title.isNotBlank()) {
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps)
+                }
+            }) {
+                Text("Create")
+            }
+        }
+    }
 }
 
 @Composable
@@ -428,7 +740,7 @@ fun TaskOptionsDialog(
                     fontSize = 20.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                
+
                 TextButton(
                     onClick = onEdit,
                     modifier = Modifier.fillMaxWidth().align(Alignment.Start)
@@ -436,7 +748,7 @@ fun TaskOptionsDialog(
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text("Edit")
                 }
-                
+
                 TextButton(
                     onClick = onDelete,
                     modifier = Modifier.fillMaxWidth().align(Alignment.Start),
@@ -448,85 +760,4 @@ fun TaskOptionsDialog(
             }
         }
     }
-}
-
-@Composable
-fun EditTaskDialog(
-    task: Task, 
-    existingCategories: List<String>,
-    onDismiss: () -> Unit, 
-    onTaskUpdated: (Task) -> Unit
-) {
-    var title by remember { mutableStateOf(task.title) }
-    var category by remember { mutableStateOf(task.category) }
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    
-    // Initial state
-    var selectedDeadline by remember { mutableStateOf(task.deadline) }
-    
-    // Updates
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
-            // After date picked, show time picker
-            TimePickerDialog(
-                context,
-                { _, hourOfDay, minute ->
-                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                    calendar.set(Calendar.MINUTE, minute)
-                    selectedDeadline = calendar.timeInMillis
-                },
-                calendar.get(Calendar.HOUR_OF_DAY),
-                calendar.get(Calendar.MINUTE),
-                false
-            ).show()
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Task") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Task Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                CategorySelectionInput(
-                    category = category,
-                    onCategoryChange = { category = it },
-                    existingCategories = existingCategories
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Deadline:")
-                Button(onClick = { datePickerDialog.show() }) {
-                    Text(text = formatDate(selectedDeadline))
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { 
-                if (title.isNotBlank()) {
-                    onTaskUpdated(task.copy(title = title, deadline = selectedDeadline, category = category.ifBlank { "General" })) 
-                }
-            }) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }

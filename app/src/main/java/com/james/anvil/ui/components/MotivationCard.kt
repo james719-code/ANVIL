@@ -30,7 +30,7 @@ fun MotivationCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp), // Approximate height from design
+            .height(200.dp), 
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = DeepSkyBlue),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -41,7 +41,7 @@ fun MotivationCard(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header Row: Date
+            
             Text(
                 text = "Today, $dateString",
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -50,7 +50,7 @@ fun MotivationCard(
                 )
             )
 
-            // Quote
+            
             Text(
                 text = "\"$quote\"",
                 style = MaterialTheme.typography.bodyLarge.copy(
@@ -61,7 +61,7 @@ fun MotivationCard(
                 maxLines = 3
             )
 
-            // Footer: Progress
+            
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

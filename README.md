@@ -61,7 +61,7 @@ The app follows modern Android development practices to ensure performance and r
 ### Build
 
 ```bash
-git clone https://github.com/yourusername/anvil.git
+git clone https:
 cd anvil
 ./gradlew assembleDebug
 

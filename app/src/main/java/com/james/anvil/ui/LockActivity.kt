@@ -44,7 +44,7 @@ class LockActivity : ComponentActivity() {
         
         penaltyManager = PenaltyManager(this)
         
-        // Prevent screenshots and recents preview
+        
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
@@ -58,7 +58,7 @@ class LockActivity : ComponentActivity() {
         }
     }
     
-    // Disable recents minimization (best effort on modern Android)
+    
     override fun onPause() {
         super.onPause()
     }
@@ -70,7 +70,7 @@ fun LockScreen(penaltyManager: PenaltyManager) {
     val isPenaltyActive = remember { penaltyManager.isPenaltyActive() }
     val penaltyEndTime = remember { penaltyManager.getPenaltyEndTime() }
     
-    // Timer update loop
+    
     LaunchedEffect(key1 = penaltyEndTime, key2 = isPenaltyActive) {
         if (!isPenaltyActive) {
             timeLeft = "--:--:--"
@@ -91,9 +91,9 @@ fun LockScreen(penaltyManager: PenaltyManager) {
         }
     }
 
-    // Disable Back Button
+    
     BackHandler(enabled = true) {
-        // Do nothing
+        
     }
 
     val backgroundColor = if (isPenaltyActive) Color.Black else Color.DarkGray

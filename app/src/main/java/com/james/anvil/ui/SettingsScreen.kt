@@ -2,6 +2,8 @@ package com.james.anvil.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
@@ -58,9 +60,10 @@ fun SettingsScreen(viewModel: TaskViewModel) {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
             
-            // Appearance Section
+            
             SettingsSectionHeader(title = "Appearance")
             SettingsItem(
                 title = "Dark Mode",
@@ -75,7 +78,7 @@ fun SettingsScreen(viewModel: TaskViewModel) {
 
             HorizontalDivider()
 
-            // Permissions Section
+            
             SettingsSectionHeader(title = "Permissions")
             SettingsItem(
                 title = "Draw Over Apps",
@@ -106,7 +109,7 @@ fun SettingsScreen(viewModel: TaskViewModel) {
 
             HorizontalDivider()
 
-            // About Us Section
+            
             SettingsSectionHeader(title = "About")
             SettingsItem(
                 title = "ANVIL v1.0",
@@ -114,13 +117,37 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                 icon = Icons.Default.Info
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Forge Your Will. Stay focused, track your tasks, and eliminate distractions with ANVIL.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Forge Your Will.",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Anvil is designed to be your digital shield against distraction. By tracking your tasks and blocking time-wasting apps and sites, you build the discipline needed to achieve your goals.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                         text = "Tips:",
+                         fontWeight = FontWeight.Bold
+                    )
+                     Text(
+                        text = "• Break tasks into steps for better momentum.\n• Use the 'Done' tab to review your consistency.\n• Block distractions proactively.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
         }
     }
 }
