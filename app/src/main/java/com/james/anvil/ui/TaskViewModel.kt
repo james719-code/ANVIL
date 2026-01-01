@@ -97,11 +97,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
-    
     private val _dailyQuote = MutableStateFlow("")
     val dailyQuote: StateFlow<String> = _dailyQuote.asStateFlow()
 
-    
     val dailyProgress: Flow<Float> = combine(tasks, completedTasks) { pending, completed ->
         calculateTotalProgress(pending, completed)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0f)
@@ -116,7 +114,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private val allCategories: Flow<List<AppCategory>> = appCategoryDao.getAllCategories()
 
-    
     val appListWithCategories: Flow<List<AppInfoWithCategory>> = combine(
         _installedApps,
         blockedApps,
@@ -209,16 +206,15 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putBoolean("dark_theme", isDark).apply()
     }
 
-    
-    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList()) {
+    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false) {
         viewModelScope.launch {
-            
             val task = Task(
                 title = title,
                 deadline = deadlineTimestamp,
                 category = category,
                 steps = steps,
-                createdAt = System.currentTimeMillis() 
+                createdAt = System.currentTimeMillis(),
+                isDaily = isDaily
             )
             taskDao.insert(task)
         }
@@ -226,7 +222,19 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     fun completeTask(task: Task) {
         viewModelScope.launch {
-            val completedTask = task.copy(isCompleted = true, completedAt = System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val completedTask = if (task.isDaily) {
+                // For daily tasks: set lastCompletedDate and mark isCompleted
+                // The DailyTaskResetWorker will reset this the next day
+                task.copy(
+                    isCompleted = true,
+                    completedAt = now,
+                    lastCompletedDate = now
+                )
+            } else {
+                // For regular tasks: just mark as completed
+                task.copy(isCompleted = true, completedAt = now)
+            }
             taskDao.update(completedTask)
         }
     }

@@ -12,10 +12,18 @@ interface TaskDao {
     @Query("SELECT COUNT(*) FROM tasks WHERE deadline >= :startOfDay AND deadline < :endOfNextDay AND isCompleted = 0")
     suspend fun countActiveTodayTomorrow(startOfDay: Long, endOfNextDay: Long): Int
 
+    // Count only non-daily active tasks (for blocking logic - daily tasks should NOT trigger blocking)
+    @Query("SELECT COUNT(*) FROM tasks WHERE deadline >= :startOfDay AND deadline < :endOfNextDay AND isCompleted = 0 AND isDaily = 0")
+    suspend fun countActiveNonDailyTasks(startOfDay: Long, endOfNextDay: Long): Int
+
+    // Count ALL non-daily incomplete tasks (regardless of deadline)
+    @Query("SELECT COUNT(*) FROM tasks WHERE isCompleted = 0 AND isDaily = 0")
+    suspend fun countAllIncompleteNonDailyTasks(): Int
+
     @Query("SELECT * FROM tasks WHERE deadline < :now AND isCompleted = 0")
     suspend fun getOverdueIncomplete(now: Long): List<Task>
 
-    
+    // Get all incomplete tasks
     @Query("SELECT * FROM tasks WHERE isCompleted = 0")
     suspend fun getAllIncompleteTasks(): List<Task>
 
@@ -24,6 +32,13 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE isCompleted = 1 AND completedAt >= :since ORDER BY completedAt DESC")
     fun observeCompletedTasks(since: Long): Flow<List<Task>>
+    
+    // Daily task queries
+    @Query("SELECT * FROM tasks WHERE isDaily = 1")
+    suspend fun getAllDailyTasks(): List<Task>
+    
+    @Query("SELECT * FROM tasks WHERE isDaily = 1 AND (lastCompletedDate IS NULL OR lastCompletedDate < :startOfToday)")
+    suspend fun getDailyTasksNeedingReset(startOfToday: Long): List<Task>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(task: Task)

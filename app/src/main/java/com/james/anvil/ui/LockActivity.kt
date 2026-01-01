@@ -6,27 +6,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,7 +42,7 @@ class LockActivity : ComponentActivity() {
         
         penaltyManager = PenaltyManager(this)
         
-        
+        // Prevent screenshots
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
@@ -58,11 +56,20 @@ class LockActivity : ComponentActivity() {
         }
     }
     
-    
     override fun onPause() {
         super.onPause()
     }
 }
+
+// Premium color palette
+private val DeepNavy = Color(0xFF0A0E21)
+private val DarkSlate = Color(0xFF1A1F3A)
+private val AccentBlue = Color(0xFF4FC3F7)
+private val AccentTeal = Color(0xFF00BFA5)
+private val PenaltyRed = Color(0xFFFF5252)
+private val PenaltyDarkRed = Color(0xFF2D0A0A)
+private val GlassWhite = Color(0x22FFFFFF)
+private val GlassBorder = Color(0x33FFFFFF)
 
 @Composable
 fun LockScreen(penaltyManager: PenaltyManager) {
@@ -70,7 +77,30 @@ fun LockScreen(penaltyManager: PenaltyManager) {
     val isPenaltyActive = remember { penaltyManager.isPenaltyActive() }
     val penaltyEndTime = remember { penaltyManager.getPenaltyEndTime() }
     
+    // Pulsing animation for icon
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconScale"
+    )
     
+    // Glow animation
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    
+    // Timer update
     LaunchedEffect(key1 = penaltyEndTime, key2 = isPenaltyActive) {
         if (!isPenaltyActive) {
             timeLeft = "--:--:--"
@@ -91,73 +121,179 @@ fun LockScreen(penaltyManager: PenaltyManager) {
         }
     }
 
-    
-    BackHandler(enabled = true) {
-        
+    // Block back button
+    BackHandler(enabled = true) { }
+
+    val accentColor = if (isPenaltyActive) PenaltyRed else AccentTeal
+    val gradientColors = if (isPenaltyActive) {
+        listOf(PenaltyDarkRed, DeepNavy, DarkSlate)
+    } else {
+        listOf(DeepNavy, DarkSlate, Color(0xFF0D1B2A))
     }
 
-    val backgroundColor = if (isPenaltyActive) Color.Black else Color.DarkGray
-    val iconColor = if (isPenaltyActive) Color.Red else Color.Cyan
-    val titleText = if (isPenaltyActive) "SYSTEM LOCKED" else "FOCUS MODE"
-    val subtitleText = if (isPenaltyActive) "Penalty Active" else "Pending Tasks"
-    val messageText = if (isPenaltyActive) "Complete your tasks to earn your freedom." else "Distractions blocked. Complete tasks to unlock."
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(gradientColors))
+    ) {
+        // Subtle gradient orb in background
+        Box(
+            modifier = Modifier
+                .size(400.dp)
+                .offset(x = (-100).dp, y = (-150).dp)
+                .blur(100.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.2f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = backgroundColor
-    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = "Locked",
-                tint = iconColor,
-                modifier = Modifier.size(120.dp)
-            )
+            // Animated lock icon with glow
+            Box(contentAlignment = Alignment.Center) {
+                // Glow effect
+                Box(
+                    modifier = Modifier
+                        .size(140.dp)
+                        .scale(scale)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    accentColor.copy(alpha = glowAlpha * 0.4f),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = CircleShape
+                        )
+                )
+                
+                // Glass circle background
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .scale(scale)
+                        .clip(CircleShape)
+                        .background(GlassWhite)
+                        .border(1.dp, GlassBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = accentColor,
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+            }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
+            // Title
             Text(
-                text = titleText,
+                text = if (isPenaltyActive) "SYSTEM LOCKED" else "FOCUS MODE",
                 color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 4.sp,
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
-            Text(
-                text = subtitleText,
-                color = iconColor,
-                fontSize = 24.sp,
-                textAlign = TextAlign.Center
-            )
+            // Subtitle badge
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = accentColor.copy(alpha = 0.15f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Shield,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isPenaltyActive) "Penalty Active" else "Tasks Pending",
+                        color = accentColor,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             
+            // Timer (only in penalty mode)
             if (isPenaltyActive) {
                 Spacer(modifier = Modifier.height(48.dp))
                 
-                Text(
-                    text = timeLeft,
-                    color = Color.White,
-                    fontSize = 48.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    textAlign = TextAlign.Center
-                )
+                // Glassmorphism timer card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    shape = RoundedCornerShape(24.dp),
+                    color = GlassWhite,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Time Remaining",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = timeLeft,
+                            color = Color.White,
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 4.sp
+                        )
+                    }
+                }
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
+            // Message
             Text(
-                text = messageText,
-                color = Color.Gray,
-                fontSize = 16.sp,
+                text = if (isPenaltyActive) 
+                    "Complete your tasks to earn your freedom."
+                else 
+                    "Complete your pending tasks to unlock distractions.",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Tip
+            Text(
+                text = "💡 Open ANVIL to manage your tasks",
+                color = Color.White.copy(alpha = 0.3f),
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center
             )
         }
