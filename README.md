@@ -19,22 +19,29 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 
 ## Features
 
-### 🛠 Task Management
+### Task Management
 
-* **Direct Entry**: Create tasks with titles and deadlines quickly.
-* **Progress Tracking**: A minimalist list view of pending responsibilities.
-* **Reward System**: A satisfying "You are free" state when your queue is empty.
+* **Quick Task Entry**: Create tasks with titles, deadlines, and optional sub-steps
+* **Daily Tasks**: Set up repeatable daily tasks that auto-reset every day
+* **Progress Tracking**: Visual progress indicators and completion stats
+* **Category Organization**: Group and categorize your tasks for better organization
+* **Smart Reminders**: Automatic notifications for upcoming task deadlines
 
-### 🚫 Distraction Blocking
+### Distraction Blocking
 
-* **App Shield**: Toggle-based blocking for any installed application.
-* **Link Warden**: Add specific URLs or domain patterns to a global blocklist.
-* **Real-time Enforcement**: Uses Android Accessibility Services to detect and intercept distracting habits.
+* **App Shield**: Toggle-based blocking for any installed application
+* **Smart Categorization**: Organize blocked apps by custom categories
+* **Link Warden**: Block specific URLs or domain patterns globally
+* **Privacy Mode**: Encrypt sensitive blocked URLs (hidden from display)
+* **YouTube Shorts Blocking**: Intelligent detection and blocking of YouTube Shorts content
+* **Real-time Enforcement**: Uses Android Accessibility Services to detect and intercept distracting habits
 
-### 🎨 Customization
+### Customization
 
-* **Material You**: Built with Jetpack Compose for a modern, responsive feel.
-* **Adaptive Themes**: Full support for Light and Dark modes.
+* **Material You Design**: Built with Jetpack Compose for a modern, responsive feel
+* **Adaptive Themes**: Full support for Light and Dark modes with a subtle blue-green color palette
+* **Motivational Dashboard**: Daily motivational quotes and consistency charts
+* **Achievement Tracking**: Visual consistency charts showing your productivity streak
 
 ---
 
@@ -42,11 +49,12 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 
 The app follows modern Android development practices to ensure performance and reliability:
 
-* **UI**: Jetpack Compose (100% Kotlin).
-* **Pattern**: MVVM (Model-View-ViewModel) for clean separation of concerns.
-* **Database**: Room for local persistence of tasks and blocklists.
-* **Asynchrony**: Kotlin Coroutines & Flow for reactive, non-blocking data streams.
-* **Image Loading**: Coil for efficient rendering of application icons.
+* **UI**: Jetpack Compose (100% Kotlin)
+* **Pattern**: MVVM (Model-View-ViewModel) for clean separation of concerns
+* **Database**: Room for local persistence of tasks and blocklists
+* **Asynchrony**: Kotlin Coroutines & Flow for reactive, non-blocking data streams
+* **Background Work**: WorkManager for periodic task resets and reminder notifications
+* **Image Loading**: Coil for efficient rendering of application icons
 
 ---
 
@@ -54,34 +62,35 @@ The app follows modern Android development practices to ensure performance and r
 
 ### Prerequisites
 
-* Android Studio Ladybug or newer.
-* JDK 17+.
-* Physical device recommended (for testing Accessibility/Battery persistence).
+* Android Studio Ladybug or newer
+* JDK 17+
+* Physical device recommended (for testing Accessibility/Battery persistence)
 
 ### Build
 
 ```bash
-git clone https:
+git clone https://github.com/yourusername/anvil
 cd anvil
 ./gradlew assembleDebug
-
 ```
 
 ### Critical Permissions
 
 To function as a system-wide blocker, ANVIL requires:
 
-1. **Accessibility Service**: To detect when a blocked app is opened.
-2. **Usage Access**: To track app statistics and improve blocking accuracy.
-3. **Request Ignore Battery Optimizations**: To prevent Android from killing the blocker in the background.
+1. **Accessibility Service**: To detect when a blocked app is opened
+2. **Usage Access**: To track app statistics and improve blocking accuracy
+3. **Ignore Battery Optimizations**: To prevent Android from killing the blocker in the background
+4. **Notification Permission** (Android 13+): To send reminders about upcoming task deadlines
+
 
 ---
 
-## Troubleshooting: Persistence & Restrictions
+## Troubleshooting
 
 If you are sideloading the APK (installing via USB or browser), Android's security features may interfere:
 
-### 1. Accessibility Disabling on Restart
+### Accessibility Service Disabling on Restart
 
 Android often kills background services to save power.
 
@@ -100,9 +109,15 @@ If the Accessibility toggle is greyed out:
 
 ## Privacy Policy
 
-ANVIL is built for personal use. **All data stays on your device.** There are no analytics, no trackers, and no cloud syncing. Your focus is your business.
+ANVIL is built for personal use. **All data stays on your device.**
 
+* No analytics
+* No trackers
+* No cloud syncing
+* No ads
+
+Your focus is your business.
 
 ---
 
-Developed By: James Ryan Gallego
+**Developed By**: James Ryan Gallego

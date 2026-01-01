@@ -27,7 +27,6 @@ import androidx.navigation.NavController
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
-import com.james.anvil.ui.components.ConsistencyChart
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.TaskItem
 import com.james.anvil.ui.navigation.Screen
@@ -158,8 +157,8 @@ fun TasksScreen(
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
                 },
-                onTaskAdded = { title, deadline, category, steps ->
-                    viewModel.addTask(title, deadline, category, steps)
+                onTaskAdded = { title, deadline, category, steps, isDaily ->
+                    viewModel.addTask(title, deadline, category, steps, isDaily)
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
@@ -262,6 +261,7 @@ fun CategoryFilterRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PendingTasksTab(
     viewModel: TaskViewModel,
@@ -491,6 +491,7 @@ fun EditTaskBottomSheetContent(
     var category by remember { mutableStateOf(task.category) }
     var steps by remember { mutableStateOf(task.steps) }
     var currentStepTitle by remember { mutableStateOf("") }
+    var isDaily by remember { mutableStateOf(task.isDaily) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -547,6 +548,28 @@ fun EditTaskBottomSheetContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        
+        // Daily task toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Daily Task", fontWeight = FontWeight.Medium)
+                Text(
+                    "Repeats every day",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = isDaily,
+                onCheckedChange = { isDaily = it }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Steps:")
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -594,7 +617,13 @@ fun EditTaskBottomSheetContent(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onSave(task.copy(title = title, deadline = selectedDeadline, category = category.ifBlank { "General" }, steps = steps))
+                    onSave(task.copy(
+                        title = title, 
+                        deadline = selectedDeadline, 
+                        category = category.ifBlank { "General" }, 
+                        steps = steps,
+                        isDaily = isDaily
+                    ))
                 }
             }) {
                 Text("Save")
@@ -603,16 +632,18 @@ fun EditTaskBottomSheetContent(
     }
 }
 
+
 @Composable
 fun AddTaskBottomSheetContent(
     existingCategories: List<String>,
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Long, String, List<TaskStep>) -> Unit
+    onTaskAdded: (String, Long, String, List<TaskStep>, Boolean) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var steps by remember { mutableStateOf(listOf<TaskStep>()) }
     var currentStepTitle by remember { mutableStateOf("") }
+    var isDaily by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -669,6 +700,28 @@ fun AddTaskBottomSheetContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        
+        // Daily task toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Daily Task", fontWeight = FontWeight.Medium)
+                Text(
+                    "Repeats every day",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = isDaily,
+                onCheckedChange = { isDaily = it }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Steps:")
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -712,7 +765,7 @@ fun AddTaskBottomSheetContent(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps)
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily)
                 }
             }) {
                 Text("Create")
@@ -720,6 +773,7 @@ fun AddTaskBottomSheetContent(
         }
     }
 }
+
 
 @Composable
 fun TaskOptionsDialog(

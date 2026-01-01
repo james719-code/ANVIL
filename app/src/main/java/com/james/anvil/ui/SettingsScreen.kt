@@ -1,30 +1,39 @@
 package com.james.anvil.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.james.anvil.util.PermissionUtils
 import com.james.anvil.service.AnvilAccessibilityService
+import com.james.anvil.ui.theme.DeepTeal
+import com.james.anvil.ui.theme.GradientEnd
+import com.james.anvil.ui.theme.GradientStart
+import com.james.anvil.util.PermissionUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +61,16 @@ fun SettingsScreen(viewModel: TaskViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) }
+                title = { 
+                    Text(
+                        "Settings", 
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall
+                    ) 
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -62,8 +80,7 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            
-            
+            // Appearance Section
             SettingsSectionHeader(title = "Appearance")
             SettingsItem(
                 title = "Dark Mode",
@@ -71,14 +88,21 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                 trailing = {
                     Switch(
                         checked = isDarkTheme,
-                        onCheckedChange = { viewModel.toggleTheme(it) }
+                        onCheckedChange = { viewModel.toggleTheme(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     )
                 }
             )
 
-            HorizontalDivider()
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
 
-            
+            // Permissions Section
             SettingsSectionHeader(title = "Permissions")
             SettingsItem(
                 title = "Draw Over Apps",
@@ -90,7 +114,19 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                     }
                 },
                 trailing = {
-                     if (!hasOverlayPermission) Icon(Icons.Default.ArrowForward, null)
+                    if (hasOverlayPermission) {
+                        Icon(
+                            Icons.Default.CheckCircle, 
+                            null, 
+                            tint = DeepTeal
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.ArrowForward, 
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             )
             SettingsItem(
@@ -102,14 +138,29 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                         context.startActivity(intent)
                     }
                 },
-                 trailing = {
-                     if (!hasAccessibilityPermission) Icon(Icons.Default.ArrowForward, null)
+                trailing = {
+                    if (hasAccessibilityPermission) {
+                        Icon(
+                            Icons.Default.CheckCircle, 
+                            null, 
+                            tint = DeepTeal
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.ArrowForward, 
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             )
 
-            HorizontalDivider()
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
 
-            
+            // About Section
             SettingsSectionHeader(title = "About")
             SettingsItem(
                 title = "ANVIL v1.0",
@@ -118,13 +169,23 @@ fun SettingsScreen(viewModel: TaskViewModel) {
             )
             
             Spacer(modifier = Modifier.height(8.dp))
-            Card(
+            
+            // About Card with gradient accent
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                GradientStart.copy(alpha = 0.1f),
+                                GradientEnd.copy(alpha = 0.1f)
+                            )
+                        )
+                    )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Forge Your Will.",
                         style = MaterialTheme.typography.titleMedium,
@@ -134,20 +195,25 @@ fun SettingsScreen(viewModel: TaskViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Anvil is designed to be your digital shield against distraction. By tracking your tasks and blocking time-wasting apps and sites, you build the discipline needed to achieve your goals.",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                         text = "Tips:",
-                         fontWeight = FontWeight.Bold
+                        text = "Tips:",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                     Text(
+                    Text(
                         text = "• Break tasks into steps for better momentum.\n• Use the 'Done' tab to review your consistency.\n• Block distractions proactively.",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                     )
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -156,8 +222,9 @@ fun SettingsScreen(viewModel: TaskViewModel) {
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
     )
 }
@@ -171,9 +238,30 @@ fun SettingsItem(
     trailing: (@Composable () -> Unit)? = null
 ) {
     ListItem(
-        headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
-        supportingContent = if (subtitle != null) { { Text(subtitle) } } else null,
-        leadingContent = if (icon != null) { { Icon(icon, contentDescription = null) } } else null,
+        headlineContent = { 
+            Text(
+                title, 
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
+        supportingContent = if (subtitle != null) { 
+            { 
+                Text(
+                    subtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ) 
+            } 
+        } else null,
+        leadingContent = if (icon != null) { 
+            { 
+                Icon(
+                    icon, 
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                ) 
+            } 
+        } else null,
         trailingContent = trailing,
         modifier = Modifier.clickable(enabled = onClick != null) { onClick?.invoke() }
     )

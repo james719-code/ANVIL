@@ -46,6 +46,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.ReminderWorker
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     private val viewModel: TaskViewModel by viewModels()
@@ -53,14 +59,80 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        scheduleWorkers()
         setContent {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
             ANVILTheme(darkTheme = isDarkTheme) {
                 MainScreen(viewModel)
                 BatteryOptimizationCheck()
                 UsageAccessCheck()
+                NotificationPermissionCheck()
             }
         }
+    }
+
+    private fun scheduleWorkers() {
+        val workManager = WorkManager.getInstance(this)
+        
+        // Schedule ReminderWorker to run every 15 minutes
+        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
+            .build()
+        workManager.enqueueUniquePeriodicWork(
+            "AnvilReminderCheck",
+            ExistingPeriodicWorkPolicy.KEEP,
+            reminderRequest
+        )
+        
+        // Schedule DailyTaskResetWorker to run every 12 hours
+        val dailyResetRequest = PeriodicWorkRequestBuilder<DailyTaskResetWorker>(12, TimeUnit.HOURS)
+            .build()
+        workManager.enqueueUniquePeriodicWork(
+            "AnvilDailyReset",
+            ExistingPeriodicWorkPolicy.KEEP,
+            dailyResetRequest
+        )
+    }
+}
+
+@Composable
+fun NotificationPermissionCheck() {
+    val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasPermission = context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == 
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                showDialog = true
+            }
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Enable Notifications") },
+            text = { Text("Anvil needs notification permission to remind you about upcoming task deadlines.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        }
+                        context.startActivity(intent)
+                        showDialog = false
+                    }
+                ) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Later")
+                }
+            }
+        )
     }
 }
 
@@ -257,9 +329,6 @@ fun MainScreen(viewModel: TaskViewModel) {
                 }
             }
         ) { innerPadding ->
-            
-            
-            
             Surface(modifier = Modifier.padding(innerPadding)) {
                 NavigationGraph(
                     navController = navController, 

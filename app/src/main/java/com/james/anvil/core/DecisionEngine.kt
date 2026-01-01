@@ -12,13 +12,6 @@ class DecisionEngine(
 
     private val timeGuard = TimeIntegrityGuard()
 
-    
-    
-    
-    
-    
-
-    
     suspend fun updateState() {
         
         val lastSystem = penaltyManager.getLastSystemTime()
@@ -39,54 +32,38 @@ class DecisionEngine(
 
         val now = System.currentTimeMillis()
         
-        
-        val startToday = getStartOfDay(now)
-        val endTomorrow = getEndOfNextDay(now)
-        
-        val activeTasksCount = taskDao.countActiveTodayTomorrow(startToday, endTomorrow)
+        val activeTasksCount = taskDao.countAllIncompleteNonDailyTasks()
         
         if (activeTasksCount == 0) {
-            
             if (penaltyManager.isPenaltyActive()) {
                 penaltyManager.clearPenalty()
             }
             return
         }
 
-        
         if (!penaltyManager.isPenaltyActive()) {
             val overdueTasks = taskDao.getOverdueIncomplete(now)
             if (overdueTasks.isNotEmpty()) {
-                
                 if (bonusManager.consumeGraceDay()) {
-                    
                 } else {
-                    
                     penaltyManager.startPenalty()
                 }
             }
         }
     }
 
-    
     suspend fun isBlocked(): Boolean {
         val now = System.currentTimeMillis()
         
-        
-        val startToday = getStartOfDay(now)
-        val endTomorrow = getEndOfNextDay(now)
-        val activeTasksCount = taskDao.countActiveTodayTomorrow(startToday, endTomorrow)
+        val activeTasksCount = taskDao.countAllIncompleteNonDailyTasks()
         
         if (activeTasksCount == 0) {
-            return false 
+            return false
         }
 
-        
         if (penaltyManager.isPenaltyActive()) {
             return true
         }
-
-        
         
         return true
     }

@@ -26,8 +26,6 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
     Scaffold(
         topBar = {
             Column {
-                
-                
                 TabRow(selectedTabIndex = selectedTabIndex) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -60,8 +58,6 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
              CircularProgressIndicator()
         }
     } else {
-        
-        
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             item {
                 Text(

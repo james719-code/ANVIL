@@ -13,7 +13,11 @@ data class Task(
     val category: String = "General",
     val steps: List<TaskStep> = emptyList(),
 
-    
+    // Timing fields
     val createdAt: Long = System.currentTimeMillis(),
-    val reminderSent: Boolean = false
+    val reminderSent: Boolean = false,
+    
+    // Daily task fields
+    val isDaily: Boolean = false,
+    val lastCompletedDate: Long? = null
 )
