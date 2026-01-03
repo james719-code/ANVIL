@@ -34,6 +34,7 @@ import com.james.anvil.ui.theme.DeepTeal
 import com.james.anvil.ui.theme.GradientEnd
 import com.james.anvil.ui.theme.GradientStart
 import com.james.anvil.util.PermissionUtils
+import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,4 +266,45 @@ fun SettingsItem(
         trailingContent = trailing,
         modifier = Modifier.clickable(enabled = onClick != null) { onClick?.invoke() }
     )
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Settings Section Header", showBackground = true)
+@Composable
+private fun SettingsSectionHeaderPreview() {
+    com.james.anvil.ui.theme.ANVILTheme {
+        SettingsSectionHeader(title = "Appearance")
+    }
+}
+
+@Preview(name = "Settings Item - Light", showBackground = true)
+@Composable
+private fun SettingsItemPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        SettingsItem(
+            title = "Dark Mode",
+            subtitle = "Toggle dark/light theme",
+            trailing = {
+                Switch(checked = false, onCheckedChange = {})
+            }
+        )
+    }
+}
+
+@Preview(name = "Settings Item - Dark", showBackground = true)
+@Composable
+private fun SettingsItemDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        SettingsItem(
+            title = "Draw Over Apps",
+            subtitle = "Required for blocking overlays",
+            icon = Icons.Default.Settings,
+            trailing = {
+                Icon(Icons.Default.CheckCircle, null, tint = DeepTeal)
+            }
+        )
+    }
 }

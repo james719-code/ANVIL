@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.james.anvil.ui.components.BlocklistItem
 import com.james.anvil.ui.components.EmptyState
+import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,4 +237,38 @@ fun AddLinkDialog(onDismiss: () -> Unit, onAdd: (String, Boolean) -> Unit) {
             }
         }
     )
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Add Link Dialog", showBackground = true)
+@Composable
+private fun AddLinkDialogPreview() {
+    com.james.anvil.ui.theme.ANVILTheme {
+        AddLinkDialog(onDismiss = {}, onAdd = { _, _ -> })
+    }
+}
+
+@Preview(name = "Blocked Links Empty - Light", showBackground = true)
+@Composable
+private fun BlockedLinksEmptyPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        EmptyState(
+            message = "No blocked links.",
+            icon = Icons.Default.Lock
+        )
+    }
+}
+
+@Preview(name = "Blocked Links Empty - Dark", showBackground = true)
+@Composable
+private fun BlockedLinksEmptyDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        EmptyState(
+            message = "No blocked links.",
+            icon = Icons.Default.Lock
+        )
+    }
 }

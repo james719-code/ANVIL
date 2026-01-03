@@ -26,6 +26,8 @@ import com.james.anvil.ui.theme.DeepTeal
 import com.james.anvil.ui.theme.MutedTeal
 import java.util.Calendar
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
+import com.james.anvil.data.TaskStep
 
 @Composable
 fun ConsistencyChart(completedTasks: List<Task>) {
@@ -115,5 +117,45 @@ fun ConsistencyChart(completedTasks: List<Task>) {
                 }
             }
         }
+    }
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Consistency Chart - Empty", showBackground = true)
+@Composable
+private fun ConsistencyChartEmptyPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        ConsistencyChart(completedTasks = emptyList())
+    }
+}
+
+@Preview(name = "Consistency Chart - With Data", showBackground = true)
+@Composable
+private fun ConsistencyChartWithDataPreview() {
+    val calendar = Calendar.getInstance()
+    val now = calendar.timeInMillis
+    
+    val mockTasks = listOf(
+        Task(id = 1, title = "Task 1", category = "Work", deadline = now, isCompleted = true, completedAt = now, steps = emptyList()),
+        Task(id = 2, title = "Task 2", category = "Work", deadline = now, isCompleted = true, completedAt = now, steps = emptyList()),
+        Task(id = 3, title = "Task 3", category = "Health", deadline = now - 86400000, isCompleted = true, completedAt = now - 86400000, steps = emptyList()),
+        Task(id = 4, title = "Task 4", category = "Personal", deadline = now - 172800000, isCompleted = true, completedAt = now - 172800000, steps = emptyList()),
+        Task(id = 5, title = "Task 5", category = "Work", deadline = now - 172800000, isCompleted = true, completedAt = now - 172800000, steps = emptyList()),
+        Task(id = 6, title = "Task 6", category = "Work", deadline = now - 172800000, isCompleted = true, completedAt = now - 172800000, steps = emptyList())
+    )
+    
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        ConsistencyChart(completedTasks = mockTasks)
+    }
+}
+
+@Preview(name = "Consistency Chart - Dark", showBackground = true)
+@Composable
+private fun ConsistencyChartDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        ConsistencyChart(completedTasks = emptyList())
     }
 }

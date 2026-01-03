@@ -21,6 +21,8 @@ import com.james.anvil.ui.theme.MutedTeal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
+import com.james.anvil.data.TaskStep
 
 @Composable
 fun TaskItem(
@@ -149,5 +151,72 @@ fun TaskItem(
                 }
             }
         }
+    }
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Task Item - Pending", showBackground = true)
+@Composable
+private fun TaskItemPendingPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        TaskItem(
+            task = Task(
+                id = 1,
+                title = "Complete project report",
+                category = "Work",
+                deadline = System.currentTimeMillis() + 86400000,
+                isCompleted = false,
+                isDaily = false,
+                steps = emptyList()
+            ),
+            onComplete = {},
+            onDelete = {},
+            onEdit = {}
+        )
+    }
+}
+
+@Preview(name = "Task Item - Daily", showBackground = true)
+@Composable
+private fun TaskItemDailyPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        TaskItem(
+            task = Task(
+                id = 2,
+                title = "Morning exercise",
+                category = "Health",
+                deadline = System.currentTimeMillis(),
+                isCompleted = false,
+                isDaily = true,
+                steps = emptyList()
+            ),
+            onComplete = {},
+            onDelete = {},
+            onEdit = {}
+        )
+    }
+}
+
+@Preview(name = "Task Item - Dark", showBackground = true)
+@Composable
+private fun TaskItemDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        TaskItem(
+            task = Task(
+                id = 3,
+                title = "Read documentation",
+                category = "Education",
+                deadline = System.currentTimeMillis() + 3600000,
+                isCompleted = false,
+                isDaily = false,
+                steps = listOf(TaskStep(id = "1", title = "Chapter 1"))
+            ),
+            onComplete = {},
+            onDelete = {},
+            onEdit = {}
+        )
     }
 }

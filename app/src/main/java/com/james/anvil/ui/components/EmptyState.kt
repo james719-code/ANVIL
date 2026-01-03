@@ -11,6 +11,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 
 @Composable
 fun EmptyState(
@@ -37,6 +41,43 @@ fun EmptyState(
             fontSize = 18.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Empty State - Tasks", showBackground = true)
+@Composable
+private fun EmptyStateTasksPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        EmptyState(
+            message = "No pending tasks. You are free.",
+            icon = Icons.Default.Check
+        )
+    }
+}
+
+@Preview(name = "Empty State - Blocked Links", showBackground = true)
+@Composable
+private fun EmptyStateLinksPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        EmptyState(
+            message = "No blocked links.",
+            icon = Icons.Default.Lock
+        )
+    }
+}
+
+@Preview(name = "Empty State - Dark", showBackground = true)
+@Composable
+private fun EmptyStateDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        EmptyState(
+            message = "No items to display",
+            icon = Icons.Default.Check
         )
     }
 }

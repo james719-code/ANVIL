@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ANVIL</string>
+    <string name="widget_description">View your ANVIL productivity stats at a glance</string>
 </resources>
