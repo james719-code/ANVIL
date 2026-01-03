@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
+import com.james.anvil.widget.StatsWidget
 
 data class AppInfo(
     val name: String,
@@ -217,6 +218,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 isDaily = isDaily
             )
             taskDao.insert(task)
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
@@ -224,18 +226,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val completedTask = if (task.isDaily) {
-                // For daily tasks: set lastCompletedDate and mark isCompleted
-                // The DailyTaskResetWorker will reset this the next day
                 task.copy(
                     isCompleted = true,
                     completedAt = now,
                     lastCompletedDate = now
                 )
             } else {
-                // For regular tasks: just mark as completed
                 task.copy(isCompleted = true, completedAt = now)
             }
             taskDao.update(completedTask)
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
@@ -271,6 +271,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteTask(task: Task) {
         viewModelScope.launch {
             taskDao.delete(task)
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
@@ -283,12 +284,14 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun blockApp(packageName: String) {
         viewModelScope.launch {
             blocklistDao.insertApp(BlockedApp(packageName = packageName, isEnabled = true))
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
     fun unblockApp(packageName: String) {
         viewModelScope.launch {
             blocklistDao.removeApp(packageName)
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
@@ -301,12 +304,14 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun blockLink(pattern: String, isEncrypted: Boolean = false) {
         viewModelScope.launch {
             blocklistDao.insertLink(BlockedLink(pattern = pattern, isEnabled = true, isEncrypted = isEncrypted))
+            StatsWidget.refreshAll(getApplication())
         }
     }
 
     fun unblockLink(pattern: String) {
         viewModelScope.launch {
             blocklistDao.removeLink(pattern)
+            StatsWidget.refreshAll(getApplication())
         }
     }
 }

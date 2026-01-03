@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,11 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.james.anvil.ui.components.ConsistencyChart
 import com.james.anvil.ui.components.MotivationCard
 import com.james.anvil.ui.theme.DeepTeal
 import com.james.anvil.ui.theme.MutedTeal
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun DashboardScreen(viewModel: TaskViewModel) {
@@ -214,5 +213,41 @@ fun BlockedStatsCard(blockedAppsCount: Int, blockedLinksCount: Int) {
                 }
             }
         }
+    }
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Task Overview - Light", showBackground = true)
+@Composable
+private fun TaskOverviewCardPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        TaskOverviewCard(pending = 5, completed = 3)
+    }
+}
+
+@Preview(name = "Task Overview - Dark", showBackground = true)
+@Composable
+private fun TaskOverviewCardDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        TaskOverviewCard(pending = 2, completed = 8)
+    }
+}
+
+@Preview(name = "Blocked Stats - Light", showBackground = true)
+@Composable
+private fun BlockedStatsCardPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
+        BlockedStatsCard(blockedAppsCount = 12, blockedLinksCount = 5)
+    }
+}
+
+@Preview(name = "Blocked Stats - Dark", showBackground = true)
+@Composable
+private fun BlockedStatsCardDarkPreview() {
+    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
+        BlockedStatsCard(blockedAppsCount = 8, blockedLinksCount = 3)
     }
 }

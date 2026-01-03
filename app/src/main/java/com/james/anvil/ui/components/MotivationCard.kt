@@ -19,6 +19,7 @@ import com.james.anvil.ui.theme.ProgressTrackLight
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun MotivationCard(
@@ -97,5 +98,45 @@ fun MotivationCard(
                 )
             }
         }
+    }
+}
+
+// =============================================
+// Preview Functions (Removed in Release Builds)
+// =============================================
+
+@Preview(name = "Motivation Card - 0%", showBackground = true)
+@Composable
+private fun MotivationCardZeroPreview() {
+    com.james.anvil.ui.theme.ANVILTheme {
+        MotivationCard(
+            dailyProgress = 0f,
+            pendingCount = 8,
+            quote = "The journey of a thousand miles begins with one step."
+        )
+    }
+}
+
+@Preview(name = "Motivation Card - 50%", showBackground = true)
+@Composable
+private fun MotivationCardHalfPreview() {
+    com.james.anvil.ui.theme.ANVILTheme {
+        MotivationCard(
+            dailyProgress = 0.5f,
+            pendingCount = 4,
+            quote = "Forge your will like steel."
+        )
+    }
+}
+
+@Preview(name = "Motivation Card - 100%", showBackground = true)
+@Composable
+private fun MotivationCardCompletePreview() {
+    com.james.anvil.ui.theme.ANVILTheme {
+        MotivationCard(
+            dailyProgress = 1f,
+            pendingCount = 0,
+            quote = "Well done is better than well said."
+        )
     }
 }
