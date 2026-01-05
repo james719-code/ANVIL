@@ -2,9 +2,11 @@ package com.james.anvil.ui.components
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -18,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.formatDate
+import com.james.anvil.ui.theme.DeepTeal
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,12 +28,13 @@ import java.util.Calendar
 fun AddTaskBottomSheet(
     existingCategories: List<String>,
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Long, String, List<String>) -> Unit
+    onTaskAdded: (String, Long, String, List<String>, Int) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var steps by remember { mutableStateOf(listOf<String>()) }
     var currentStep by remember { mutableStateOf("") }
+    var hardnessLevel by remember { mutableFloatStateOf(1f) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -124,6 +128,54 @@ fun AddTaskBottomSheet(
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Hardness Level Slider
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Hardness Level", style = MaterialTheme.typography.bodyLarge)
+                Box(
+                    modifier = Modifier
+                        .background(DeepTeal.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "${hardnessLevel.toInt()}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = DeepTeal
+                    )
+                }
+            }
+            Slider(
+                value = hardnessLevel,
+                onValueChange = { hardnessLevel = it },
+                valueRange = 1f..5f,
+                steps = 3,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = DeepTeal,
+                    activeTrackColor = DeepTeal
+                )
+            )
+            Text(
+                text = when (hardnessLevel.toInt()) {
+                    1 -> "Complete by deadline"
+                    2 -> "Complete 2 days before"
+                    3 -> "Complete 3 days before"
+                    4 -> "Complete 4 days before"
+                    5 -> "Complete 5 days before"
+                    else -> ""
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         Divider(modifier = Modifier.padding(vertical = 16.dp))
         
         Text("Steps", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -175,7 +227,7 @@ fun AddTaskBottomSheet(
         Button(
             onClick = {
                  if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps)
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, hardnessLevel.toInt())
                     onDismiss()
                 }
             },
@@ -185,3 +237,4 @@ fun AddTaskBottomSheet(
         }
     }
 }
+

@@ -9,10 +9,18 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.AppCategory
+import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
+import com.james.anvil.data.BonusTask
+import com.james.anvil.data.BudgetEntry
+import com.james.anvil.data.BudgetType
+import com.james.anvil.data.Loan
+import com.james.anvil.data.LoanRepayment
+import com.james.anvil.data.LoanStatus
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
+import com.james.anvil.core.BonusManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,7 +54,11 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val taskDao = db.taskDao()
     private val blocklistDao = db.blocklistDao()
     private val appCategoryDao = db.appCategoryDao()
+    private val bonusTaskDao = db.bonusTaskDao()
+    private val budgetDao = db.budgetDao()
+    private val loanDao = db.loanDao()
     private val prefs: SharedPreferences = application.getSharedPreferences("anvil_settings", Context.MODE_PRIVATE)
+    private val bonusManager = BonusManager(application)
 
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
@@ -95,6 +107,39 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     val blockedLinkObjects: Flow<List<BlockedLink>> = blocklistDao.observeEnabledBlockedLinks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    // Bonus Tasks
+    val bonusTasks: Flow<List<BonusTask>> = bonusTaskDao.observeAllBonusTasks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    val bonusTaskCount: Flow<Int> = bonusTaskDao.countBonusTasks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
+    // Budget
+    val budgetEntries: Flow<List<BudgetEntry>> = budgetDao.observeAllEntries()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    val cashBalance: Flow<Double> = budgetDao.getCurrentBalance(BalanceType.CASH)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
+
+    val gcashBalance: Flow<Double> = budgetDao.getCurrentBalance(BalanceType.GCASH)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
+
+    // Loans
+    val activeLoans: Flow<List<Loan>> = loanDao.observeActiveLoans()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    val repaidLoans: Flow<List<Loan>> = loanDao.observeRepaidLoans()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    val totalCashLoaned: Flow<Double> = loanDao.getTotalLoanedAmount(BalanceType.CASH)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
+
+    val totalGcashLoaned: Flow<Double> = loanDao.getTotalLoanedAmount(BalanceType.GCASH)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
+
+    val totalActiveLoanedAmount: Flow<Double> = loanDao.getTotalActiveLoanedAmount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
@@ -207,7 +252,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putBoolean("dark_theme", isDark).apply()
     }
 
-    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false) {
+    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1) {
         viewModelScope.launch {
             val task = Task(
                 title = title,
@@ -215,7 +260,8 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 category = category,
                 steps = steps,
                 createdAt = System.currentTimeMillis(),
-                isDaily = isDaily
+                isDaily = isDaily,
+                hardnessLevel = hardnessLevel.coerceIn(1, 5)
             )
             taskDao.insert(task)
             StatsWidget.refreshAll(getApplication())
@@ -248,13 +294,10 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             val allStepsCompleted = updatedSteps.isNotEmpty() && updatedSteps.all { it.isCompleted }
 
             val updatedTask = if (allStepsCompleted && !task.isCompleted) {
-                
                 task.copy(steps = updatedSteps, isCompleted = true, completedAt = System.currentTimeMillis())
             } else if (!allStepsCompleted && task.isCompleted) {
-                
                 task.copy(steps = updatedSteps, isCompleted = false, completedAt = null)
             } else {
-                
                 task.copy(steps = updatedSteps)
             }
 
@@ -312,6 +355,161 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             blocklistDao.removeLink(pattern)
             StatsWidget.refreshAll(getApplication())
+        }
+    }
+
+    // Bonus Task Functions
+    fun addBonusTask(title: String, description: String? = null, category: String = "Bonus") {
+        viewModelScope.launch {
+            val bonusTask = BonusTask(
+                title = title,
+                description = description,
+                category = category,
+                completedAt = System.currentTimeMillis()
+            )
+            bonusTaskDao.insert(bonusTask)
+            bonusManager.addBonusTask()
+            StatsWidget.refreshAll(getApplication())
+        }
+    }
+
+    fun deleteBonusTask(bonusTask: BonusTask) {
+        viewModelScope.launch {
+            bonusTaskDao.delete(bonusTask)
+        }
+    }
+
+    fun tryExchangeBonusForGrace(): Boolean {
+        return bonusManager.tryExchangeBonusForGrace()
+    }
+
+    fun getGraceDaysCount(): Int = bonusManager.getGraceDays()
+
+    fun getBonusTasksForGrace(): Int = bonusManager.getRequiredBonusForGrace()
+
+    // Budget Functions
+    fun addBudgetEntry(type: BudgetType, balanceType: BalanceType, amount: Double, description: String, category: String = "General") {
+        viewModelScope.launch {
+            val entry = BudgetEntry(
+                type = type,
+                balanceType = balanceType,
+                amount = amount,
+                description = description,
+                category = category,
+                timestamp = System.currentTimeMillis()
+            )
+            budgetDao.insert(entry)
+        }
+    }
+
+    fun updateBudgetEntry(entry: BudgetEntry) {
+        viewModelScope.launch {
+            budgetDao.update(entry)
+        }
+    }
+
+    fun deleteBudgetEntry(entry: BudgetEntry) {
+        viewModelScope.launch {
+            budgetDao.delete(entry)
+        }
+    }
+
+    // Loan Functions
+    fun createLoan(borrowerName: String, amount: Double, balanceType: BalanceType, description: String? = null, dueDate: Long? = null) {
+        viewModelScope.launch {
+            val loan = Loan(
+                borrowerName = borrowerName,
+                originalAmount = amount,
+                remainingAmount = amount,
+                balanceType = balanceType,
+                description = description,
+                dueDate = dueDate
+            )
+            loanDao.insert(loan)
+            
+            // Subtract from balance (record as expense)
+            val expenseEntry = BudgetEntry(
+                type = BudgetType.EXPENSE,
+                balanceType = balanceType,
+                amount = amount,
+                description = "Loan to $borrowerName",
+                category = "Loan",
+                timestamp = System.currentTimeMillis()
+            )
+            budgetDao.insert(expenseEntry)
+        }
+    }
+
+    fun addLoanRepayment(loan: Loan, repaymentAmount: Double, note: String? = null) {
+        viewModelScope.launch {
+            val repayment = LoanRepayment(
+                loanId = loan.id,
+                amount = repaymentAmount,
+                note = note
+            )
+            loanDao.insertRepayment(repayment)
+
+            // Update loan remaining amount and status
+            val newRemainingAmount = (loan.remainingAmount - repaymentAmount).coerceAtLeast(0.0)
+            val newStatus = when {
+                newRemainingAmount <= 0 -> LoanStatus.FULLY_REPAID
+                newRemainingAmount < loan.originalAmount -> LoanStatus.PARTIALLY_REPAID
+                else -> LoanStatus.ACTIVE
+            }
+            
+            val updatedLoan = loan.copy(
+                remainingAmount = newRemainingAmount,
+                status = newStatus
+            )
+            loanDao.update(updatedLoan)
+
+            // Add repayment as income
+            val incomeEntry = BudgetEntry(
+                type = BudgetType.INCOME,
+                balanceType = loan.balanceType,
+                amount = repaymentAmount,
+                description = "Repayment from ${loan.borrowerName}",
+                category = "Loan Repayment",
+                timestamp = System.currentTimeMillis()
+            )
+            budgetDao.insert(incomeEntry)
+        }
+    }
+
+    fun deleteLoan(loan: Loan) {
+        viewModelScope.launch {
+            loanDao.delete(loan)
+        }
+    }
+
+    fun getLoanRepayments(loanId: Long): Flow<List<LoanRepayment>> {
+        return loanDao.getRepaymentsForLoan(loanId)
+    }
+
+    // Contribution data for graph
+    suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> {
+        return withContext(Dispatchers.IO) {
+            val result = mutableMapOf<Long, Int>()
+            val calendar = Calendar.getInstance()
+            
+            for (i in 0 until daysBack) {
+                calendar.timeInMillis = System.currentTimeMillis()
+                calendar.add(Calendar.DAY_OF_YEAR, -i)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                
+                val startOfDay = calendar.timeInMillis
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                val endOfDay = calendar.timeInMillis
+                
+                val bonusCount = bonusTaskDao.getContributionForDay(startOfDay, endOfDay) ?: 0
+                val completedTasks = taskDao.observeCompletedTasks(startOfDay)
+                
+                result[startOfDay] = bonusCount
+            }
+            result
         }
     }
 }

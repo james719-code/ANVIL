@@ -23,9 +23,26 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 
 * **Quick Task Entry**: Create tasks with titles, deadlines, and optional sub-steps
 * **Daily Tasks**: Set up repeatable daily tasks that auto-reset every day
+* **Hardness Rating**: Set urgency levels (1-5) that determine how many days before the deadline a task must be completed
 * **Progress Tracking**: Visual progress indicators and completion stats
 * **Category Organization**: Group and categorize your tasks for better organization
 * **Smart Reminders**: Automatic notifications for upcoming task deadlines
+* **Bonus Tasks**: Track spontaneous completed tasks that weren't planned ahead of time
+
+### Budget Tracking
+
+* **Dual Balance System**: Track both Cash and GCash balances separately
+* **Income & Expenses**: Log all financial transactions with descriptions and categories
+* **Balance Overview**: Dashboard cards showing current balances at a glance
+* **Transaction History**: View and filter your income and expense history
+
+### Loan Management
+
+* **Loan Tracking**: Record money loaned to others with borrower details
+* **Balance Type Support**: Track loans separately for Cash and GCash
+* **Repayment Tracking**: Log partial or full repayments with automatic balance updates
+* **Due Date Reminders**: Track overdue loans with visual indicators
+* **Balance Integration**: Loans automatically affect your budget balance calculations
 
 ### Distraction Blocking
 
@@ -34,14 +51,24 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 * **Link Warden**: Block specific URLs or domain patterns globally
 * **Privacy Mode**: Encrypt sensitive blocked URLs (hidden from display)
 * **YouTube Shorts Blocking**: Intelligent detection and blocking of YouTube Shorts content
+* **Hardness-Based Blocking**: Apps are blocked when tasks approach their hardness-adjusted deadlines
 * **Real-time Enforcement**: Uses Android Accessibility Services to detect and intercept distracting habits
 
-### Customization
+### Dashboard & Analytics
 
+* **Contribution Graph**: GitHub-style activity chart showing completed tasks over 3 months
 * **Material You Design**: Built with Jetpack Compose for a modern, responsive feel
 * **Adaptive Themes**: Full support for Light and Dark modes with a subtle blue-green color palette
-* **Motivational Dashboard**: Daily motivational quotes and consistency charts
-* **Achievement Tracking**: Visual consistency charts showing your productivity streak
+* **Motivational Quotes**: Daily motivational quotes to keep you inspired
+* **Budget Summary**: Quick view of Cash and GCash balances from the dashboard
+* **Loan Summary**: Outstanding loan amounts displayed prominently
+
+### Bonus & Grace System
+
+* **Bonus Task Tracking**: Record extra tasks completed outside your planned list
+* **Grace Days**: Exchange completed bonus tasks for grace days that protect you from blocking
+* **Productivity Rewards**: Complete 3 bonus tasks to earn 1 grace day (up to 3 max)
+
 
 ---
 
