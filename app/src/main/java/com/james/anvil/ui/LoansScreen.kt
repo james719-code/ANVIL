@@ -29,6 +29,7 @@ import com.james.anvil.data.BalanceType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
+import com.james.anvil.ui.components.CollapsibleScreenScaffold
 import com.james.anvil.ui.theme.DeepTeal
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -54,16 +55,13 @@ fun LoansScreen(
     val tabs = listOf("Active (${activeLoans.size})", "Repaid (${repaidLoans.size})")
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Loans", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+    CollapsibleScreenScaffold(
+        title = "Loans",
+        subtitle = "Track what you owe",
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -603,7 +601,7 @@ private fun AddRepaymentSheet(
                 prefix = { Text("₱") },
                 isError = amountError,
                 supportingText = if (amountError) {
-                    { Text("Enter a valid amount (max ${currencyFormat.format(loan.remainingAmount)})") }
+                    { Text("Enter a valid amount") }
                 } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -648,7 +646,7 @@ private fun AddRepaymentSheet(
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
                     when {
-                        amountValue == null || amountValue <= 0 || amountValue > loan.remainingAmount -> amountError = true
+                        amountValue == null || amountValue <= 0 -> amountError = true
                         else -> {
                             onSave(amountValue, note.ifEmpty { null })
                             onDismiss()

@@ -427,16 +427,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             )
             loanDao.insert(loan)
             
-            // Subtract from balance (record as expense)
-            val expenseEntry = BudgetEntry(
-                type = BudgetType.EXPENSE,
+            // Record in history (LOAN_OUT doesn't affect balance calculation)
+            val historyEntry = BudgetEntry(
+                type = BudgetType.LOAN_OUT,
                 balanceType = balanceType,
                 amount = amount,
                 description = "Loan to $borrowerName",
                 category = "Loan",
                 timestamp = System.currentTimeMillis()
             )
-            budgetDao.insert(expenseEntry)
+            budgetDao.insert(historyEntry)
         }
     }
 
@@ -462,17 +462,17 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 status = newStatus
             )
             loanDao.update(updatedLoan)
-
-            // Add repayment as income
-            val incomeEntry = BudgetEntry(
-                type = BudgetType.INCOME,
+            
+            // Record in history (LOAN_REPAYMENT doesn't affect balance calculation)
+            val historyEntry = BudgetEntry(
+                type = BudgetType.LOAN_REPAYMENT,
                 balanceType = loan.balanceType,
                 amount = repaymentAmount,
                 description = "Repayment from ${loan.borrowerName}",
                 category = "Loan Repayment",
                 timestamp = System.currentTimeMillis()
             )
-            budgetDao.insert(incomeEntry)
+            budgetDao.insert(historyEntry)
         }
     }
 

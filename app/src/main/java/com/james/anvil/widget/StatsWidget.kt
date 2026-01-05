@@ -108,7 +108,7 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(16.dp)
+            .cornerRadius(20.dp)
             .background(GlanceTheme.colors.surface)
             .padding(16.dp)
             .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
@@ -117,27 +117,46 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
             modifier = GlanceModifier.fillMaxSize(),
             horizontalAlignment = Alignment.Start
         ) {
-            // Header with app name
+            // Professional header
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.Start
             ) {
-                Text(
-                    text = "⚒️",
-                    style = TextStyle(fontSize = 16.sp)
+                // Brand accent bar
+                Box(
+                    modifier = GlanceModifier
+                        .width(3.dp)
+                        .height(16.dp)
+                        .cornerRadius(2.dp)
+                        .background(GlanceTheme.colors.primary),
+                    content = {}
                 )
-                Spacer(modifier = GlanceModifier.width(6.dp))
+                Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
                     text = "ANVIL",
                     style = TextStyle(
-                        color = GlanceTheme.colors.primary,
-                        fontSize = 13.sp,
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
+                    )
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                // Status indicator
+                Text(
+                    text = if (stats.pendingTasks > 0) "Active" else "Clear",
+                    style = TextStyle(
+                        color = if (stats.pendingTasks > 0) 
+                            GlanceTheme.colors.tertiary 
+                        else 
+                            GlanceTheme.colors.secondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 )
             }
             
-            Spacer(modifier = GlanceModifier.height(12.dp))
+            Spacer(modifier = GlanceModifier.height(14.dp))
             
             // Stats Grid - Row 1
             Row(
@@ -151,56 +170,56 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                     modifier = GlanceModifier.defaultWeight()
                 )
                 
-                Spacer(modifier = GlanceModifier.width(8.dp))
+                Spacer(modifier = GlanceModifier.width(10.dp))
                 
                 StatCard(
                     value = stats.completedToday.toString(),
-                    label = "Done Today",
+                    label = "Completed",
                     isSuccess = true,
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
             
-            Spacer(modifier = GlanceModifier.height(8.dp))
+            Spacer(modifier = GlanceModifier.height(10.dp))
             
             // Stats Grid - Row 2
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Progress indicator
+                // Progress indicator with refined style
                 Box(
                     modifier = GlanceModifier
                         .defaultWeight()
-                        .cornerRadius(12.dp)
+                        .cornerRadius(14.dp)
                         .background(GlanceTheme.colors.primaryContainer)
-                        .padding(10.dp)
+                        .padding(12.dp)
                 ) {
                     Column {
                         Text(
                             text = "${(stats.dailyProgress * 100).toInt()}%",
                             style = TextStyle(
                                 color = GlanceTheme.colors.primary,
-                                fontSize = 22.sp,
+                                fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         )
                         Text(
-                            text = "Progress",
+                            text = "Weekly Progress",
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Normal
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         )
                     }
                 }
                 
-                Spacer(modifier = GlanceModifier.width(8.dp))
+                Spacer(modifier = GlanceModifier.width(10.dp))
                 
                 StatCard(
                     value = stats.activeBlocks.toString(),
-                    label = "Blocked",
+                    label = "Active Blocks",
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
@@ -230,9 +249,9 @@ private fun StatCard(
     
     Box(
         modifier = modifier
-            .cornerRadius(12.dp)
+            .cornerRadius(14.dp)
             .background(backgroundColor)
-            .padding(10.dp)
+            .padding(12.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.Start
@@ -241,7 +260,7 @@ private fun StatCard(
                 text = value,
                 style = TextStyle(
                     color = valueColor,
-                    fontSize = 22.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -249,10 +268,11 @@ private fun StatCard(
                 text = label,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium
                 )
             )
         }
     }
 }
+

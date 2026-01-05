@@ -44,32 +44,54 @@ fun EditTaskScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Edit Task") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        if (task == null) {
-            
-            Box(modifier = Modifier.padding(innerPadding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Task not found or loading...")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Inline header with back button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Edit Task",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
-        } else {
-            EditTaskContent(
-                task = task,
-                existingCategories = existingCategories,
-                onSave = { updatedTask ->
-                    viewModel.updateTask(updatedTask)
-                    navController.popBackStack()
-                },
-                modifier = Modifier.padding(innerPadding)
-            )
+            
+            if (task == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(), 
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Task not found or loading...")
+                }
+            } else {
+                EditTaskContent(
+                    task = task,
+                    existingCategories = existingCategories,
+                    onSave = { updatedTask ->
+                        viewModel.updateTask(updatedTask)
+                        navController.popBackStack()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }

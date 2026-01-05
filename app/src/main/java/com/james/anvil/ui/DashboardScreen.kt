@@ -17,30 +17,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import com.james.anvil.ui.components.AddBonusTaskBottomSheet
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.components.ContributionGraph
 import com.james.anvil.ui.components.MotivationCard
-import com.james.anvil.ui.navigation.BudgetRoute
-import com.james.anvil.ui.navigation.LoansRoute
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.WarningOrange
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = null) {
+fun DashboardScreen(
+    viewModel: TaskViewModel,
+    onNavigateToPage: ((Int) -> Unit)? = null
+) {
     val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
     val totalPendingCount by viewModel.totalPendingCount.collectAsState(initial = 0)
     val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
@@ -52,6 +54,13 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
     val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
     val totalActiveLoanedAmount by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
+    
+    val graceDays = viewModel.getGraceDaysCount() // Note: This is a function, not a flow in ViewModel. Consider making it reactive if needed, but for now we'll trust the viewmodel update flow.
+    // Actually, viewModel.bonusTasks triggers updates, but grace days calculation depends on bonusManager which uses SharedPreferences.
+    // It's better if we just assume the value is updated when bonusTaskCount changes or screen recomposes.
+    
+    var showBonusSheet by remember { mutableStateOf(false) }
+    var showGraceExchangeDialog by remember { mutableStateOf(false) }
 
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
 
@@ -73,14 +82,13 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 20.dp), // Increased horizontal padding
-            verticalArrangement = Arrangement.spacedBy(20.dp), // Increased spacing
-            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // Bottom padding for nav bar
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(top = innerPadding.calculateTopPadding() + 16.dp, bottom = 16.dp)
         ) {
             // Header Section
             item {
@@ -122,14 +130,59 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                         color = ElectricTeal
                     )
                     // Bonus
-                    if (bonusTaskCount > 0) {
-                        StatChip(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Outlined.Star,
-                            label = "Bonus",
-                            value = "$bonusTaskCount",
-                            color = WarningOrange
-                        )
+                    StatChip(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showBonusSheet = true },
+                        icon = Icons.Outlined.Star,
+                        label = "Bonus",
+                        value = "$bonusTaskCount",
+                        color = WarningOrange
+                    )
+                }
+            }
+            
+            // Grace Period & Exchange
+            if (graceDays > 0 || bonusTaskCount >= 3) {
+                 item {
+                    AnvilCard(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha=0.4f),
+                        onClick = {
+                            if (bonusTaskCount >= 3) {
+                                showGraceExchangeDialog = true
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    "Grace Days Available: $graceDays",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                if (bonusTaskCount >= 3) {
+                                    Text(
+                                        "Tap to exchange 3 bonus tasks for 1 grace day",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                    )
+                                } else {
+                                     Text(
+                                        "Earn 3 bonus tasks to get 1 grace day",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                            if (bonusTaskCount >= 3) {
+                                Icon(Icons.Filled.Warning, "Exchange", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                 }
             }
@@ -143,7 +196,7 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                     // Budget Card
                     AnvilCard(
                         modifier = Modifier.weight(1f),
-                        onClick = { navController?.navigate(BudgetRoute) }
+                        onClick = { onNavigateToPage?.invoke(2) }
                     ) {
                         Column(
                             modifier = Modifier.padding(20.dp)
@@ -160,7 +213,7 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("Budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                currencyFormat.format(cashBalance + gcashBalance),
+                                currencyFormat.format(cashBalance + gcashBalance - totalActiveLoanedAmount),
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -184,7 +237,7 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                                     .padding(8.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Protected", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Blocked", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "${blockedApps.size} apps",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -200,7 +253,7 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                 item {
                     AnvilCard(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.3f), // Warning tint
-                        onClick = { navController?.navigate(LoansRoute) }
+                        onClick = { onNavigateToPage?.invoke(2) }
                     ) {
                         Row(
                             modifier = Modifier
@@ -264,6 +317,38 @@ fun DashboardScreen(viewModel: TaskViewModel, navController: NavController? = nu
                }
             }
         }
+    }
+    
+    if (showBonusSheet) {
+        AddBonusTaskBottomSheet(
+            onDismiss = { showBonusSheet = false },
+            onSave = { title, description ->
+                viewModel.addBonusTask(title, description)
+            }
+        )
+    }
+    
+    if (showGraceExchangeDialog) {
+        AlertDialog(
+            onDismissRequest = { showGraceExchangeDialog = false },
+            title = { Text("Redeem Grace Day?") },
+            text = { Text("Exchange 3 bonus tasks for 1 grace day? This will protect you from blocking penalties for one day.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.tryExchangeBonusForGrace()
+                        showGraceExchangeDialog = false
+                    }
+                ) {
+                    Text("Redeem")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGraceExchangeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

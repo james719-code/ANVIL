@@ -11,11 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -34,22 +29,20 @@ import androidx.navigation.NavController
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
+import com.james.anvil.ui.components.CollapsibleScreenScaffold
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.TaskItem
-import com.james.anvil.ui.navigation.Screen
 import kotlinx.coroutines.launch
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TasksScreen(
     viewModel: TaskViewModel,
     snackbarHostState: SnackbarHostState,
-    navController: NavController
+    navController: NavController? = null
 ) {
     var showAddTaskSheet by remember { mutableStateOf(false) }
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Deadlines", "Done")
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     
@@ -62,6 +55,7 @@ fun TasksScreen(
 
     
     val allTasks by viewModel.tasks.collectAsState(initial = emptyList())
+    val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
     val selectedTask = remember(allTasks, selectedTaskId) {
         allTasks.find { it.id == selectedTaskId }
     }
@@ -79,20 +73,17 @@ fun TasksScreen(
         if (selectedCategory == null) allTasks
         else allTasks.filter { it.category == selectedCategory }
     }
-
-    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
     
-    Scaffold(
+    CollapsibleScreenScaffold(
+        title = "Tasks",
+        subtitle = "Manage your work",
         floatingActionButton = {
-            // Show FAB only on Pending tab (page 0)
-            if (pagerState.currentPage == 0) {
-                FloatingActionButton(
-                    onClick = { showAddTaskSheet = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Task")
-                }
+            FloatingActionButton(
+                onClick = { showAddTaskSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Task")
             }
         }
     ) { innerPadding ->
@@ -101,95 +92,103 @@ fun TasksScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface,
-                indicator = { tabPositions ->
-                    if (pagerState.currentPage < tabPositions.size) {
-                        val indicatorOffset by animateDpAsState(
-                            targetValue = tabPositions[pagerState.currentPage].left,
-                            animationSpec = tween(300),
-                            label = "tabIndicator"
+            CategoryFilterRow(
+                categories = listOf("All") + existingCategories,
+                selectedCategory = selectedCategory ?: "All",
+                onCategorySelected = { selectedCategory = if (it == "All") null else it }
+            )
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Pending Tasks
+                if (tasks.isEmpty()) {
+                    item {
+                        EmptyState(
+                            message = "No pending tasks. You are free.",
+                            icon = Icons.Default.Check,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp)
                         )
-                        Box(
+                    }
+                } else {
+                    items(tasks, key = { it.id }) { task ->
+                        TaskItem(
+                            task = task,
+                            onComplete = { viewModel.completeTask(task) },
+                            onEdit = { editingTaskId = task.id },
+                            onDelete = {
+                                viewModel.deleteTask(task)
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "Task deleted",
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.undoDeleteTask(task)
+                                    }
+                                }
+                            },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentSize(Alignment.BottomStart)
-                                .offset(x = indicatorOffset)
-                                .width(tabPositions[pagerState.currentPage].width)
-                                .height(3.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                                .animateItem()
+                                .combinedClickable(
+                                    onClick = {
+                                        selectedTaskId = task.id
+                                        showInfoDialog = true
+                                    },
+                                    onLongClick = {
+                                        selectedTaskId = task.id
+                                        showOptionsDialog = true
+                                    }
                                 )
                         )
                     }
                 }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val selected = pagerState.currentPage == index
-                    val color by androidx.compose.animation.animateColorAsState(
-                        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        label = "tabColor"
-                    )
-                    
-                    Tab(
-                        selected = selected,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { 
-                            Text(
-                                title,
-                                color = color,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                            ) 
-                        }
-                    )
-                }
-            }
 
-            if (pagerState.currentPage == 0) {
-                CategoryFilterRow(
-                    categories = listOf("All") + existingCategories,
-                    selectedCategory = selectedCategory ?: "All",
-                    onCategorySelected = { selectedCategory = if (it == "All") null else it }
-                )
-            }
+                // Completed Tasks Section
+                if (completedTasks.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Completed",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                    }
 
-            androidx.compose.foundation.pager.HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> PendingTasksTab(
-                        viewModel = viewModel,
-                        tasks = tasks,
-                        onTaskClick = { task ->
-                            selectedTaskId = task.id
-                            showInfoDialog = true
-                        },
-                        onTaskLongClick = { task ->
-                            selectedTaskId = task.id
-                            showOptionsDialog = true
-                        },
-                        onEdit = { task ->
-                            editingTaskId = task.id
-                        },
-                        onDelete = { task ->
-                            viewModel.deleteTask(task)
-                            scope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "Task deleted",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.undoDeleteTask(task)
+                    items(completedTasks, key = { "completed_${it.id}" }) { task ->
+                        SwipeToDismissItem(
+                            onDismiss = { viewModel.deleteTask(task) }
+                        ) {
+                            ListItem(
+                                headlineContent = { 
+                                    Text(
+                                        task.title, 
+                                        style = androidx.compose.ui.text.TextStyle(
+                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ) 
+                                },
+                                supportingContent = {
+                                    Text(
+                                        "${task.category} • ${formatDate(task.completedAt ?: System.currentTimeMillis())}",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                },
+                                leadingContent = { 
+                                    Icon(
+                                        Icons.Default.Check, 
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    ) 
                                 }
-                            }
+                            )
                         }
-                    )
-                    1 -> DoneTasksTab(viewModel)
+                    }
                 }
             }
         }
@@ -309,82 +308,6 @@ fun CategoryFilterRow(
                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                 } else null
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun PendingTasksTab(
-    viewModel: TaskViewModel,
-    onTaskClick: (Task) -> Unit,
-    onTaskLongClick: (Task) -> Unit,
-    onEdit: (Task) -> Unit,
-    onDelete: (Task) -> Unit,
-    tasks: List<Task>
-) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        if (tasks.isEmpty()) {
-            EmptyState(
-                message = "No pending tasks. You are free.",
-                icon = Icons.Default.Check,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            LazyColumn {
-                items(tasks, key = { it.id }) { task ->
-                    TaskItem(
-                        task = task,
-                        onComplete = { viewModel.completeTask(task) },
-                        onEdit = { onEdit(task) },
-                        onDelete = { onDelete(task) },
-                        modifier = Modifier
-                            .animateItem()
-                            .combinedClickable(
-                                onClick = { onTaskClick(task) },
-                                onLongClick = { onTaskLongClick(task) }
-                            )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DoneTasksTab(viewModel: TaskViewModel) {
-    val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
-
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            Text(
-                text = "History",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        if (completedTasks.isEmpty()) {
-            item {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No completed tasks yet.")
-                }
-            }
-        } else {
-            items(completedTasks, key = { it.id }) { task ->
-                SwipeToDismissItem(
-                    onDismiss = { viewModel.deleteTask(task) }
-                ) {
-                    ListItem(
-                        headlineContent = { Text(task.title, style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) },
-                        supportingContent = {
-                            Text("Completed: ${formatDate(task.completedAt ?: System.currentTimeMillis())} • ${task.category}")
-                        },
-                        leadingContent = { Icon(Icons.Default.Check, contentDescription = null) }
-                    )
-                }
-            }
         }
     }
 }

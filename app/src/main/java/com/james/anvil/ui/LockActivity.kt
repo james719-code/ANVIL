@@ -6,23 +6,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -68,19 +64,22 @@ class LockActivity : ComponentActivity() {
     }
 }
 
-// Premium color palette
-private val DeepNavy = Color(0xFF0A0E21)
-private val DarkSlate = Color(0xFF1A1F3A)
-private val AccentBlue = Color(0xFF4FC3F7)
-private val AccentTeal = Color(0xFF00BFA5)
-private val PenaltyRed = Color(0xFFFF5252)
-private val PenaltyDarkRed = Color(0xFF2D0A0A)
-private val GlassWhite = Color(0x22FFFFFF)
-private val GlassBorder = Color(0x33FFFFFF)
+// Stark, serious color palette
+private val PureBlack = Color(0xFF000000)
+private val DarkGray = Color(0xFF0A0A0A)
+private val MediumGray = Color(0xFF1A1A1A)
+private val BorderGray = Color(0xFF2A2A2A)
+private val TextWhite = Color(0xFFFFFFFF)
+private val TextGray = Color(0xFF808080)
+private val TextDimGray = Color(0xFF505050)
+private val WarningRed = Color(0xFFCC0000)
+private val CautionAmber = Color(0xFFCC8800)
 
 @Composable
 fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.TaskDao? = null) {
-    var timeLeft by remember { mutableStateOf("...") }
+    var hoursLeft by remember { mutableStateOf("00") }
+    var minutesLeft by remember { mutableStateOf("00") }
+    var secondsLeft by remember { mutableStateOf("00") }
     val isPenaltyActive = remember { penaltyManager.isPenaltyActive() }
     val penaltyEndTime = remember { penaltyManager.getPenaltyEndTime() }
     var blockingTaskNames by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -94,57 +93,40 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
                 val hardnessViolations = dao.getTasksViolatingHardness(now)
                 if (hardnessViolations.isNotEmpty()) {
                     blockingTaskNames = hardnessViolations.take(3).map { it.title }
-                    blockingReason = "Hardness deadline approaching"
+                    blockingReason = "DEADLINE VIOLATION"
                 } else {
                     val overdueTasks = dao.getOverdueIncomplete(now)
                     if (overdueTasks.isNotEmpty()) {
                         blockingTaskNames = overdueTasks.take(3).map { it.title }
-                        blockingReason = "Overdue tasks"
+                        blockingReason = "OVERDUE TASKS"
                     }
                 }
             }
         }
     }
     
-    // Pulsing animation for icon
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "iconScale"
-    )
-    
-    // Glow animation
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
-    
     // Timer update
     LaunchedEffect(key1 = penaltyEndTime, key2 = isPenaltyActive) {
         if (!isPenaltyActive) {
-            timeLeft = "--:--:--"
+            hoursLeft = "--"
+            minutesLeft = "--"
+            secondsLeft = "--"
             return@LaunchedEffect
         }
         while (true) {
             val now = System.currentTimeMillis()
             val diff = penaltyEndTime - now
             if (diff <= 0) {
-                timeLeft = "00:00:00"
+                hoursLeft = "00"
+                minutesLeft = "00"
+                secondsLeft = "00"
             } else {
-                val hours = diff / (1000 * 60 * 60)
-                val minutes = (diff % (1000 * 60 * 60)) / (1000 * 60)
-                val seconds = (diff % (1000 * 60)) / 1000
-                timeLeft = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                val h = diff / (1000 * 60 * 60)
+                val m = (diff % (1000 * 60 * 60)) / (1000 * 60)
+                val s = (diff % (1000 * 60)) / 1000
+                hoursLeft = String.format("%02d", h)
+                minutesLeft = String.format("%02d", m)
+                secondsLeft = String.format("%02d", s)
             }
             delay(1000)
         }
@@ -153,176 +135,178 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
     // Block back button
     BackHandler(enabled = true) { }
 
-    val accentColor = if (isPenaltyActive) PenaltyRed else AccentTeal
-    val gradientColors = if (isPenaltyActive) {
-        listOf(PenaltyDarkRed, DeepNavy, DarkSlate)
-    } else {
-        listOf(DeepNavy, DarkSlate, Color(0xFF0D1B2A))
-    }
+    val accentColor = if (isPenaltyActive) WarningRed else CautionAmber
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(gradientColors))
+            .background(PureBlack)
     ) {
-        // Subtle gradient orb in background
-        Box(
-            modifier = Modifier
-                .size(400.dp)
-                .offset(x = (-100).dp, y = (-150).dp)
-                .blur(100.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.2f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .padding(horizontal = 32.dp, vertical = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Animated lock icon with glow
-            Box(contentAlignment = Alignment.Center) {
-                // Glow effect
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .scale(scale)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = glowAlpha * 0.4f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                )
-                
-                // Glass circle background
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .scale(scale)
-                        .clip(CircleShape)
-                        .background(GlassWhite)
-                        .border(1.dp, GlassBorder, CircleShape),
-                    contentAlignment = Alignment.Center
+            // Status bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(DarkGray, RoundedCornerShape(4.dp))
+                    .border(1.dp, BorderGray, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = "Locked",
-                        tint = accentColor,
-                        modifier = Modifier.size(56.dp)
+                    Text(
+                        text = "STATUS",
+                        color = TextDimGray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 2.sp
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(accentColor, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isPenaltyActive) "LOCKED" else "BLOCKED",
+                            color = accentColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(48.dp))
             
+            // Block icon - static, no animation
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(DarkGray)
+                    .border(2.dp, accentColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Block,
+                    contentDescription = "Blocked",
+                    tint = accentColor,
+                    modifier = Modifier.size(52.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
             // Title
             Text(
-                text = if (isPenaltyActive) "SYSTEM LOCKED" else "FOCUS MODE",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
+                text = if (isPenaltyActive) "ACCESS DENIED" else "ACCESS RESTRICTED",
+                color = TextWhite,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
                 letterSpacing = 4.sp,
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Subtitle badge
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = accentColor.copy(alpha = 0.15f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.3f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Shield,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isPenaltyActive) "Penalty Active" else "Tasks Pending",
-                        color = accentColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+            // Reason
+            Text(
+                text = if (isPenaltyActive) "Penalty enforcement active" else "Task completion required",
+                color = TextGray,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = FontFamily.Monospace,
+                textAlign = TextAlign.Center
+            )
             
-            // Blocking reason card (non-penalty mode)
+            // Blocking reason card
             if (!isPenaltyActive && blockingTaskNames.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 
-                Surface(
-                    modifier = Modifier.fillMaxWidth(0.85f),
-                    shape = RoundedCornerShape(16.dp),
-                    color = GlassWhite,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkGray, RoundedCornerShape(4.dp))
+                        .border(1.dp, BorderGray, RoundedCornerShape(4.dp))
+                        .padding(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
+                    Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.size(18.dp)
+                                tint = CautionAmber,
+                                modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = blockingReason,
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
+                                color = CautionAmber,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp
                             )
                         }
+                        
                         Spacer(modifier = Modifier.height(12.dp))
-                        blockingTaskNames.forEach { taskName ->
+                        
+                        HorizontalDivider(color = BorderGray, thickness = 1.dp)
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        blockingTaskNames.forEachIndexed { index, taskName ->
                             Row(
-                                modifier = Modifier.padding(vertical = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(accentColor, CircleShape)
+                                Text(
+                                    text = "[${index + 1}]",
+                                    color = TextDimGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = taskName,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 13.sp,
+                                    color = TextGray,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    fontFamily = FontFamily.Monospace,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
+                        
                         if (blockingTaskNames.size >= 3) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "+ more tasks...",
-                                color = Color.White.copy(alpha = 0.4f),
+                                text = "...",
+                                color = TextDimGray,
                                 fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 4.dp)
+                                fontFamily = FontFamily.Monospace
                             )
                         }
                     }
@@ -331,35 +315,41 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
             
             // Timer (only in penalty mode)
             if (isPenaltyActive) {
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(40.dp))
                 
-                // Glassmorphism timer card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(0.85f),
-                    shape = RoundedCornerShape(24.dp),
-                    color = GlassWhite,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkGray, RoundedCornerShape(4.dp))
+                        .border(1.dp, WarningRed.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .padding(vertical = 24.dp, horizontal = 16.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Time Remaining",
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 2.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = timeLeft,
-                            color = Color.White,
-                            fontSize = 48.sp,
+                            text = "LOCKOUT REMAINING",
+                            color = TextDimGray,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            letterSpacing = 4.sp
+                            letterSpacing = 2.sp
                         )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Timer display
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TimerBlock(value = hoursLeft, label = "HRS")
+                            TimerSeparator()
+                            TimerBlock(value = minutesLeft, label = "MIN")
+                            TimerSeparator()
+                            TimerBlock(value = secondsLeft, label = "SEC")
+                        }
                     }
                 }
             }
@@ -369,25 +359,76 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
             // Message
             Text(
                 text = if (isPenaltyActive) 
-                    "Complete your tasks to earn your freedom."
+                    "Complete outstanding tasks to restore access."
                 else 
-                    "Complete your pending tasks to unlock distractions.",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 14.sp,
+                    "Complete pending tasks to unlock this device.",
+                color = TextDimGray,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = FontFamily.Monospace,
                 textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                lineHeight = 18.sp
             )
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Tip
+            // Footer
             Text(
-                text = "💡 Open ANVIL to manage your tasks",
-                color = Color.White.copy(alpha = 0.3f),
-                fontSize = 12.sp,
+                text = "ANVIL ENFORCEMENT SYSTEM",
+                color = TextDimGray.copy(alpha = 0.5f),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 2.sp,
                 textAlign = TextAlign.Center
             )
         }
     }
+}
+
+@Composable
+private fun TimerBlock(
+    value: String,
+    label: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .background(PureBlack, RoundedCornerShape(4.dp))
+                .border(1.dp, BorderGray, RoundedCornerShape(4.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = value,
+                color = TextWhite,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 2.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = TextDimGray,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun TimerSeparator() {
+    Text(
+        text = ":",
+        color = TextDimGray,
+        fontSize = 28.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = FontFamily.Monospace,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp)
+    )
 }

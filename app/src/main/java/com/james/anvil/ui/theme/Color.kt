@@ -7,8 +7,6 @@ import androidx.compose.ui.graphics.Color
 // ============================================
 val ElectricBlue = Color(0xFF3B82F6)      // Primary Action
 val ElectricTeal = Color(0xFF14B8A6)      // Secondary/Accent
-val MidnightBlue = Color(0xFF0F172A)      // Dark Background
-val SlateGray = Color(0xFF64748B)         // Neutral/Subtext
 
 // ============================================
 // DARK THEME PALETTE
@@ -44,7 +42,6 @@ val InfoBlue = Color(0xFF3B82F6)          // Blue 500
 val GradientStart = Color(0xFF2563EB)     // Blue 600
 val GradientEnd = Color(0xFF0D9488)       // Teal 600
 val ProgressTrackLight = Color(0x80FFFFFF)
-val ProgressTrackDark = Color(0x40FFFFFF)
 
 // ============================================
 // LEGACY COLORS (Restored for compatibility)
@@ -59,3 +56,24 @@ val SkyBlue = Color(0xFF03A9F4)
 val PaleBlue = Color(0xFFE1F5FE)
 val Charcoal = Color(0xFF0D1117)
 val PaperWhite = Color(0xFFF6F8FA)
+
+// ============================================
+// INDUSTRIAL CHIC THEME COLORS
+// ============================================
+// Forged Gold - Primary accent for financial/highlight elements
+val ForgedGold = Color(0xFFD4A853)          // Warm metallic gold
+val ForgedGoldDark = Color(0xFFB8923A)      // Darker gold shade
+val ForgedGoldLight = Color(0xFFE8C878)     // Lighter gold shade
+
+// Steel Blue - Secondary accent for task/productivity elements
+val SteelBlue = Color(0xFF4A90A4)           // Industrial steel blue
+val SteelBlueDark = Color(0xFF3A7286)       // Darker steel blue
+val SteelBlueLight = Color(0xFF5FADC4)      // Lighter steel blue
+
+// Industrial Greys - Surface and background colors
+val IndustrialGrey = Color(0xFF1A1A1A)      // Dark surface
+val IndustrialGreyLight = Color(0xFF2A2A2A) // Elevated surface
+val IndustrialGreyDark = Color(0xFF0F0F0F)  // Background
+
+// Industrial Border - Subtle separation
+val IndustrialBorder = Color(0xFF333333)    // Border/divider color
