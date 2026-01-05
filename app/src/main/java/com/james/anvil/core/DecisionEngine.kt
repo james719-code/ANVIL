@@ -42,11 +42,23 @@ class DecisionEngine(
         }
 
         if (!penaltyManager.isPenaltyActive()) {
-            val overdueTasks = taskDao.getOverdueIncomplete(now)
-            if (overdueTasks.isNotEmpty()) {
+            // Check for tasks violating hardness-based deadlines
+            val hardnessViolations = taskDao.getTasksViolatingHardness(now)
+            if (hardnessViolations.isNotEmpty()) {
                 if (bonusManager.consumeGraceDay()) {
+                    // Grace day consumed, don't trigger penalty
                 } else {
                     penaltyManager.startPenalty()
+                }
+            } else {
+                // Also check for regular overdue tasks (past actual deadline)
+                val overdueTasks = taskDao.getOverdueIncomplete(now)
+                if (overdueTasks.isNotEmpty()) {
+                    if (bonusManager.consumeGraceDay()) {
+                        // Grace day consumed
+                    } else {
+                        penaltyManager.startPenalty()
+                    }
                 }
             }
         }
@@ -65,7 +77,26 @@ class DecisionEngine(
             return true
         }
         
-        return true
+        // Check for tasks violating hardness-based deadlines
+        val hardnessViolations = taskDao.getTasksViolatingHardness(now)
+        if (hardnessViolations.isNotEmpty()) {
+            return true
+        }
+        
+        // Check for regular overdue tasks
+        val overdueTasks = taskDao.getOverdueIncomplete(now)
+        if (overdueTasks.isNotEmpty()) {
+            return true
+        }
+        
+        return false
+    }
+    
+    suspend fun getBlockingTasks(): List<com.james.anvil.data.Task> {
+        val now = System.currentTimeMillis()
+        val hardnessViolations = taskDao.getTasksViolatingHardness(now)
+        val overdueTasks = taskDao.getOverdueIncomplete(now)
+        return (hardnessViolations + overdueTasks).distinctBy { it.id }
     }
 
     private fun getStartOfDay(time: Long): Long {

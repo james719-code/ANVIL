@@ -7,7 +7,8 @@ class BonusManager(context: Context) {
 
     companion object {
         const val MAX_GRACE_DAYS = 3
-        const val GRACE_EXPIRY_MILLIS = 7 * 24 * 60 * 60 * 1000L 
+        const val GRACE_EXPIRY_MILLIS = 7 * 24 * 60 * 60 * 1000L
+        const val BONUS_TASKS_FOR_GRACE = 3 // Number of bonus tasks needed to earn 1 grace day
     }
 
     fun getGraceDays(): Int {
@@ -45,5 +46,39 @@ class BonusManager(context: Context) {
         if (lastEarned > 0 && System.currentTimeMillis() - lastEarned > GRACE_EXPIRY_MILLIS) {
              sharedPreferences.edit().putInt("grace_days", 0).apply()
         }
+    }
+
+    // Bonus task tracking
+    fun getBonusTaskCount(): Int {
+        return sharedPreferences.getInt("bonus_task_count", 0)
+    }
+
+    fun addBonusTask(count: Int = 1) {
+        val current = getBonusTaskCount()
+        sharedPreferences.edit()
+            .putInt("bonus_task_count", current + count)
+            .apply()
+    }
+
+    fun getRequiredBonusForGrace(): Int {
+        return BONUS_TASKS_FOR_GRACE
+    }
+
+    fun tryExchangeBonusForGrace(): Boolean {
+        val bonusCount = getBonusTaskCount()
+        if (bonusCount >= BONUS_TASKS_FOR_GRACE && getGraceDays() < MAX_GRACE_DAYS) {
+            sharedPreferences.edit()
+                .putInt("bonus_task_count", bonusCount - BONUS_TASKS_FOR_GRACE)
+                .apply()
+            addGraceDay()
+            return true
+        }
+        return false
+    }
+
+    fun resetBonusTaskCount() {
+        sharedPreferences.edit()
+            .putInt("bonus_task_count", 0)
+            .apply()
     }
 }

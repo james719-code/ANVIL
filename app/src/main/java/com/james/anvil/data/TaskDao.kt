@@ -48,4 +48,14 @@ interface TaskDao {
 
     @androidx.room.Delete
     suspend fun delete(task: Task)
+
+    // Get tasks that violate hardness-based deadlines
+    // A task violates its hardness deadline if: (deadline - hardnessLevel * 24h) < now AND not completed
+    @Query("""
+        SELECT * FROM tasks 
+        WHERE isCompleted = 0 
+        AND isDaily = 0 
+        AND (deadline - (hardnessLevel * 86400000)) < :now
+    """)
+    suspend fun getTasksViolatingHardness(now: Long): List<Task>
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,11 +28,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.core.PenaltyManager
+import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.ui.theme.ANVILTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 class LockActivity : ComponentActivity() {
 
@@ -41,6 +46,8 @@ class LockActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         penaltyManager = PenaltyManager(this)
+        val database = AnvilDatabase.getDatabase(this)
+        val taskDao = database.taskDao()
         
         // Prevent screenshots
         window.setFlags(
@@ -51,7 +58,7 @@ class LockActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ANVILTheme {
-                LockScreen(penaltyManager)
+                LockScreen(penaltyManager, taskDao)
             }
         }
     }
@@ -72,10 +79,32 @@ private val GlassWhite = Color(0x22FFFFFF)
 private val GlassBorder = Color(0x33FFFFFF)
 
 @Composable
-fun LockScreen(penaltyManager: PenaltyManager) {
+fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.TaskDao? = null) {
     var timeLeft by remember { mutableStateOf("...") }
     val isPenaltyActive = remember { penaltyManager.isPenaltyActive() }
     val penaltyEndTime = remember { penaltyManager.getPenaltyEndTime() }
+    var blockingTaskNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var blockingReason by remember { mutableStateOf("") }
+
+    // Fetch blocking tasks
+    LaunchedEffect(taskDao) {
+        taskDao?.let { dao ->
+            withContext(Dispatchers.IO) {
+                val now = System.currentTimeMillis()
+                val hardnessViolations = dao.getTasksViolatingHardness(now)
+                if (hardnessViolations.isNotEmpty()) {
+                    blockingTaskNames = hardnessViolations.take(3).map { it.title }
+                    blockingReason = "Hardness deadline approaching"
+                } else {
+                    val overdueTasks = dao.getOverdueIncomplete(now)
+                    if (overdueTasks.isNotEmpty()) {
+                        blockingTaskNames = overdueTasks.take(3).map { it.title }
+                        blockingReason = "Overdue tasks"
+                    }
+                }
+            }
+        }
+    }
     
     // Pulsing animation for icon
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -234,6 +263,69 @@ fun LockScreen(penaltyManager: PenaltyManager) {
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+            }
+            
+            // Blocking reason card (non-penalty mode)
+            if (!isPenaltyActive && blockingTaskNames.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Surface(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = GlassWhite,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = blockingReason,
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        blockingTaskNames.forEach { taskName ->
+                            Row(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(accentColor, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = taskName,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (blockingTaskNames.size >= 3) {
+                            Text(
+                                text = "+ more tasks...",
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
             

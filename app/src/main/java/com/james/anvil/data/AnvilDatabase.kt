@@ -7,8 +7,18 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [Task::class, BlockedApp::class, BlockedLink::class, VisitedLink::class, AppCategory::class],
-    version = 6,
+    entities = [
+        Task::class,
+        BlockedApp::class,
+        BlockedLink::class,
+        VisitedLink::class,
+        AppCategory::class,
+        BonusTask::class,
+        BudgetEntry::class,
+        Loan::class,
+        LoanRepayment::class
+    ],
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -17,6 +27,9 @@ abstract class AnvilDatabase : RoomDatabase() {
     abstract fun blocklistDao(): BlocklistDao
     abstract fun historyDao(): HistoryDao
     abstract fun appCategoryDao(): AppCategoryDao
+    abstract fun bonusTaskDao(): BonusTaskDao
+    abstract fun budgetDao(): BudgetDao
+    abstract fun loanDao(): LoanDao
 
     companion object {
         @Volatile
@@ -37,3 +50,4 @@ abstract class AnvilDatabase : RoomDatabase() {
         }
     }
 }
+

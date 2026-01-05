@@ -11,9 +11,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,10 +80,17 @@ fun TasksScreen(
         else allTasks.filter { it.category == selectedCategory }
     }
 
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 2 })
+    
     Scaffold(
         floatingActionButton = {
-            if (selectedTabIndex == 0) {
-                FloatingActionButton(onClick = { showAddTaskSheet = true }) {
+            // Show FAB only on Pending tab (page 0)
+            if (pagerState.currentPage == 0) {
+                FloatingActionButton(
+                    onClick = { showAddTaskSheet = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Task")
                 }
             }
@@ -88,17 +102,53 @@ fun TasksScreen(
                 .fillMaxSize()
         ) {
             
-            TabRow(selectedTabIndex = selectedTabIndex) {
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.surface,
+                indicator = { tabPositions ->
+                    if (pagerState.currentPage < tabPositions.size) {
+                        val indicatorOffset by animateDpAsState(
+                            targetValue = tabPositions[pagerState.currentPage].left,
+                            animationSpec = tween(300),
+                            label = "tabIndicator"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentSize(Alignment.BottomStart)
+                                .offset(x = indicatorOffset)
+                                .width(tabPositions[pagerState.currentPage].width)
+                                .height(3.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                                )
+                        )
+                    }
+                }
+            ) {
                 tabs.forEachIndexed { index, title ->
+                    val selected = pagerState.currentPage == index
+                    val color by androidx.compose.animation.animateColorAsState(
+                        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = "tabColor"
+                    )
+                    
                     Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+                        selected = selected,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = { 
+                            Text(
+                                title,
+                                color = color,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                            ) 
+                        }
                     )
                 }
             }
 
-            if (selectedTabIndex == 0) {
+            if (pagerState.currentPage == 0) {
                 CategoryFilterRow(
                     categories = listOf("All") + existingCategories,
                     selectedCategory = selectedCategory ?: "All",
@@ -106,9 +156,11 @@ fun TasksScreen(
                 )
             }
 
-            
-            Box(modifier = Modifier.weight(1f)) {
-                when (selectedTabIndex) {
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+                when (page) {
                     0 -> PendingTasksTab(
                         viewModel = viewModel,
                         tasks = tasks,
@@ -157,8 +209,8 @@ fun TasksScreen(
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
                 },
-                onTaskAdded = { title, deadline, category, steps, isDaily ->
-                    viewModel.addTask(title, deadline, category, steps, isDaily)
+                onTaskAdded = { title, deadline, category, steps, isDaily, hardnessLevel ->
+                    viewModel.addTask(title, deadline, category, steps, isDaily, hardnessLevel)
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
@@ -637,13 +689,14 @@ fun EditTaskBottomSheetContent(
 fun AddTaskBottomSheetContent(
     existingCategories: List<String>,
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Long, String, List<TaskStep>, Boolean) -> Unit
+    onTaskAdded: (String, Long, String, List<TaskStep>, Boolean, Int) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var steps by remember { mutableStateOf(listOf<TaskStep>()) }
     var currentStepTitle by remember { mutableStateOf("") }
     var isDaily by remember { mutableStateOf(false) }
+    var hardnessLevel by remember { mutableFloatStateOf(1f) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -722,6 +775,46 @@ fun AddTaskBottomSheetContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Hardness Level Slider
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Hardness Level", fontWeight = FontWeight.Medium)
+                    Text(
+                        when (hardnessLevel.toInt()) {
+                            1 -> "Complete by deadline"
+                            2 -> "Complete 2 days before"
+                            3 -> "Complete 3 days before"
+                            4 -> "Complete 4 days before"
+                            5 -> "Complete 5 days before"
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "${hardnessLevel.toInt()}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Slider(
+                value = hardnessLevel,
+                onValueChange = { hardnessLevel = it },
+                valueRange = 1f..5f,
+                steps = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Steps:")
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -765,7 +858,7 @@ fun AddTaskBottomSheetContent(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily)
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt())
                 }
             }) {
                 Text("Create")

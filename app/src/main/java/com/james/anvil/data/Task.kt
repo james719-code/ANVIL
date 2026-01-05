@@ -19,5 +19,8 @@ data class Task(
     
     // Daily task fields
     val isDaily: Boolean = false,
-    val lastCompletedDate: Long? = null
+    val lastCompletedDate: Long? = null,
+    
+    // Hardness level: 1-5, represents days before deadline task must be completed
+    val hardnessLevel: Int = 1
 )
