@@ -5,9 +5,27 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlin.math.roundToInt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,21 +33,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.james.anvil.ui.TaskViewModel
-import com.james.anvil.ui.navigation.NavigationGraph
 import com.james.anvil.ui.navigation.NavItem
+import com.james.anvil.ui.DashboardScreen
+import com.james.anvil.ui.TasksScreen
+import com.james.anvil.ui.BudgetScreen
+import com.james.anvil.ui.BlocklistScreen
+import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.theme.ANVILTheme
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.SharedPreferences
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
@@ -106,12 +127,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private const val PREFS_NAME = "anvil_dialog_prefs"
+private const val KEY_DONT_SHOW_NOTIFICATION = "dont_show_notification_dialog"
+private const val KEY_DONT_SHOW_USAGE = "dont_show_usage_dialog"
+private const val KEY_DONT_SHOW_BATTERY = "dont_show_battery_dialog"
+
 @Composable
 fun NotificationPermissionCheck() {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var showDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        if (prefs.getBoolean(KEY_DONT_SHOW_NOTIFICATION, false)) return@LaunchedEffect
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasPermission = context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == 
                 android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -123,12 +153,32 @@ fun NotificationPermissionCheck() {
 
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { 
+                if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_NOTIFICATION, true).apply()
+                showDialog = false 
+            },
             title = { Text("Enable Notifications") },
-            text = { Text("Anvil needs notification permission to remind you about upcoming task deadlines.") },
+            text = { 
+                Column {
+                    Text("Anvil needs notification permission to remind you about upcoming task deadlines.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it }
+                        )
+                        Text(
+                            text = "Don't show again",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { dontShowAgain = !dontShowAgain }
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_NOTIFICATION, true).apply()
                         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                         }
@@ -140,7 +190,10 @@ fun NotificationPermissionCheck() {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { 
+                    if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_NOTIFICATION, true).apply()
+                    showDialog = false 
+                }) {
                     Text("Later")
                 }
             }
@@ -151,9 +204,13 @@ fun NotificationPermissionCheck() {
 @Composable
 fun UsageAccessCheck() {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var showDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        if (prefs.getBoolean(KEY_DONT_SHOW_USAGE, false)) return@LaunchedEffect
+        
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val mode = appOps.checkOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS,
@@ -167,12 +224,32 @@ fun UsageAccessCheck() {
 
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { 
+                if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_USAGE, true).apply()
+                showDialog = false 
+            },
             title = { Text("Permit Usage Access") },
-            text = { Text("Anvil needs usage access permission to track app usage and improve blocking accuracy.") },
+            text = { 
+                Column {
+                    Text("Anvil needs usage access permission to track app usage and improve blocking accuracy.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it }
+                        )
+                        Text(
+                            text = "Don't show again",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { dontShowAgain = !dontShowAgain }
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_USAGE, true).apply()
                         val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                         context.startActivity(intent)
                         showDialog = false
@@ -182,7 +259,10 @@ fun UsageAccessCheck() {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { 
+                    if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_USAGE, true).apply()
+                    showDialog = false 
+                }) {
                     Text("Cancel")
                 }
             }
@@ -193,10 +273,14 @@ fun UsageAccessCheck() {
 @Composable
 fun BatteryOptimizationCheck() {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var showDialog by remember { mutableStateOf(false) }
     var showRestrictedGuide by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        if (prefs.getBoolean(KEY_DONT_SHOW_BATTERY, false)) return@LaunchedEffect
+        
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
             showDialog = true
@@ -205,12 +289,32 @@ fun BatteryOptimizationCheck() {
 
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { 
+                if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_BATTERY, true).apply()
+                showDialog = false 
+            },
             title = { Text("Disable Battery Optimization") },
-            text = { Text("To ensure Anvil works correctly (especially Accessibility Services after restart), please tap 'Battery' and select 'Unrestricted' (or 'Don't optimize').") },
+            text = { 
+                Column {
+                    Text("To ensure Anvil works correctly (especially Accessibility Services after restart), please tap 'Battery' and select 'Unrestricted' (or 'Don't optimize').")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it }
+                        )
+                        Text(
+                            text = "Don't show again",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { dontShowAgain = !dontShowAgain }
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_BATTERY, true).apply()
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.parse("package:${context.packageName}")
                         }
@@ -222,7 +326,10 @@ fun BatteryOptimizationCheck() {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { 
+                    if (dontShowAgain) prefs.edit().putBoolean(KEY_DONT_SHOW_BATTERY, true).apply()
+                    showDialog = false 
+                }) {
                     Text("Cancel")
                 }
             },
@@ -305,59 +412,154 @@ fun GuideStep(number: Int, title: String, description: String) {
 
 @Composable
 fun MainScreen(viewModel: TaskViewModel) {
-    val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    
     val navItems = NavItem.bottomNavItems
+    val pagerState = rememberPagerState(pageCount = { navItems.size })
+    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    val navBackStackEntry by navController.currentBackStackEntryAsState()
-                    val currentDestination = navBackStackEntry?.destination
-                    
-                    navItems.forEach { item ->
-                        val isSelected = currentDestination?.hierarchy?.any { 
-                            it.route?.contains(item.routeClass.simpleName ?: "") == true 
-                        } == true
-                        
-                        NavigationBarItem(
-                            icon = { 
-                                Icon(
-                                    imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon, 
-                                    contentDescription = item.title
-                                ) 
-                            },
-                            label = { Text(item.title) },
-                            selected = isSelected,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        )
+                SlidingNavigationBar(
+                    pagerState = pagerState,
+                    navItems = navItems,
+                    onItemClick = { index ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
                     }
-                }
+                )
             }
         ) { innerPadding ->
-            Surface(modifier = Modifier.padding(innerPadding)) {
-                NavigationGraph(
-                    navController = navController, 
-                    viewModel = viewModel,
-                    snackbarHostState = snackbarHostState
-                )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding()),
+                beyondViewportPageCount = 1
+            ) { page ->
+                when (page) {
+                    0 -> DashboardScreen(
+                        viewModel = viewModel,
+                        onNavigateToPage = { targetPage ->
+                            scope.launch { pagerState.animateScrollToPage(targetPage) }
+                        }
+                    )
+                    1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
+                    2 -> BudgetScreen(viewModel = viewModel)
+                    3 -> BlocklistScreen(viewModel = viewModel)
+                    4 -> SettingsScreen(viewModel = viewModel)
+                }
             }
         }
         
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .padding(bottom = 100.dp)
         )
+    }
+}
+
+@Composable
+fun SlidingNavigationBar(
+    pagerState: PagerState,
+    navItems: List<NavItem<*>>,
+    onItemClick: (Int) -> Unit
+) {
+    val density = LocalDensity.current
+    var itemWidth by remember { mutableStateOf(0.dp) }
+    var barWidth by remember { mutableStateOf(0.dp) }
+    
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .navigationBarsPadding()
+    ) {
+        Surface(
+            modifier = Modifier
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(28.dp),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                )
+                .clip(RoundedCornerShape(28.dp))
+                .onGloballyPositioned { coordinates ->
+                    barWidth = with(density) { coordinates.size.width.toDp() }
+                    itemWidth = barWidth / navItems.size
+                },
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+            ) {
+                // Sliding indicator
+                val indicatorOffset = with(density) {
+                    val currentPage = pagerState.currentPage
+                    val offset = pagerState.currentPageOffsetFraction
+                    ((currentPage + offset) * itemWidth.toPx()).roundToInt()
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(indicatorOffset, 0) }
+                        .width(itemWidth)
+                        .height(80.dp)
+                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                )
+                
+                // Navigation items
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    navItems.forEachIndexed { index, item ->
+                        val isSelected = pagerState.currentPage == index
+                        
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { onItemClick(index) },
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                                    contentDescription = item.title,
+                                    tint = if (isSelected) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else 
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

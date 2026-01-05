@@ -3,25 +3,25 @@ package com.james.anvil.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AccessibilityNew
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -30,11 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.james.anvil.service.AnvilAccessibilityService
-import com.james.anvil.ui.theme.DeepTeal
-import com.james.anvil.ui.theme.GradientEnd
-import com.james.anvil.ui.theme.GradientStart
+import com.james.anvil.ui.theme.ElectricTeal
+import com.james.anvil.ui.theme.InfoBlue
+import com.james.anvil.ui.theme.SuccessGreen
+import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.util.PermissionUtils
-import androidx.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,310 +60,293 @@ fun SettingsScreen(viewModel: TaskViewModel) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        "Settings", 
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineSmall
-                    ) 
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
         ) {
-            // Appearance Section
-            SettingsSectionHeader(title = "Appearance")
-            SettingsItem(
-                title = "Dark Mode",
-                subtitle = "Toggle dark/light theme",
-                trailing = {
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = { viewModel.toggleTheme(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
-                }
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            )
-
-            // Permissions Section
-            SettingsSectionHeader(title = "Permissions")
-            SettingsItem(
-                title = "Draw Over Apps",
-                subtitle = if (hasOverlayPermission) "Granted" else "Required for blocking overlays",
-                onClick = {
-                    if (!hasOverlayPermission) {
-                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
-                        context.startActivity(intent)
-                    }
-                },
-                trailing = {
-                    if (hasOverlayPermission) {
-                        Icon(
-                            Icons.Default.CheckCircle, 
-                            null, 
-                            tint = DeepTeal
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.ArrowForward, 
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            )
-            SettingsItem(
-                title = "Accessibility Service",
-                subtitle = if (hasAccessibilityPermission) "Active" else "Required for detecting app usage",
-                onClick = {
-                    if (!hasAccessibilityPermission) {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        context.startActivity(intent)
-                    }
-                },
-                trailing = {
-                    if (hasAccessibilityPermission) {
-                        Icon(
-                            Icons.Default.CheckCircle, 
-                            null, 
-                            tint = DeepTeal
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.ArrowForward, 
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-            )
-
-            // About Section
-            SettingsSectionHeader(title = "About ANVIL")
+            Spacer(modifier = Modifier.height(16.dp))
             
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                    MaterialTheme.colorScheme.surface
-                                )
+            // Screen Header
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Customize your experience",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            // Appearance Section
+            SettingsSectionHeader(title = "APPEARANCE")
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SettingsCard {
+                SettingsRow(
+                    icon = Icons.Outlined.DarkMode,
+                    iconTint = InfoBlue,
+                    title = "Dark Mode",
+                    subtitle = if (isDarkTheme) "On" else "Off",
+                    trailing = {
+                        Switch(
+                            checked = isDarkTheme,
+                            onCheckedChange = { viewModel.toggleTheme(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(80.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "ANVIL",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        
-                        Text(
-                            text = "v1.0.0 • Production Build",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    RoundedCornerShape(50)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "Forge Your Will",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Anvil is your digital shield against distraction. Master your time, block interruptions, and track your financial freedom all in one place.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = androidx.compose.ui.unit.TextUnit(24f, androidx.compose.ui.unit.TextUnitType.Sp)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                           Text(
-                               text = "Created by ",
-                               style = MaterialTheme.typography.bodySmall,
-                               color = MaterialTheme.colorScheme.onSurfaceVariant
-                           )
-                           Text(
-                               text = "James Ryan Gallego",
-                               style = MaterialTheme.typography.bodySmall,
-                               fontWeight = FontWeight.Bold,
-                               color = MaterialTheme.colorScheme.primary
-                           )
-                        }
                     }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Permissions Section
+            SettingsSectionHeader(title = "PERMISSIONS")
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SettingsCard {
+                SettingsRow(
+                    icon = Icons.Outlined.Layers,
+                    iconTint = if (hasOverlayPermission) 
+                        SuccessGreen 
+                    else 
+                        WarningOrange,
+                    title = "Draw Over Apps",
+                    subtitle = if (hasOverlayPermission) "Permission granted" else "Tap to enable",
+                    onClick = {
+                        if (!hasOverlayPermission) {
+                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                            context.startActivity(intent)
+                        }
+                    },
+                    trailing = {
+                        PermissionIndicator(isGranted = hasOverlayPermission)
+                    }
+                )
+                
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 56.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+                
+                SettingsRow(
+                    icon = Icons.Outlined.AccessibilityNew,
+                    iconTint = if (hasAccessibilityPermission) 
+                        SuccessGreen 
+                    else 
+                        WarningOrange,
+                    title = "Accessibility Service",
+                    subtitle = if (hasAccessibilityPermission) "Service active" else "Tap to enable",
+                    onClick = {
+                        if (!hasAccessibilityPermission) {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    },
+                    trailing = {
+                        PermissionIndicator(isGranted = hasAccessibilityPermission)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // About Section
+            SettingsSectionHeader(title = "ABOUT")
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SettingsCard {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // App Icon
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(
+                                color = ElectricTeal.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(20.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = ElectricTeal,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "ANVIL",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "Version 1.0.0",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Forge your will. Master your time.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Developed by James Ryan Gallego",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
-fun SettingsSectionHeader(title: String) {
+private fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
+        letterSpacing = androidx.compose.ui.unit.TextUnit(1.2f, androidx.compose.ui.unit.TextUnitType.Sp),
+        modifier = Modifier.padding(start = 4.dp)
     )
 }
 
 @Composable
-fun SettingsItem(
-    title: String,
-    subtitle: String? = null,
-    icon: ImageVector? = null,
-    onClick: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null
+private fun SettingsCard(
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    ListItem(
-        headlineContent = { 
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    icon: ImageVector,
+    iconTint: androidx.compose.ui.graphics.Color,
+    title: String,
+    subtitle: String,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) Modifier.clickable { onClick() }
+                else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = iconTint.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                title, 
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
-            ) 
-        },
-        supportingContent = if (subtitle != null) { 
-            { 
-                Text(
-                    subtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ) 
-            } 
-        } else null,
-        leadingContent = if (icon != null) { 
-            { 
-                Icon(
-                    icon, 
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                ) 
-            } 
-        } else null,
-        trailingContent = trailing,
-        modifier = Modifier.clickable(enabled = onClick != null) { onClick?.invoke() }
-    )
-}
-
-// =============================================
-// Preview Functions (Removed in Release Builds)
-// =============================================
-
-@Preview(name = "Settings Section Header", showBackground = true)
-@Composable
-private fun SettingsSectionHeaderPreview() {
-    com.james.anvil.ui.theme.ANVILTheme {
-        SettingsSectionHeader(title = "Appearance")
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        trailing()
     }
 }
 
-@Preview(name = "Settings Item - Light", showBackground = true)
 @Composable
-private fun SettingsItemPreview() {
-    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
-        SettingsItem(
-            title = "Dark Mode",
-            subtitle = "Toggle dark/light theme",
-            trailing = {
-                Switch(checked = false, onCheckedChange = {})
-            }
-        )
-    }
-}
-
-@Preview(name = "Settings Item - Dark", showBackground = true)
-@Composable
-private fun SettingsItemDarkPreview() {
-    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
-        SettingsItem(
-            title = "Draw Over Apps",
-            subtitle = "Required for blocking overlays",
-            icon = Icons.Default.Settings,
-            trailing = {
-                Icon(Icons.Default.CheckCircle, null, tint = DeepTeal)
-            }
+private fun PermissionIndicator(isGranted: Boolean) {
+    if (isGranted) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(
+                    color = SuccessGreen.copy(alpha = 0.15f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Check,
+                contentDescription = "Granted",
+                tint = SuccessGreen,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    } else {
+        Icon(
+            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = "Configure",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
         )
     }
 }

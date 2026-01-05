@@ -16,7 +16,6 @@ import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.DashboardScreen
 import com.james.anvil.ui.EditTaskScreen
 import com.james.anvil.ui.BudgetScreen
-import com.james.anvil.ui.LoansScreen
 import androidx.compose.material3.SnackbarHostState
 
 private const val NAV_ANIMATION_DURATION = 300
@@ -61,11 +60,15 @@ fun NavigationGraph(
     ) {
         // Bottom Navigation Destinations
         composable<DashboardRoute> {
-            DashboardScreen(viewModel, navController)
+            DashboardScreen(viewModel)
         }
         
         composable<TasksRoute> {
-            TasksScreen(viewModel, snackbarHostState, navController)
+            TasksScreen(viewModel, snackbarHostState)
+        }
+        
+        composable<BudgetRoute> {
+            BudgetScreen(viewModel = viewModel)
         }
         
         composable<BlocklistRoute> {
@@ -76,22 +79,6 @@ fun NavigationGraph(
             SettingsScreen(viewModel)
         }
         
-        // Secondary Destinations (from Dashboard)
-        composable<BudgetRoute> {
-            BudgetScreen(
-                viewModel = viewModel, 
-                navController = navController, 
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        composable<LoansRoute> {
-            LoansScreen(
-                viewModel = viewModel, 
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
         // Detail Destinations (with arguments)
         composable<EditTaskRoute> { backStackEntry ->
             val route: EditTaskRoute = backStackEntry.toRoute()
@@ -99,3 +86,4 @@ fun NavigationGraph(
         }
     }
 }
+

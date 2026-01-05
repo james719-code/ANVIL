@@ -144,6 +144,34 @@ fun TaskItem(
                             }
                         }
                     }
+                    
+                    // Steps progress bar
+                    if (task.steps.isNotEmpty()) {
+                        val completedSteps = task.steps.count { it.isCompleted }
+                        val totalSteps = task.steps.size
+                        val progress = completedSteps.toFloat() / totalSteps
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = DeepTeal,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "$completedSteps/$totalSteps",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 Box {

@@ -5,7 +5,9 @@ import androidx.room.PrimaryKey
 
 enum class BudgetType {
     INCOME,
-    EXPENSE
+    EXPENSE,
+    LOAN_OUT,       // Money lent to someone - shows in history but doesn't affect balance
+    LOAN_REPAYMENT  // Repayment received - shows in history but doesn't affect balance
 }
 
 enum class BalanceType {

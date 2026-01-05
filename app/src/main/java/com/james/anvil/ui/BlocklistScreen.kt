@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -15,8 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.james.anvil.ui.components.BlocklistItem
+import com.james.anvil.ui.components.CollapsibleScreenScaffold
 import com.james.anvil.ui.components.EmptyState
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material.icons.filled.Search
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,25 +27,26 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Apps", "Links")
 
-    Scaffold(
-        topBar = {
-            Column {
-                TabRow(selectedTabIndex = selectedTabIndex) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) }
-                        )
-                    }
+    CollapsibleScreenScaffold(
+        title = "Blocklist",
+        subtitle = "Shield yourself from distractions"
+    ) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
                 }
             }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTabIndex) {
-                0 -> BlockedAppsTab(viewModel)
-                1 -> BlockedLinksTab(viewModel)
+            
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (selectedTabIndex) {
+                    0 -> BlockedAppsTab(viewModel)
+                    1 -> BlockedLinksTab(viewModel)
+                }
             }
         }
     }
@@ -53,33 +57,51 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
     val appListWithCategories by viewModel.appListWithCategories.collectAsState(initial = emptyList())
     var showCategoryDialog by remember { mutableStateOf(false) }
     var selectedAppForCategory by remember { mutableStateOf<AppInfoWithCategory?>(null) }
-
-    if (appListWithCategories.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-             CircularProgressIndicator()
+    var searchQuery by remember { mutableStateOf("") }
+    
+    val filteredApps = remember(appListWithCategories, searchQuery) {
+        if (searchQuery.isBlank()) appListWithCategories
+        else appListWithCategories.filter { 
+            it.appInfo.name.contains(searchQuery, ignoreCase = true) 
         }
-    } else {
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            item {
-                Text(
-                    text = "Manage Apps",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search apps...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        if (appListWithCategories.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                 CircularProgressIndicator()
             }
-            items(appListWithCategories, key = { it.appInfo.packageName }) { app ->
-                BlocklistItem(
-                    app = app,
-                    onToggleBlock = { isBlocked ->
-                        if (isBlocked) viewModel.blockApp(app.appInfo.packageName)
-                        else viewModel.unblockApp(app.appInfo.packageName)
-                    },
-                    onCategoryClick = {
-                        selectedAppForCategory = app
-                        showCategoryDialog = true
-                    }
-                )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(filteredApps, key = { it.appInfo.packageName }) { app ->
+                    BlocklistItem(
+                        app = app,
+                        onToggleBlock = { isBlocked ->
+                            if (isBlocked) viewModel.blockApp(app.appInfo.packageName)
+                            else viewModel.unblockApp(app.appInfo.packageName)
+                        },
+                        onCategoryClick = {
+                            selectedAppForCategory = app
+                            showCategoryDialog = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -145,20 +167,22 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 item {
                     Text(
                         text = "Blocked URLs",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
                 items(blockedLinks) { link ->
                     Card(
-                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         val displayText = if (link.isEncrypted) "****** (Hidden)" else link.pattern

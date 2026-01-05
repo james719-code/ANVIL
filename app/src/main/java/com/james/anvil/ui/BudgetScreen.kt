@@ -1,5 +1,6 @@
 package com.james.anvil.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -7,9 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,234 +17,252 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
+import com.james.anvil.data.Loan
+import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.AnvilCard
-import com.james.anvil.ui.components.AnvilHeader
-import com.james.anvil.ui.navigation.LoansRoute
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ErrorRed
 import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.WarningOrange
-import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Filter types for budget entries
+enum class BudgetFilter {
+    ALL, INCOME, EXPENSES, LOANS
+}
+
+// Helper data class for 4 values
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetScreen(
-    viewModel: TaskViewModel,
-    navController: NavController? = null,
-    onNavigateBack: () -> Unit = {}
+    viewModel: TaskViewModel
 ) {
     val budgetEntries by viewModel.budgetEntries.collectAsState(initial = emptyList())
+    val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
     val cashBalance by viewModel.cashBalance.collectAsState(initial = 0.0)
     val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
     val totalCashLoaned by viewModel.totalCashLoaned.collectAsState(initial = 0.0)
     val totalGcashLoaned by viewModel.totalGcashLoaned.collectAsState(initial = 0.0)
-    val totalActiveLoanedAmount by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
 
+    var selectedFilter by remember { mutableStateOf(BudgetFilter.ALL) }
     var showAddEntrySheet by remember { mutableStateOf(false) }
+    var showAddLoanSheet by remember { mutableStateOf(false) }
     var showEditEntrySheet by remember { mutableStateOf<BudgetEntry?>(null) }
-    
-    val pagerState = rememberPagerState(pageCount = { 3 })
-    val scope = rememberCoroutineScope()
+    var showRepaymentSheet by remember { mutableStateOf<Loan?>(null) }
 
-    val tabs = listOf("Overview", "Income", "Expenses")
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            FloatingActionButton(
+                onClick = { 
+                    if (selectedFilter == BudgetFilter.LOANS) {
+                        showAddLoanSheet = true
+                    } else {
+                        showAddEntrySheet = true
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                // Loans FAB
-                SmallFloatingActionButton(
-                    onClick = { navController?.navigate(LoansRoute) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
-                    Icon(Icons.Outlined.People, contentDescription = "Loans")
-                }
-                // Add Entry FAB
-                FloatingActionButton(
-                    onClick = { showAddEntrySheet = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Outlined.Add, contentDescription = "Add Entry")
-                }
+                Icon(Icons.Outlined.Add, contentDescription = "Add")
             }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             // Header
-            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
-                AnvilHeader(title = "Budget", subtitle = "Manage your finances")
+            item {
+                Text(
+                    text = "Budget",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                )
             }
 
-            // Balance Cards (Always Visible)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                BalanceCard(
-                    title = "Cash",
-                    balance = cashBalance - totalCashLoaned,
-                    loaned = totalCashLoaned,
-                    currencyFormat = currencyFormat,
-                    modifier = Modifier.weight(1f),
-                    color = ElectricTeal
-                )
-                BalanceCard(
-                    title = "GCash",
-                    balance = gcashBalance - totalGcashLoaned,
-                    loaned = totalGcashLoaned,
-                    currencyFormat = currencyFormat,
-                    modifier = Modifier.weight(1f),
-                    color = InfoBlue
-                )
-            }
-            
-             // Loans Quick Access (if active)
-            if (totalActiveLoanedAmount > 0) {
-                 AnvilCard(
+            // Balance Cards
+            item {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 8.dp),
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.3f),
-                    onClick = { navController?.navigate(LoansRoute) }
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warning, null, tint = WarningOrange, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Active Loans: ${currencyFormat.format(totalActiveLoanedAmount)}",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = WarningOrange,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Icon(Icons.Default.ChevronRight, null, tint = WarningOrange)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Tabs
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = Color.Transparent,
-                divider = {},
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                        color = MaterialTheme.colorScheme.primary,
-                        height = 3.dp
+                    BalanceCard(
+                        title = "Cash",
+                        balance = cashBalance - totalCashLoaned,
+                        loaned = totalCashLoaned,
+                        currencyFormat = currencyFormat,
+                        modifier = Modifier.weight(1f),
+                        color = ElectricTeal
                     )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val selected = pagerState.currentPage == index
-                    Tab(
-                        selected = selected,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = {
-                            Text(
-                                text = title,
-                                style = if (selected) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                                        else MaterialTheme.typography.titleSmall,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    BalanceCard(
+                        title = "GCash",
+                        balance = gcashBalance - totalGcashLoaned,
+                        loaned = totalGcashLoaned,
+                        currencyFormat = currencyFormat,
+                        modifier = Modifier.weight(1f),
+                        color = InfoBlue
                     )
                 }
             }
 
-            // Pager Content
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                val filteredEntries = when (page) {
-                    1 -> budgetEntries.filter { it.type == BudgetType.INCOME }
-                    2 -> budgetEntries.filter { it.type == BudgetType.EXPENSE }
-                    else -> budgetEntries // Overview shows all (or you can limit to recent)
-                }
-                
-                // Sort by date descending
-                val sortedEntries = filteredEntries.sortedByDescending { it.timestamp }
-
-                if (sortedEntries.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Outlined.AccountBalanceWallet,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                modifier = Modifier.size(64.dp)
+            // Filter Chips
+            item {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedFilter == BudgetFilter.ALL,
+                            onClick = { selectedFilter = BudgetFilter.ALL },
+                            label = { Text("All") },
+                            leadingIcon = if (selectedFilter == BudgetFilter.ALL) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                            } else null
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedFilter == BudgetFilter.INCOME,
+                            onClick = { selectedFilter = BudgetFilter.INCOME },
+                            label = { Text("Income") },
+                            leadingIcon = if (selectedFilter == BudgetFilter.INCOME) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
+                                selectedLabelColor = ElectricTeal,
+                                selectedLeadingIconColor = ElectricTeal
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No entries found",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedFilter == BudgetFilter.EXPENSES,
+                            onClick = { selectedFilter = BudgetFilter.EXPENSES },
+                            label = { Text("Expenses") },
+                            leadingIcon = if (selectedFilter == BudgetFilter.EXPENSES) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
+                                selectedLabelColor = ErrorRed,
+                                selectedLeadingIconColor = ErrorRed
+                            )
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = selectedFilter == BudgetFilter.LOANS,
+                            onClick = { selectedFilter = BudgetFilter.LOANS },
+                            label = { 
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Loans")
+                                    if (activeLoans.isNotEmpty()) {
+                                        Badge(
+                                            containerColor = WarningOrange
+                                        ) {
+                                            Text("${activeLoans.size}")
+                                        }
+                                    }
+                                }
+                            },
+                            leadingIcon = if (selectedFilter == BudgetFilter.LOANS) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = WarningOrange.copy(alpha = 0.1f),
+                                selectedLabelColor = WarningOrange,
+                                selectedLeadingIconColor = WarningOrange
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Content based on filter
+            when (selectedFilter) {
+                BudgetFilter.LOANS -> {
+                    // Loans Section
+                    if (activeLoans.isEmpty()) {
+                        item {
+                            EmptyStateContent(
+                                message = "No active loans",
+                                icon = Icons.Outlined.Person
+                            )
+                        }
+                    } else {
+                        items(activeLoans, key = { it.id }) { loan ->
+                            LoanItem(
+                                loan = loan,
+                                currencyFormat = currencyFormat,
+                                onRepayClick = { showRepaymentSheet = loan },
+                                onDeleteClick = { viewModel.deleteLoan(loan) },
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
                             )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(sortedEntries, key = { it.id }) { entry ->
-                             BudgetEntryItem(
+                }
+                else -> {
+                    // Budget Entries
+                    val filteredEntries = when (selectedFilter) {
+                        BudgetFilter.INCOME -> budgetEntries.filter { it.type == BudgetType.INCOME }
+                        BudgetFilter.EXPENSES -> budgetEntries.filter { it.type == BudgetType.EXPENSE }
+                        else -> budgetEntries
+                    }.sortedByDescending { it.timestamp }
+
+                    if (filteredEntries.isEmpty()) {
+                        item {
+                            EmptyStateContent(
+                                message = "No entries found",
+                                icon = Icons.Outlined.AccountBalanceWallet
+                            )
+                        }
+                    } else {
+                        items(filteredEntries, key = { it.id }) { entry ->
+                            BudgetEntryItem(
                                 entry = entry,
                                 currencyFormat = currencyFormat,
                                 onEdit = { showEditEntrySheet = entry },
-                                onDelete = { viewModel.deleteBudgetEntry(entry) }
+                                onDelete = { viewModel.deleteBudgetEntry(entry) },
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
                             )
                         }
-                        // Bottom padding for FAB
-                        item { Spacer(modifier = Modifier.height(80.dp)) }
                     }
                 }
             }
         }
     }
 
+    // Bottom Sheets
     if (showAddEntrySheet) {
         AddBudgetEntrySheet(
             onDismiss = { showAddEntrySheet = false },
@@ -253,7 +271,16 @@ fun BudgetScreen(
             }
         )
     }
-    
+
+    if (showAddLoanSheet) {
+        AddLoanSheet(
+            onDismiss = { showAddLoanSheet = false },
+            onSave = { borrowerName, amount, balanceType, description ->
+                viewModel.createLoan(borrowerName, amount, balanceType, description, null)
+            }
+        )
+    }
+
     showEditEntrySheet?.let { entry ->
         EditBudgetEntrySheet(
             entry = entry,
@@ -272,8 +299,46 @@ fun BudgetScreen(
             }
         )
     }
+
+    showRepaymentSheet?.let { loan ->
+        AddRepaymentSheet(
+            loan = loan,
+            currencyFormat = currencyFormat,
+            onDismiss = { showRepaymentSheet = null },
+            onSave = { amount, note ->
+                viewModel.addLoanRepayment(loan, amount, note)
+            }
+        )
+    }
 }
 
+@Composable
+private fun EmptyStateContent(
+    message: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 private fun BalanceCard(
@@ -336,13 +401,24 @@ private fun BudgetEntryItem(
     entry: BudgetEntry,
     currencyFormat: NumberFormat,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val isIncome = entry.type == BudgetType.INCOME
+    val isLoanOut = entry.type == BudgetType.LOAN_OUT
+    val isLoanRepayment = entry.type == BudgetType.LOAN_REPAYMENT
     val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
     var showMenu by remember { mutableStateOf(false) }
+    
+    // Determine colors and icons based on type
+    val (bgColor, iconColor, icon, prefix) = when (entry.type) {
+        BudgetType.INCOME -> Quadruple(ElectricTeal.copy(alpha = 0.1f), ElectricTeal, Icons.Outlined.ArrowDownward, "+")
+        BudgetType.EXPENSE -> Quadruple(ErrorRed.copy(alpha = 0.1f), ErrorRed, Icons.Outlined.ArrowUpward, "-")
+        BudgetType.LOAN_OUT -> Quadruple(WarningOrange.copy(alpha = 0.1f), WarningOrange, Icons.Outlined.Person, "→")
+        BudgetType.LOAN_REPAYMENT -> Quadruple(ElectricTeal.copy(alpha = 0.1f), ElectricTeal, Icons.Outlined.Person, "←")
+    }
 
-    AnvilCard {
+    AnvilCard(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -352,16 +428,13 @@ private fun BudgetEntryItem(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(
-                        if (isIncome) ElectricTeal.copy(alpha = 0.1f) else ErrorRed.copy(alpha = 0.1f),
-                        RoundedCornerShape(12.dp)
-                    ),
+                    .background(bgColor, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isIncome) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
+                    imageVector = icon,
                     contentDescription = null,
-                    tint = if (isIncome) ElectricTeal else ErrorRed
+                    tint = iconColor
                 )
             }
 
@@ -380,7 +453,7 @@ private fun BudgetEntryItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                     Text(
+                    Text(
                         text = dateFormat.format(Date(entry.timestamp)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -390,7 +463,7 @@ private fun BudgetEntryItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                     Text(
+                    Text(
                         text = entry.balanceType.name,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else ElectricTeal,
@@ -398,15 +471,15 @@ private fun BudgetEntryItem(
                     )
                 }
             }
-            
+
             Column(horizontalAlignment = Alignment.End) {
-                 Text(
-                    text = "${if (isIncome) "+" else "-"}${currencyFormat.format(entry.amount)}",
+                Text(
+                    text = "$prefix${currencyFormat.format(entry.amount)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isIncome) ElectricTeal else ErrorRed
+                    color = iconColor
                 )
-                
+
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
@@ -437,15 +510,162 @@ private fun BudgetEntryItem(
                                 showMenu = false
                                 onDelete()
                             },
-                            leadingIcon = { 
+                            leadingIcon = {
                                 Icon(
-                                    Icons.Default.Delete, 
-                                    null, 
+                                    Icons.Default.Delete,
+                                    null,
                                     tint = MaterialTheme.colorScheme.error
-                                ) 
+                                )
                             }
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoanItem(
+    loan: Loan,
+    currencyFormat: NumberFormat,
+    onRepayClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+    val progress = 1 - (loan.remainingAmount / loan.originalAmount).coerceIn(0.0, 1.0)
+    val isGcash = loan.balanceType == BalanceType.GCASH
+    var showMenu by remember { mutableStateOf(false) }
+
+    AnvilCard(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                WarningOrange.copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = null,
+                            tint = WarningOrange
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = loan.borrowerName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = currencyFormat.format(loan.remainingAmount),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningOrange
+                        )
+                        if (loan.remainingAmount != loan.originalAmount) {
+                            Text(
+                                text = "of ${currencyFormat.format(loan.originalAmount)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Add Repayment") },
+                                onClick = {
+                                    showMenu = false
+                                    onRepayClick()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Add, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    showMenu = false
+                                    onDeleteClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Progress bar
+            LinearProgressIndicator(
+                progress = { progress.toFloat() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                color = WarningOrange,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+
+            if (loan.status != LoanStatus.FULLY_REPAID) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onRepayClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WarningOrange
+                    )
+                ) {
+                    Text("Add Repayment")
                 }
             }
         }
@@ -491,7 +711,6 @@ private fun AddBudgetEntrySheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Custom Toggle buttons implementation could be better, but FilterChip is standard
                 FilterChip(
                     selected = type == BudgetType.EXPENSE,
                     onClick = { type = BudgetType.EXPENSE },
@@ -501,7 +720,7 @@ private fun AddBudgetEntrySheet(
                     } else null,
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ErrorRed.copy(alpha=0.1f),
+                        selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
                         selectedLabelColor = ErrorRed,
                         selectedLeadingIconColor = ErrorRed
                     )
@@ -515,7 +734,7 @@ private fun AddBudgetEntrySheet(
                     } else null,
                     modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
+                        selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
                         selectedLabelColor = ElectricTeal,
                         selectedLeadingIconColor = ElectricTeal
                     )
@@ -534,30 +753,14 @@ private fun AddBudgetEntrySheet(
                 FilterChip(
                     selected = balanceType == BalanceType.CASH,
                     onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash Wallet") },
-                    leadingIcon = if (balanceType == BalanceType.CASH) {
-                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
-                        selectedLabelColor = ElectricTeal,
-                        selectedLeadingIconColor = ElectricTeal
-                    )
+                    label = { Text("Cash") },
+                    modifier = Modifier.weight(1f)
                 )
                 FilterChip(
                     selected = balanceType == BalanceType.GCASH,
                     onClick = { balanceType = BalanceType.GCASH },
                     label = { Text("GCash") },
-                    leadingIcon = if (balanceType == BalanceType.GCASH) {
-                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = InfoBlue.copy(alpha=0.1f),
-                        selectedLabelColor = InfoBlue,
-                        selectedLeadingIconColor = InfoBlue
-                    )
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -609,13 +812,137 @@ private fun AddBudgetEntrySheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
                     text = "Save Transaction",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddLoanSheet(
+    onDismiss: () -> Unit,
+    onSave: (String, Double, BalanceType, String?) -> Unit
+) {
+    var borrowerName by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("") }
+    var balanceType by remember { mutableStateOf(BalanceType.CASH) }
+    var description by remember { mutableStateOf("") }
+    var borrowerError by remember { mutableStateOf(false) }
+    var amountError by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "New Loan",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = borrowerName,
+                onValueChange = {
+                    borrowerName = it
+                    borrowerError = false
+                },
+                label = { Text("Borrower Name") },
+                isError = borrowerError,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = amount,
+                onValueChange = {
+                    amount = it.filter { c -> c.isDigit() || c == '.' }
+                    amountError = false
+                },
+                label = { Text("Amount") },
+                prefix = { Text("₱") },
+                isError = amountError,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Source", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FilterChip(
+                    selected = balanceType == BalanceType.CASH,
+                    onClick = { balanceType = BalanceType.CASH },
+                    label = { Text("Cash") },
+                    modifier = Modifier.weight(1f)
+                )
+                FilterChip(
+                    selected = balanceType == BalanceType.GCASH,
+                    onClick = { balanceType = BalanceType.GCASH },
+                    label = { Text("GCash") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Note (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    val amountValue = amount.toDoubleOrNull()
+                    when {
+                        borrowerName.isBlank() -> borrowerError = true
+                        amountValue == null || amountValue <= 0 -> amountError = true
+                        else -> {
+                            onSave(borrowerName.trim(), amountValue, balanceType, description.ifEmpty { null })
+                            onDismiss()
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = WarningOrange
+                )
+            ) {
+                Text(
+                    text = "Create Loan",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -646,12 +973,7 @@ private fun EditBudgetEntrySheet(
             title = { Text("Delete Entry?") },
             text = { Text("Are you sure you want to delete this budget entry?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete()
-                        showDeleteConfirm = false
-                    }
-                ) {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -666,7 +988,7 @@ private fun EditBudgetEntrySheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-         dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             modifier = Modifier
@@ -686,56 +1008,40 @@ private fun EditBudgetEntrySheet(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Type Selector
             Row(
-                 modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterChip(
                     selected = type == BudgetType.EXPENSE,
                     onClick = { type = BudgetType.EXPENSE },
                     label = { Text("Expense") },
-                    leadingIcon = if (type == BudgetType.EXPENSE) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
                     modifier = Modifier.weight(1f),
-                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ErrorRed.copy(alpha=0.1f),
-                        selectedLabelColor = ErrorRed,
-                        selectedLeadingIconColor = ErrorRed
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
+                        selectedLabelColor = ErrorRed
                     )
                 )
                 FilterChip(
                     selected = type == BudgetType.INCOME,
                     onClick = { type = BudgetType.INCOME },
                     label = { Text("Income") },
-                    leadingIcon = if (type == BudgetType.INCOME) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
                     modifier = Modifier.weight(1f),
-                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
-                        selectedLabelColor = ElectricTeal,
-                        selectedLeadingIconColor = ElectricTeal
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
+                        selectedLabelColor = ElectricTeal
                     )
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-           // Balance Type Selector
-             Text("Source", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -743,30 +1049,14 @@ private fun EditBudgetEntrySheet(
                 FilterChip(
                     selected = balanceType == BalanceType.CASH,
                     onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash Wallet") },
-                    leadingIcon = if (balanceType == BalanceType.CASH) {
-                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
-                        selectedLabelColor = ElectricTeal,
-                        selectedLeadingIconColor = ElectricTeal
-                    )
+                    label = { Text("Cash") },
+                    modifier = Modifier.weight(1f)
                 )
                 FilterChip(
                     selected = balanceType == BalanceType.GCASH,
                     onClick = { balanceType = BalanceType.GCASH },
                     label = { Text("GCash") },
-                    leadingIcon = if (balanceType == BalanceType.GCASH) {
-                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = InfoBlue.copy(alpha=0.1f),
-                        selectedLabelColor = InfoBlue,
-                        selectedLeadingIconColor = InfoBlue
-                    )
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -774,10 +1064,7 @@ private fun EditBudgetEntrySheet(
 
             OutlinedTextField(
                 value = amount,
-                onValueChange = {
-                    amount = it.filter { c -> c.isDigit() || c == '.' }
-                    amountError = false
-                },
+                onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' }; amountError = false },
                 label = { Text("Amount") },
                 prefix = { Text("₱") },
                 isError = amountError,
@@ -790,10 +1077,7 @@ private fun EditBudgetEntrySheet(
 
             OutlinedTextField(
                 value = description,
-                onValueChange = {
-                    description = it
-                    descriptionError = false
-                },
+                onValueChange = { description = it; descriptionError = false },
                 label = { Text("Description") },
                 isError = descriptionError,
                 singleLine = true,
@@ -809,25 +1093,110 @@ private fun EditBudgetEntrySheet(
                     when {
                         amountValue == null || amountValue <= 0 -> amountError = true
                         description.isBlank() -> descriptionError = true
-                        else -> {
-                            onSave(type, balanceType, amountValue, description.trim())
-                            onDismiss()
-                        }
+                        else -> { onSave(type, balanceType, amountValue, description.trim()); onDismiss() }
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-             colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = "Save Changes",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Save Changes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddRepaymentSheet(
+    loan: Loan,
+    currencyFormat: NumberFormat,
+    onDismiss: () -> Unit,
+    onSave: (Double, String?) -> Unit
+) {
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var amountError by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Add Repayment",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "From ${loan.borrowerName} • Remaining: ${currencyFormat.format(loan.remainingAmount)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' }; amountError = false },
+                label = { Text("Amount") },
+                prefix = { Text("₱") },
+                isError = amountError,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { amount = loan.remainingAmount.toString() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Full Amount") }
+                OutlinedButton(
+                    onClick = { amount = (loan.remainingAmount / 2).toString() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Half") }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Note (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    val amountValue = amount.toDoubleOrNull()
+                    when {
+                        amountValue == null || amountValue <= 0 -> amountError = true
+                        else -> { onSave(amountValue, note.ifEmpty { null }); onDismiss() }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WarningOrange)
+            ) {
+                Text("Record Repayment", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }

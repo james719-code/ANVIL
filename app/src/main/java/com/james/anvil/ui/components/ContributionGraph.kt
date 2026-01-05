@@ -3,22 +3,16 @@ package com.james.anvil.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.Task
@@ -28,7 +22,10 @@ import java.util.*
 
 data class ContributionDay(
     val date: Long,
-    val count: Int
+    val count: Int,
+    val dayOfWeek: Int, // 0 = Sunday, 6 = Saturday
+    val isCurrentYear: Boolean = true,
+    val isFuture: Boolean = false
 )
 
 @Composable
@@ -36,126 +33,162 @@ fun ContributionGraph(
     completedTasks: List<Task>,
     modifier: Modifier = Modifier
 ) {
-    var monthOffset by remember { mutableIntStateOf(0) }
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     
-    val contributionData = remember(completedTasks, monthOffset) {
-        calculateContributionData(completedTasks, monthOffset)
+    val contributionData = remember(completedTasks, currentYear) {
+        calculateYearContributionData(completedTasks, currentYear)
     }
     
-    val dateRange = remember(monthOffset) {
-        getDateRangeLabel(monthOffset)
-    }
+    val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
     var selectedDay by remember { mutableStateOf<ContributionDay?>(null) }
+    val scrollState = rememberScrollState(Int.MAX_VALUE)
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Card(
+        // Year header with legend
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Activity",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = currentYear.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Less",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ContributionLegend()
+                Text(
+                    text = "More",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Calendar grid
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Day of week labels
+            Column(
+                modifier = Modifier.padding(end = 6.dp, top = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                val dayLabels = listOf("S", "M", "T", "W", "T", "F", "S")
+                dayLabels.forEach { label ->
+                    Box(
+                        modifier = Modifier
+                            .height(12.dp)
+                            .width(12.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Less",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        ContributionLegend()
-                        Text(
-                            text = "More",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
+            // Scrollable calendar grid
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(scrollState)
+            ) {
+                // Month labels row
+                Row(
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    contributionData.months.forEachIndexed { index, monthData ->
+                        val weekCount = monthData.weeks.size
+                        val monthWidth = (weekCount * 14).dp // 12dp cell + 2dp gap
+                        
+                        Box(
+                            modifier = Modifier.width(monthWidth),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = monthLabels[index],
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
+                        }
+                    }
+                }
                 
-                // Month/Year navigation
+                // Contribution grid organized by months
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    IconButton(
-                        onClick = { monthOffset += 1 },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronLeft,
-                            contentDescription = "Previous",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    Text(
-                        text = dateRange,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    
-                    IconButton(
-                        onClick = { if (monthOffset > 0) monthOffset -= 1 },
-                        enabled = monthOffset > 0,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Next",
-                            tint = if (monthOffset > 0) MaterialTheme.colorScheme.onSurfaceVariant 
-                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
+                    contributionData.months.forEachIndexed { monthIndex, monthData ->
+                        // Month container
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(end = if (monthIndex < 11) 6.dp else 0.dp)
+                        ) {
+                            monthData.weeks.forEach { week ->
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    for (dayIndex in 0..6) {
+                                        val day = week.find { it.dayOfWeek == dayIndex }
+                                        if (day != null && day.isCurrentYear) {
+                                            ContributionCell(
+                                                day = day,
+                                                isSelected = selectedDay?.date == day.date,
+                                                onClick = { 
+                                                    if (!day.isFuture) {
+                                                        selectedDay = if (selectedDay?.date == day.date) null else day 
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            // Empty/placeholder cell
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .clip(RoundedCornerShape(2.dp))
+                                                    .background(Color.Transparent)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Contribution grid (7 rows x 12 columns = ~84 days / 3 months)
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(12),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                    modifier = Modifier.height(((7 * 14) + (6 * 3)).dp)
+        // Tooltip for selected day
+        selectedDay?.let { day ->
+            if (!day.isFuture) {
+                Spacer(modifier = Modifier.height(12.dp))
+                val dateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    items(contributionData) { day ->
-                        ContributionCell(
-                            day = day,
-                            isSelected = selectedDay?.date == day.date,
-                            onClick = { selectedDay = if (selectedDay?.date == day.date) null else day }
-                        )
-                    }
-                }
-
-                // Tooltip for selected day
-                selectedDay?.let { day ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
                     Text(
                         text = "${day.count} task${if (day.count != 1) "s" else ""} completed on ${dateFormat.format(Date(day.date))}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -163,28 +196,30 @@ fun ContributionGraph(
     }
 }
 
-
 @Composable
 private fun ContributionCell(
     day: ContributionDay,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val color = getContributionColor(day.count)
+    val color = when {
+        day.isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        else -> getContributionColor(day.count)
+    }
     
     Box(
         modifier = Modifier
-            .size(14.dp)
+            .size(12.dp)
             .clip(RoundedCornerShape(2.dp))
             .background(color)
             .then(
-                if (isSelected) {
-                    Modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                if (isSelected && !day.isFuture) {
+                    Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
                 } else {
                     Modifier
                 }
             )
-            .clickable(onClick = onClick)
+            .clickable(enabled = !day.isFuture, onClick = onClick)
     )
 }
 
@@ -206,54 +241,82 @@ private fun ContributionLegend() {
 private fun getContributionColor(count: Int): Color {
     return when {
         count == 0 -> MaterialTheme.colorScheme.surfaceVariant
-        count <= 2 -> DeepTeal.copy(alpha = 0.3f)
+        count <= 2 -> DeepTeal.copy(alpha = 0.35f)
         count <= 4 -> DeepTeal.copy(alpha = 0.6f)
         else -> DeepTeal
     }
 }
 
-private fun calculateContributionData(completedTasks: List<Task>, monthOffset: Int = 0): List<ContributionDay> {
+data class YearContributionData(
+    val year: Int,
+    val months: List<MonthContributionData>
+)
+
+data class MonthContributionData(
+    val month: Int,
+    val weeks: List<List<ContributionDay>>
+)
+
+/**
+ * Calculates contribution data for an entire year, organized by months.
+ * Each month contains weeks, and each week contains days.
+ */
+private fun calculateYearContributionData(completedTasks: List<Task>, year: Int): YearContributionData {
     val calendar = Calendar.getInstance()
-    val result = mutableListOf<ContributionDay>()
+    val today = Calendar.getInstance()
     
-    // Calculate base offset (each month offset is ~30 days, showing 84 days at a time)
-    val daysOffset = monthOffset * 84
+    val months = mutableListOf<MonthContributionData>()
     
-    // Generate 84 days (12 weeks) of data
-    for (i in 83 downTo 0) {
-        calendar.timeInMillis = System.currentTimeMillis()
-        calendar.add(Calendar.DAY_OF_YEAR, -(i + daysOffset))
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
+    for (month in 0..11) {
+        val monthWeeks = mutableListOf<List<ContributionDay>>()
+        
+        // Set to first day of the month
+        calendar.set(year, month, 1, 0, 0, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         
-        val startOfDay = calendar.timeInMillis
-        calendar.add(Calendar.DAY_OF_YEAR, 1)
-        val endOfDay = calendar.timeInMillis
+        val firstDayOfMonth = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sunday
+        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
         
-        val count = completedTasks.count { task ->
-            task.completedAt != null && task.completedAt >= startOfDay && task.completedAt < endOfDay
+        var currentWeek = mutableListOf<ContributionDay>()
+        
+        // Process each day in the month
+        for (day in 1..daysInMonth) {
+            calendar.set(year, month, day)
+            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
+            
+            // Start a new week on Sunday
+            if (dayOfWeek == 0 && currentWeek.isNotEmpty()) {
+                monthWeeks.add(currentWeek.toList())
+                currentWeek = mutableListOf()
+            }
+            
+            val startOfDay = calendar.timeInMillis
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            val endOfDay = calendar.timeInMillis
+            calendar.add(Calendar.DAY_OF_YEAR, -1) // Reset
+            
+            val isFuture = calendar.after(today)
+            
+            val count = if (isFuture) 0 else completedTasks.count { task ->
+                task.completedAt != null && task.completedAt >= startOfDay && task.completedAt < endOfDay
+            }
+            
+            currentWeek.add(ContributionDay(
+                date = startOfDay,
+                count = count,
+                dayOfWeek = dayOfWeek,
+                isCurrentYear = true,
+                isFuture = isFuture
+            ))
         }
         
-        result.add(ContributionDay(startOfDay, count))
+        // Add the last week if not empty
+        if (currentWeek.isNotEmpty()) {
+            monthWeeks.add(currentWeek.toList())
+        }
+        
+        months.add(MonthContributionData(month, monthWeeks))
     }
     
-    return result
+    return YearContributionData(year, months)
 }
-
-private fun getDateRangeLabel(monthOffset: Int): String {
-    val calendar = Calendar.getInstance()
-    val dateFormat = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-    
-    // End date (most recent in this view)
-    calendar.add(Calendar.DAY_OF_YEAR, -(monthOffset * 84))
-    val endDate = dateFormat.format(calendar.time)
-    
-    // Start date (84 days before end)
-    calendar.add(Calendar.DAY_OF_YEAR, -83)
-    val startDate = dateFormat.format(calendar.time)
-    
-    return if (startDate == endDate) endDate else "$startDate - $endDate"
-}
-
