@@ -11,6 +11,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
@@ -23,13 +24,17 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.compose.ui.graphics.Color
-import androidx.glance.color.ColorProvider
+import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
+import androidx.glance.material3.ColorProviders
 import com.james.anvil.MainActivity
+import com.james.anvil.ui.theme.*
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 
 class StatsWidget : GlanceAppWidget() {
 
@@ -38,7 +43,7 @@ class StatsWidget : GlanceAppWidget() {
         val stats = repository.getStats()
 
         provideContent {
-            GlanceTheme {
+            GlanceTheme(colors = AnvilGlanceColors) {
                 WidgetContent(context, stats)
             }
         }
@@ -51,92 +56,151 @@ class StatsWidget : GlanceAppWidget() {
     }
 }
 
+/**
+ * Material You color scheme for Glance widgets.
+ * Falls back to ANVIL brand colors on devices without dynamic colors.
+ */
+private val AnvilGlanceColors = ColorProviders(
+    light = lightColorScheme(
+        primary = ElectricBlue,
+        onPrimary = Color.White,
+        primaryContainer = ElectricBlue.copy(alpha = 0.12f),
+        onPrimaryContainer = ElectricBlue,
+        secondary = ElectricTeal,
+        onSecondary = Color.White,
+        secondaryContainer = ElectricTeal.copy(alpha = 0.12f),
+        onSecondaryContainer = ElectricTeal,
+        background = BackgroundLight,
+        onBackground = TextBlack,
+        surface = SurfaceLight,
+        onSurface = TextBlack,
+        surfaceVariant = SurfaceElevatedLight,
+        onSurfaceVariant = TextSecondaryLight,
+        tertiary = WarningOrange,
+        onTertiary = Color.White,
+        error = ErrorRed,
+        onError = Color.White
+    ),
+    dark = darkColorScheme(
+        primary = ElectricBlue,
+        onPrimary = Color.White,
+        primaryContainer = ElectricBlue.copy(alpha = 0.24f),
+        onPrimaryContainer = ElectricBlue,
+        secondary = ElectricTeal,
+        onSecondary = Color.White,
+        secondaryContainer = ElectricTeal.copy(alpha = 0.24f),
+        onSecondaryContainer = ElectricTeal,
+        background = BackgroundDark,
+        onBackground = TextWhite,
+        surface = SurfaceDark,
+        onSurface = TextWhite,
+        surfaceVariant = SurfaceElevatedDark,
+        onSurfaceVariant = TextSecondaryDark,
+        tertiary = WarningOrange,
+        onTertiary = Color.White,
+        error = ErrorRed,
+        onError = Color.White
+    )
+)
+
 @Composable
 private fun WidgetContent(context: Context, stats: WidgetStats) {
-    // FIX: Use Compose Color (0xAARRGGBB) instead of android.graphics.Color.parseColor
-    val backgroundColor = ColorProvider(
-        day = Color(0xFFFFFFFF),
-        night = Color(0xFF161B22)
-    )
-    val primaryTextColor = ColorProvider(
-        day = Color(0xFF1F2328),
-        night = Color(0xFFE6EDF3)
-    )
-    val secondaryTextColor = ColorProvider(
-        day = Color(0xFF656D76),
-        night = Color(0xFF8B949E)
-    )
-    val accentBlue = ColorProvider(
-        day = Color(0xFF1565C0),
-        night = Color(0xFF0288D1)
-    )
-    val accentTeal = ColorProvider(
-        day = Color(0xFF00897B),
-        night = Color(0xFF4DB6AC)
-    )
-
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(backgroundColor)
-            .padding(12.dp)
+            .cornerRadius(16.dp)
+            .background(GlanceTheme.colors.surface)
+            .padding(16.dp)
             .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
     ) {
         Column(
             modifier = GlanceModifier.fillMaxSize(),
             horizontalAlignment = Alignment.Start
         ) {
-            Text(
-                text = "ANVIL Stats",
-                style = TextStyle(
-                    color = accentBlue,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+            // Header with app name
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "⚒️",
+                    style = TextStyle(fontSize = 16.sp)
                 )
-            )
+                Spacer(modifier = GlanceModifier.width(6.dp))
+                Text(
+                    text = "ANVIL",
+                    style = TextStyle(
+                        color = GlanceTheme.colors.primary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
             
-            Spacer(modifier = GlanceModifier.height(8.dp))
+            Spacer(modifier = GlanceModifier.height(12.dp))
             
+            // Stats Grid - Row 1
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
-                StatItem(
+                StatCard(
                     value = stats.pendingTasks.toString(),
                     label = "Pending",
-                    valueColor = primaryTextColor,
-                    labelColor = secondaryTextColor,
+                    isHighlighted = stats.pendingTasks > 0,
                     modifier = GlanceModifier.defaultWeight()
                 )
                 
-                StatItem(
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                
+                StatCard(
                     value = stats.completedToday.toString(),
                     label = "Done Today",
-                    valueColor = accentTeal,
-                    labelColor = secondaryTextColor,
+                    isSuccess = true,
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
             
             Spacer(modifier = GlanceModifier.height(8.dp))
             
+            // Stats Grid - Row 2
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
-                StatItem(
-                    value = "${(stats.dailyProgress * 100).toInt()}%",
-                    label = "Progress",
-                    valueColor = accentBlue,
-                    labelColor = secondaryTextColor,
-                    modifier = GlanceModifier.defaultWeight()
-                )
+                // Progress indicator
+                Box(
+                    modifier = GlanceModifier
+                        .defaultWeight()
+                        .cornerRadius(12.dp)
+                        .background(GlanceTheme.colors.primaryContainer)
+                        .padding(10.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "${(stats.dailyProgress * 100).toInt()}%",
+                            style = TextStyle(
+                                color = GlanceTheme.colors.primary,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Text(
+                            text = "Progress",
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        )
+                    }
+                }
                 
-                StatItem(
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                
+                StatCard(
                     value = stats.activeBlocks.toString(),
                     label = "Blocked",
-                    valueColor = primaryTextColor,
-                    labelColor = secondaryTextColor,
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
@@ -145,32 +209,50 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
 }
 
 @Composable
-private fun StatItem(
+private fun StatCard(
     value: String,
     label: String,
-    valueColor: ColorProvider,
-    labelColor: ColorProvider,
-    modifier: GlanceModifier = GlanceModifier
+    modifier: GlanceModifier = GlanceModifier,
+    isHighlighted: Boolean = false,
+    isSuccess: Boolean = false
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.Start
+    val backgroundColor = when {
+        isSuccess -> GlanceTheme.colors.secondaryContainer
+        isHighlighted -> GlanceTheme.colors.tertiaryContainer
+        else -> GlanceTheme.colors.surfaceVariant
+    }
+    
+    val valueColor = when {
+        isSuccess -> GlanceTheme.colors.secondary
+        isHighlighted -> GlanceTheme.colors.tertiary
+        else -> GlanceTheme.colors.onSurface
+    }
+    
+    Box(
+        modifier = modifier
+            .cornerRadius(12.dp)
+            .background(backgroundColor)
+            .padding(10.dp)
     ) {
-        Text(
-            text = value,
-            style = TextStyle(
-                color = valueColor,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+        Column(
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = value,
+                style = TextStyle(
+                    color = valueColor,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
-        Text(
-            text = label,
-            style = TextStyle(
-                color = labelColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Normal
+            Text(
+                text = label,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal
+                )
             )
-        )
+        }
     }
 }

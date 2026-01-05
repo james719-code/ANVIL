@@ -1,7 +1,5 @@
 package com.james.anvil.ui
 
-import com.james.anvil.ui.navigation.Screen
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -21,6 +19,8 @@ import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,7 +31,13 @@ import androidx.navigation.NavController
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
-import com.james.anvil.ui.theme.DeepTeal
+import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.AnvilHeader
+import com.james.anvil.ui.navigation.LoansRoute
+import com.james.anvil.ui.theme.ElectricTeal
+import com.james.anvil.ui.theme.ErrorRed
+import com.james.anvil.ui.theme.InfoBlue
+import com.james.anvil.ui.theme.WarningOrange
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -61,24 +67,15 @@ fun BudgetScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Budget", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Loans FAB
                 SmallFloatingActionButton(
-                    onClick = { navController?.navigate(Screen.Loans.route) },
+                    onClick = { navController?.navigate(LoansRoute) },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
@@ -87,172 +84,162 @@ fun BudgetScreen(
                 // Add Entry FAB
                 FloatingActionButton(
                     onClick = { showAddEntrySheet = true },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = "Add Entry")
                 }
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            // Balance Cards
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    BalanceCard(
-                        title = "Cash",
-                        balance = cashBalance - totalCashLoaned,
-                        loaned = totalCashLoaned,
-                        currencyFormat = currencyFormat,
-                        modifier = Modifier.weight(1f)
-                    )
-                    BalanceCard(
-                        title = "GCash",
-                        balance = gcashBalance - totalGcashLoaned,
-                        loaned = totalGcashLoaned,
-                        currencyFormat = currencyFormat,
-                        modifier = Modifier.weight(1f),
-                        isGcash = true
-                    )
-                }
+            // Header
+            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
+                AnvilHeader(title = "Budget", subtitle = "Manage your finances")
+            }
+
+            // Balance Cards (Always Visible)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                BalanceCard(
+                    title = "Cash",
+                    balance = cashBalance - totalCashLoaned,
+                    loaned = totalCashLoaned,
+                    currencyFormat = currencyFormat,
+                    modifier = Modifier.weight(1f),
+                    color = ElectricTeal
+                )
+                BalanceCard(
+                    title = "GCash",
+                    balance = gcashBalance - totalGcashLoaned,
+                    loaned = totalGcashLoaned,
+                    currencyFormat = currencyFormat,
+                    modifier = Modifier.weight(1f),
+                    color = InfoBlue
+                )
             }
             
-            // Loans Quick Access Card
+             // Loans Quick Access (if active)
             if (totalActiveLoanedAmount > 0) {
-                item {
-                    Card(
+                 AnvilCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.3f),
+                    onClick = { navController?.navigate(LoansRoute) }
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { navController?.navigate(Screen.Loans.route) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        )
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Outlined.People,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Column {
-                                    Text(
-                                        text = "Active Loans",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = currencyFormat.format(totalActiveLoanedAmount),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = "View Loans",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, null, tint = WarningOrange, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Active Loans: ${currencyFormat.format(totalActiveLoanedAmount)}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = WarningOrange,
+                                fontWeight = FontWeight.Bold
                             )
                         }
+                        Icon(Icons.Default.ChevronRight, null, tint = WarningOrange)
                     }
                 }
             }
 
-            // Animated Tabs
-            item {
-                TabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        val selected = pagerState.currentPage == index
-                        val color by animateColorAsState(
-                            targetValue = if (selected) MaterialTheme.colorScheme.primary 
-                                          else MaterialTheme.colorScheme.onSurfaceVariant,
-                            animationSpec = tween(300),
-                            label = "tabColor"
-                        )
-                        Tab(
-                            selected = selected,
-                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            text = { 
-                                Text(
-                                    title, 
-                                    color = color,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                ) 
-                            }
-                        )
-                    }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tabs
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = Color.Transparent,
+                divider = {},
+                indicator = { tabPositions ->
+                    TabRowDefaults.Indicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                        color = MaterialTheme.colorScheme.primary,
+                        height = 3.dp
+                    )
+                }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    val selected = pagerState.currentPage == index
+                    Tab(
+                        selected = selected,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = {
+                            Text(
+                                text = title,
+                                style = if (selected) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                        else MaterialTheme.typography.titleSmall,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    )
                 }
             }
 
-            // Content based on pager - simplified without nested pager
-            val filteredEntries = when (pagerState.currentPage) {
-                1 -> budgetEntries.filter { it.type == BudgetType.INCOME }
-                2 -> budgetEntries.filter { it.type == BudgetType.EXPENSE }
-                else -> budgetEntries.take(20)
-            }
+            // Pager Content
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val filteredEntries = when (page) {
+                    1 -> budgetEntries.filter { it.type == BudgetType.INCOME }
+                    2 -> budgetEntries.filter { it.type == BudgetType.EXPENSE }
+                    else -> budgetEntries // Overview shows all (or you can limit to recent)
+                }
+                
+                // Sort by date descending
+                val sortedEntries = filteredEntries.sortedByDescending { it.timestamp }
 
-            if (filteredEntries.isEmpty()) {
-                item {
+                if (sortedEntries.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = Icons.Outlined.AccountBalanceWallet,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(48.dp)
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.size(64.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No entries yet",
-                                style = MaterialTheme.typography.bodyLarge,
+                                text = "No entries found",
+                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Tap + to add income or expenses",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
                     }
-                }
-            } else {
-                items(filteredEntries, key = { it.id }) { entry ->
-                    BudgetEntryItem(
-                        entry = entry,
-                        currencyFormat = currencyFormat,
-                        onEdit = { showEditEntrySheet = entry },
-                        onDelete = { viewModel.deleteBudgetEntry(entry) }
-                    )
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(sortedEntries, key = { it.id }) { entry ->
+                             BudgetEntryItem(
+                                entry = entry,
+                                currencyFormat = currencyFormat,
+                                onEdit = { showEditEntrySheet = entry },
+                                onDelete = { viewModel.deleteBudgetEntry(entry) }
+                            )
+                        }
+                        // Bottom padding for FAB
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
                 }
             }
         }
@@ -295,22 +282,16 @@ private fun BalanceCard(
     loaned: Double,
     currencyFormat: NumberFormat,
     modifier: Modifier = Modifier,
-    isGcash: Boolean = false
+    color: Color
 ) {
-    val cardColor = if (isGcash) Color(0xFF007DFE) else DeepTeal
-    val isPositive = balance >= 0
-
-    Card(
+    AnvilCard(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardColor
-        )
+        containerColor = color
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -319,17 +300,17 @@ private fun BalanceCard(
                 Icon(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = Color.White.copy(alpha = 0.9f),
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     color = Color.White.copy(alpha = 0.9f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = currencyFormat.format(balance),
@@ -343,7 +324,7 @@ private fun BalanceCard(
                 Text(
                     text = "Loaned: ${currencyFormat.format(loaned)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = Color.White.copy(alpha = 0.8f)
                 )
             }
         }
@@ -358,17 +339,10 @@ private fun BudgetEntryItem(
     onDelete: () -> Unit
 ) {
     val isIncome = entry.type == BudgetType.INCOME
-    val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
     var showMenu by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-    ) {
+    AnvilCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -377,36 +351,36 @@ private fun BudgetEntryItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .background(
-                        if (isIncome) DeepTeal.copy(alpha = 0.1f) else Color.Red.copy(alpha = 0.1f),
-                        RoundedCornerShape(10.dp)
+                        if (isIncome) ElectricTeal.copy(alpha = 0.1f) else ErrorRed.copy(alpha = 0.1f),
+                        RoundedCornerShape(12.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isIncome) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
                     contentDescription = null,
-                    tint = if (isIncome) DeepTeal else Color.Red
+                    tint = if (isIncome) ElectricTeal else ErrorRed
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    maxLines = 1
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
+                     Text(
                         text = dateFormat.format(Date(entry.timestamp)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -416,31 +390,33 @@ private fun BudgetEntryItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
+                     Text(
                         text = entry.balanceType.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (entry.balanceType == BalanceType.GCASH) 
-                            Color(0xFF007DFE) else DeepTeal,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else ElectricTeal,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
+            
+            Column(horizontalAlignment = Alignment.End) {
+                 Text(
                     text = "${if (isIncome) "+" else "-"}${currencyFormat.format(entry.amount)}",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isIncome) DeepTeal else Color.Red
+                    color = if (isIncome) ElectricTeal else ErrorRed
                 )
                 
                 Box {
-                    IconButton(onClick = { showMenu = true }) {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = "Options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     DropdownMenu(
@@ -492,8 +468,8 @@ private fun AddBudgetEntrySheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             modifier = Modifier
@@ -502,19 +478,20 @@ private fun AddBudgetEntrySheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Add Entry",
-                style = MaterialTheme.typography.titleLarge,
+                text = "New Transaction",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Type Selector
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Custom Toggle buttons implementation could be better, but FilterChip is standard
                 FilterChip(
                     selected = type == BudgetType.EXPENSE,
                     onClick = { type = BudgetType.EXPENSE },
@@ -522,7 +499,12 @@ private fun AddBudgetEntrySheet(
                     leadingIcon = if (type == BudgetType.EXPENSE) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ErrorRed.copy(alpha=0.1f),
+                        selectedLabelColor = ErrorRed,
+                        selectedLeadingIconColor = ErrorRed
+                    )
                 )
                 FilterChip(
                     selected = type == BudgetType.INCOME,
@@ -531,38 +513,55 @@ private fun AddBudgetEntrySheet(
                     leadingIcon = if (type == BudgetType.INCOME) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
+                        selectedLabelColor = ElectricTeal,
+                        selectedLeadingIconColor = ElectricTeal
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Balance Type Selector
+            Text("Source", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterChip(
                     selected = balanceType == BalanceType.CASH,
                     onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
+                    label = { Text("Cash Wallet") },
                     leadingIcon = if (balanceType == BalanceType.CASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
+                        selectedLabelColor = ElectricTeal,
+                        selectedLeadingIconColor = ElectricTeal
+                    )
                 )
                 FilterChip(
                     selected = balanceType == BalanceType.GCASH,
                     onClick = { balanceType = BalanceType.GCASH },
                     label = { Text("GCash") },
                     leadingIcon = if (balanceType == BalanceType.GCASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = InfoBlue.copy(alpha=0.1f),
+                        selectedLabelColor = InfoBlue,
+                        selectedLeadingIconColor = InfoBlue
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = amount,
@@ -573,15 +572,12 @@ private fun AddBudgetEntrySheet(
                 label = { Text("Amount") },
                 prefix = { Text("₱") },
                 isError = amountError,
-                supportingText = if (amountError) {
-                    { Text("Enter a valid amount") }
-                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = description,
@@ -591,15 +587,12 @@ private fun AddBudgetEntrySheet(
                 },
                 label = { Text("Description") },
                 isError = descriptionError,
-                supportingText = if (descriptionError) {
-                    { Text("Description is required") }
-                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Button(
                 onClick = {
@@ -616,10 +609,13 @@ private fun AddBudgetEntrySheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text(
-                    text = "Save Entry",
+                    text = "Save Transaction",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -669,8 +665,8 @@ private fun EditBudgetEntrySheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             modifier = Modifier
@@ -684,8 +680,8 @@ private fun EditBudgetEntrySheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Edit Entry",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "Edit Transaction",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -698,12 +694,12 @@ private fun EditBudgetEntrySheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Type Selector
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterChip(
                     selected = type == BudgetType.EXPENSE,
@@ -712,7 +708,12 @@ private fun EditBudgetEntrySheet(
                     leadingIcon = if (type == BudgetType.EXPENSE) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                     colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ErrorRed.copy(alpha=0.1f),
+                        selectedLabelColor = ErrorRed,
+                        selectedLeadingIconColor = ErrorRed
+                    )
                 )
                 FilterChip(
                     selected = type == BudgetType.INCOME,
@@ -721,38 +722,55 @@ private fun EditBudgetEntrySheet(
                     leadingIcon = if (type == BudgetType.INCOME) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                     colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
+                        selectedLabelColor = ElectricTeal,
+                        selectedLeadingIconColor = ElectricTeal
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Balance Type Selector
+           // Balance Type Selector
+             Text("Source", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterChip(
                     selected = balanceType == BalanceType.CASH,
                     onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
+                    label = { Text("Cash Wallet") },
                     leadingIcon = if (balanceType == BalanceType.CASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = ElectricTeal.copy(alpha=0.1f),
+                        selectedLabelColor = ElectricTeal,
+                        selectedLeadingIconColor = ElectricTeal
+                    )
                 )
                 FilterChip(
                     selected = balanceType == BalanceType.GCASH,
                     onClick = { balanceType = BalanceType.GCASH },
                     label = { Text("GCash") },
                     leadingIcon = if (balanceType == BalanceType.GCASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+                        { Icon(Icons.Outlined.AccountBalanceWallet, null, modifier = Modifier.size(18.dp)) }
                     } else null,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                     colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = InfoBlue.copy(alpha=0.1f),
+                        selectedLabelColor = InfoBlue,
+                        selectedLeadingIconColor = InfoBlue
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = amount,
@@ -763,15 +781,12 @@ private fun EditBudgetEntrySheet(
                 label = { Text("Amount") },
                 prefix = { Text("₱") },
                 isError = amountError,
-                supportingText = if (amountError) {
-                    { Text("Enter a valid amount") }
-                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = description,
@@ -781,15 +796,12 @@ private fun EditBudgetEntrySheet(
                 },
                 label = { Text("Description") },
                 isError = descriptionError,
-                supportingText = if (descriptionError) {
-                    { Text("Description is required") }
-                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Button(
                 onClick = {
@@ -806,7 +818,10 @@ private fun EditBudgetEntrySheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp),
+             colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text(
                     text = "Save Changes",

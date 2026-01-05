@@ -1,9 +1,14 @@
 package com.james.anvil.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.james.anvil.ui.TaskViewModel
 import com.james.anvil.ui.TasksScreen
 import com.james.anvil.ui.BlocklistScreen
@@ -13,8 +18,8 @@ import com.james.anvil.ui.EditTaskScreen
 import com.james.anvil.ui.BudgetScreen
 import com.james.anvil.ui.LoansScreen
 import androidx.compose.material3.SnackbarHostState
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
+
+private const val NAV_ANIMATION_DURATION = 300
 
 @Composable
 fun NavigationGraph(
@@ -22,32 +27,75 @@ fun NavigationGraph(
     viewModel: TaskViewModel,
     snackbarHostState: SnackbarHostState
 ) {
-    NavHost(navController = navController, startDestination = Screen.Dashboard.route) {
-        composable(Screen.Dashboard.route) {
+    NavHost(
+        navController = navController, 
+        startDestination = DashboardRoute,
+        enterTransition = {
+            fadeIn(animationSpec = tween(NAV_ANIMATION_DURATION)) +
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(NAV_ANIMATION_DURATION)
+            )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(NAV_ANIMATION_DURATION)) +
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(NAV_ANIMATION_DURATION)
+            )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(NAV_ANIMATION_DURATION)) +
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(NAV_ANIMATION_DURATION)
+            )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(NAV_ANIMATION_DURATION)) +
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(NAV_ANIMATION_DURATION)
+            )
+        }
+    ) {
+        // Bottom Navigation Destinations
+        composable<DashboardRoute> {
             DashboardScreen(viewModel, navController)
         }
-        composable(Screen.Tasks.route) {
+        
+        composable<TasksRoute> {
             TasksScreen(viewModel, snackbarHostState, navController)
         }
-        composable(Screen.Blocklist.route) {
+        
+        composable<BlocklistRoute> {
             BlocklistScreen(viewModel)
         }
-        composable(Screen.Settings.route) {
+        
+        composable<SettingsRoute> {
             SettingsScreen(viewModel)
         }
-        composable(Screen.Budget.route) {
-            BudgetScreen(viewModel, navController, onNavigateBack = { navController.popBackStack() })
+        
+        // Secondary Destinations (from Dashboard)
+        composable<BudgetRoute> {
+            BudgetScreen(
+                viewModel = viewModel, 
+                navController = navController, 
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
-        composable(Screen.Loans.route) {
-            LoansScreen(viewModel, onNavigateBack = { navController.popBackStack() })
+        
+        composable<LoansRoute> {
+            LoansScreen(
+                viewModel = viewModel, 
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
-        composable(
-            route = Screen.EditTask.route,
-            arguments = listOf(navArgument("taskId") { type = NavType.LongType })
-        ) { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getLong("taskId") ?: return@composable
-            EditTaskScreen(viewModel, taskId, navController)
+        
+        // Detail Destinations (with arguments)
+        composable<EditTaskRoute> { backStackEntry ->
+            val route: EditTaskRoute = backStackEntry.toRoute()
+            EditTaskScreen(viewModel, route.taskId, navController)
         }
     }
 }
-

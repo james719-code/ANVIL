@@ -28,7 +28,8 @@ fun MotivationCard(
     quote: String,
     modifier: Modifier = Modifier
 ) {
-    val dateString = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date())
+    // Modern Date Format
+    val dateString = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date())
 
     val gradient = Brush.linearGradient(
         colors = listOf(GradientStart, GradientEnd)
@@ -37,62 +38,81 @@ fun MotivationCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(220.dp) // Slightly taller for better spacing
+            .clip(RoundedCornerShape(28.dp)) // More rounded
             .background(gradient)
     ) {
         Column(
             modifier = Modifier
-                .padding(24.dp)
+                .padding(28.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Date header
-            Text(
-                text = "Today, $dateString",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Medium
-                )
-            )
-
-            // Quote
-            Text(
-                text = "\"$quote\"",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                ),
-                maxLines = 3
-            )
-
-            // Progress section
+            // Header Section
             Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$pendingCount tasks pending",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.8f))
+                Text(
+                    text = dateString.uppercase(),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = Color.White.copy(alpha = 0.7f),
+                        letterSpacing = 1.sp
                     )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Progress Summary
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${(dailyProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium.copy(
+                        style = MaterialTheme.typography.displaySmall.copy(
                             color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 32.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Complete",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            color = Color.White.copy(alpha = 0.9f)
                         )
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Quote Section
+            // Using a slightly smaller font for the quote to ensuring it fits
+            Text(
+                text = "\"$quote\"",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    lineHeight = 24.sp
+                ),
+                maxLines = 3,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            // Progress Bar
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Tasks Pending",
+                        style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.7f))
+                    )
+                    Text(
+                        text = "$pendingCount",
+                        style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
                     progress = { dailyProgress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
                     color = Color.White,
                     trackColor = ProgressTrackLight,
                 )
@@ -102,41 +122,17 @@ fun MotivationCard(
 }
 
 // =============================================
-// Preview Functions (Removed in Release Builds)
+// Preview Functions
 // =============================================
 
-@Preview(name = "Motivation Card - 0%", showBackground = true)
+@Preview(name = "Motivation Card - Preview", showBackground = true)
 @Composable
-private fun MotivationCardZeroPreview() {
+private fun MotivationCardPreview() {
     com.james.anvil.ui.theme.ANVILTheme {
         MotivationCard(
-            dailyProgress = 0f,
-            pendingCount = 8,
-            quote = "The journey of a thousand miles begins with one step."
-        )
-    }
-}
-
-@Preview(name = "Motivation Card - 50%", showBackground = true)
-@Composable
-private fun MotivationCardHalfPreview() {
-    com.james.anvil.ui.theme.ANVILTheme {
-        MotivationCard(
-            dailyProgress = 0.5f,
-            pendingCount = 4,
-            quote = "Forge your will like steel."
-        )
-    }
-}
-
-@Preview(name = "Motivation Card - 100%", showBackground = true)
-@Composable
-private fun MotivationCardCompletePreview() {
-    com.james.anvil.ui.theme.ANVILTheme {
-        MotivationCard(
-            dailyProgress = 1f,
-            pendingCount = 0,
-            quote = "Well done is better than well said."
+            dailyProgress = 0.65f,
+            pendingCount = 5,
+            quote = "Obsession is going to beat talent every time."
         )
     }
 }
