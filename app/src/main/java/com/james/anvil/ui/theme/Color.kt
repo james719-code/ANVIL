@@ -3,60 +3,59 @@ package com.james.anvil.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================
-// PRIMARY BLUES - Main brand colors
+// BRAND COLORS
 // ============================================
-val DeepBlue = Color(0xFF1565C0)          // Primary dark blue
-val OceanBlue = Color(0xFF0288D1)         // Primary light blue
-val SkyBlue = Color(0xFF03A9F4)           // Accent blue
-val PaleBlue = Color(0xFFE1F5FE)          // Light blue surface
+val ElectricBlue = Color(0xFF3B82F6)      // Primary Action
+val ElectricTeal = Color(0xFF14B8A6)      // Secondary/Accent
+val MidnightBlue = Color(0xFF0F172A)      // Dark Background
+val SlateGray = Color(0xFF64748B)         // Neutral/Subtext
 
 // ============================================
-// ACCENT TEAL/GREEN - Secondary accents
+// DARK THEME PALETTE
 // ============================================
-val DeepTeal = Color(0xFF00897B)          // Success/positive state
-val MutedTeal = Color(0xFF4DB6AC)         // Secondary accent
-val LightTeal = Color(0xFF80CBC4)         // Tertiary accent
-val PaleTeal = Color(0xFFE0F2F1)          // Light teal surface
+val BackgroundDark = Color(0xFF0F172A)    // Slate 900
+val SurfaceDark = Color(0xFF1E293B)       // Slate 800
+val SurfaceElevatedDark = Color(0xFF334155) // Slate 700
+val TextWhite = Color(0xFFF1F5F9)         // Slate 100
+val TextSecondaryDark = Color(0xFF94A3B8) // Slate 400
+val BorderDark = Color(0xFF334155)        // Slate 700
 
 // ============================================
-// DARK THEME COLORS
+// LIGHT THEME PALETTE
 // ============================================
-val Charcoal = Color(0xFF0D1117)          // Deep background
-val SurfaceDark = Color(0xFF161B22)       // Card surfaces
-val SurfaceElevatedDark = Color(0xFF21262D) // Elevated surfaces
-val SlateGray = Color(0xFF30363D)         // Borders/dividers
-val TextWhite = Color(0xFFE6EDF3)         // Primary text
-val TextSecondaryDark = Color(0xFF8B949E) // Secondary text
-
-// ============================================
-// LIGHT THEME COLORS
-// ============================================
-val PaperWhite = Color(0xFFF6F8FA)        // Background
-val SurfaceLight = Color(0xFFFFFFFF)      // Card surfaces
-val SurfaceElevatedLight = Color(0xFFFFFFFF) // Elevated surfaces
-val BorderLight = Color(0xFFD0D7DE)       // Borders/dividers
-val TextBlack = Color(0xFF1F2328)         // Primary text
-val TextSecondaryLight = Color(0xFF656D76) // Secondary text
+val BackgroundLight = Color(0xFFF8FAFC)   // Slate 50
+val SurfaceLight = Color(0xFFFFFFFF)      // White
+val SurfaceElevatedLight = Color(0xFFF1F5F9) // Slate 100
+val TextBlack = Color(0xFF0F172A)         // Slate 900
+val TextSecondaryLight = Color(0xFF64748B) // Slate 500
+val BorderLight = Color(0xFFE2E8F0)       // Slate 200
 
 // ============================================
 // SEMANTIC COLORS
 // ============================================
-val SuccessGreen = Color(0xFF2DA44E)      // Success states
-val ErrorRed = Color(0xFFCF222E)          // Error states
-val WarningOrange = Color(0xFFBF8700)     // Warning states
+val SuccessGreen = Color(0xFF10B981)      // Emerald 500
+val ErrorRed = Color(0xFFEF4444)          // Red 500
+val WarningOrange = Color(0xFFF59E0B)     // Amber 500
+val InfoBlue = Color(0xFF3B82F6)          // Blue 500
 
 // ============================================
-// GRADIENT COLORS (for MotivationCard etc)
+// GRADIENTS
 // ============================================
-val GradientStart = Color(0xFF1565C0)     // Deep blue
-val GradientEnd = Color(0xFF00897B)       // Deep teal
+val GradientStart = Color(0xFF2563EB)     // Blue 600
+val GradientEnd = Color(0xFF0D9488)       // Teal 600
 val ProgressTrackLight = Color(0x80FFFFFF)
 val ProgressTrackDark = Color(0x40FFFFFF)
 
 // ============================================
-// LEGACY COLORS (for compatibility)
+// LEGACY COLORS (Restored for compatibility)
 // ============================================
-val DeepSkyBlue = OceanBlue
-val PrimaryBlue = DeepBlue
-val SecondarySlate = SlateGray
-val SecondaryGrey = Color(0xFFECEFF1)
+val DeepTeal = Color(0xFF00897B)
+val MutedTeal = Color(0xFF4DB6AC)
+val LightTeal = Color(0xFF80CBC4)
+val PaleTeal = Color(0xFFE0F2F1)
+val DeepBlue = Color(0xFF1565C0)
+val OceanBlue = Color(0xFF0288D1)
+val SkyBlue = Color(0xFF03A9F4)
+val PaleBlue = Color(0xFFE1F5FE)
+val Charcoal = Color(0xFF0D1117)
+val PaperWhite = Color(0xFFF6F8FA)

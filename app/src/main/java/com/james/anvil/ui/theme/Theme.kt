@@ -5,55 +5,52 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = OceanBlue,
+    primary = ElectricBlue,
     onPrimary = Color.White,
-    primaryContainer = DeepBlue,
-    onPrimaryContainer = PaleBlue,
-    secondary = MutedTeal,
+    primaryContainer = ElectricBlue.copy(alpha = 0.2f),
+    onPrimaryContainer = ElectricBlue,
+    secondary = ElectricTeal,
     onSecondary = Color.White,
-    secondaryContainer = DeepTeal,
-    onSecondaryContainer = PaleTeal,
-    tertiary = LightTeal,
-    onTertiary = Charcoal,
-    background = Charcoal,
+    secondaryContainer = ElectricTeal.copy(alpha = 0.2f),
+    onSecondaryContainer = ElectricTeal,
+    tertiary = WarningOrange,
+    onTertiary = Color.White,
+    background = BackgroundDark,
     onBackground = TextWhite,
     surface = SurfaceDark,
     onSurface = TextWhite,
     surfaceVariant = SurfaceElevatedDark,
     onSurfaceVariant = TextSecondaryDark,
-    outline = SlateGray,
+    outline = BorderDark,
     error = ErrorRed,
     onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = DeepBlue,
+    primary = ElectricBlue,
     onPrimary = Color.White,
-    primaryContainer = PaleBlue,
-    onPrimaryContainer = DeepBlue,
-    secondary = DeepTeal,
+    primaryContainer = ElectricBlue.copy(alpha = 0.1f),
+    onPrimaryContainer = ElectricBlue,
+    secondary = ElectricTeal,
     onSecondary = Color.White,
-    secondaryContainer = PaleTeal,
-    onSecondaryContainer = DeepTeal,
-    tertiary = MutedTeal,
+    secondaryContainer = ElectricTeal.copy(alpha = 0.1f),
+    onSecondaryContainer = ElectricTeal,
+    tertiary = WarningOrange,
     onTertiary = Color.White,
-    background = PaperWhite,
+    background = BackgroundLight,
     onBackground = TextBlack,
     surface = SurfaceLight,
     onSurface = TextBlack,
-    surfaceVariant = PaperWhite,
+    surfaceVariant = SurfaceElevatedLight,
     onSurfaceVariant = TextSecondaryLight,
     outline = BorderLight,
     error = ErrorRed,
@@ -63,15 +60,11 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun ANVILTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Disable dynamic color by default for consistent branding
+    // Dynamic color is disabled to enforce our custom branding
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
@@ -89,6 +82,7 @@ fun ANVILTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }

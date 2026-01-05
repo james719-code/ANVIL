@@ -26,7 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.james.anvil.ui.TaskViewModel
 import com.james.anvil.ui.navigation.NavigationGraph
-import com.james.anvil.ui.navigation.Screen
+import com.james.anvil.ui.navigation.NavItem
 import com.james.anvil.ui.theme.ANVILTheme
 import java.text.SimpleDateFormat
 import java.util.*
@@ -51,8 +51,11 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.DailyTaskResetWorker
 import com.james.anvil.worker.ReminderWorker
+import com.james.anvil.worker.WidgetRefreshWorker
+import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: TaskViewModel by viewModels()
 
@@ -90,6 +93,15 @@ class MainActivity : ComponentActivity() {
             "AnvilDailyReset",
             ExistingPeriodicWorkPolicy.KEEP,
             dailyResetRequest
+        )
+        
+        // Schedule WidgetRefreshWorker to run every 30 minutes
+        val widgetRefreshRequest = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(30, TimeUnit.MINUTES)
+            .build()
+        workManager.enqueueUniquePeriodicWork(
+            WidgetRefreshWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            widgetRefreshRequest
         )
     }
 }
@@ -296,12 +308,7 @@ fun MainScreen(viewModel: TaskViewModel) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    val screens = listOf(
-        Screen.Dashboard,
-        Screen.Tasks,
-        Screen.Blocklist,
-        Screen.Settings
-    )
+    val navItems = NavItem.bottomNavItems
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -310,13 +317,22 @@ fun MainScreen(viewModel: TaskViewModel) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
                     
-                    screens.forEach { screen ->
+                    navItems.forEach { item ->
+                        val isSelected = currentDestination?.hierarchy?.any { 
+                            it.route?.contains(item.routeClass.simpleName ?: "") == true 
+                        } == true
+                        
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = { Text(screen.title) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            icon = { 
+                                Icon(
+                                    imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon, 
+                                    contentDescription = item.title
+                                ) 
+                            },
+                            label = { Text(item.title) },
+                            selected = isSelected,
                             onClick = {
-                                navController.navigate(screen.route) {
+                                navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
