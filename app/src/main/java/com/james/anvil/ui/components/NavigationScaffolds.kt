@@ -56,8 +56,9 @@ fun SecondaryScreenScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .statusBarsPadding()
         ) {
+
             // Inline header with back button
             Row(
                 modifier = Modifier
@@ -178,8 +179,9 @@ fun CollapsibleScreenScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .statusBarsPadding()
             ) {
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -222,8 +224,9 @@ fun CollapsibleScreenScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .statusBarsPadding()
             ) {
+
                 ScreenHeader(
                     title = title,
                     subtitle = subtitle

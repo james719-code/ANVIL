@@ -29,9 +29,17 @@ import androidx.navigation.NavController
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
+import com.james.anvil.data.BonusTask
+import com.james.anvil.ui.components.BonusTaskBottomSheet
 import com.james.anvil.ui.components.CollapsibleScreenScaffold
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.TaskItem
+import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.theme.ForgedGold
+import com.james.anvil.ui.theme.IndustrialGreyLight
+import com.james.anvil.ui.theme.IndustrialBorder
+
+
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -42,23 +50,33 @@ fun TasksScreen(
     snackbarHostState: SnackbarHostState,
     navController: NavController? = null
 ) {
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Standard", "Bonus")
+    
     var showAddTaskSheet by remember { mutableStateOf(false) }
+    var showAddBonusSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
 
     
     var showInfoDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Long?>(null) }
     var editingTaskId by remember { mutableStateOf<Long?>(null) }
+    var editingBonusTask by remember { mutableStateOf<BonusTask?>(null) }
+
 
     val scope = rememberCoroutineScope()
 
     
     val allTasks by viewModel.tasks.collectAsState(initial = emptyList())
     val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
+    val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
+    
     val selectedTask = remember(allTasks, selectedTaskId) {
         allTasks.find { it.id == selectedTaskId }
     }
+
     val editingTask = remember(allTasks, editingTaskId) {
         allTasks.find { it.id == editingTaskId }
     }
@@ -79,112 +97,172 @@ fun TasksScreen(
         subtitle = "Manage your work",
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddTaskSheet = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                onClick = { 
+                    if (selectedTabIndex == 0) showAddTaskSheet = true 
+                    else showAddBonusSheet = true 
+                },
+                containerColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.primary else ForgedGold,
+                contentColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.onPrimary else Color.Black
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Task")
             }
         }
     ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            CategoryFilterRow(
-                categories = listOf("All") + existingCategories,
-                selectedCategory = selectedCategory ?: "All",
-                onCategorySelected = { selectedCategory = if (it == "All") null else it }
-            )
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Pending Tasks
-                if (tasks.isEmpty()) {
-                    item {
+            if (selectedTabIndex == 0) {
+                // Standard Tasks Content
+                CategoryFilterRow(
+                    categories = listOf("All") + existingCategories,
+                    selectedCategory = selectedCategory ?: "All",
+                    onCategorySelected = { selectedCategory = if (it == "All") null else it }
+                )
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Pending Tasks
+                    if (tasks.isEmpty()) {
+                        item {
+                            EmptyState(
+                                message = "No pending tasks. You are free.",
+                                icon = Icons.Default.Check,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp)
+                            )
+                        }
+                    } else {
+                        items(tasks, key = { it.id }) { task ->
+                            TaskItem(
+                                task = task,
+                                onComplete = { viewModel.completeTask(task) },
+                                onEdit = { editingTaskId = task.id },
+                                onDelete = {
+                                    viewModel.deleteTask(task)
+                                    scope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "Task deleted",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.undoDeleteTask(task)
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .animateItem()
+                                    .combinedClickable(
+                                        onClick = {
+                                            selectedTaskId = task.id
+                                            showInfoDialog = true
+                                        },
+                                        onLongClick = {
+                                            selectedTaskId = task.id
+                                            showOptionsDialog = true
+                                        }
+                                    )
+                            )
+                        }
+                    }
+
+                    // Completed Tasks Section
+                    if (completedTasks.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Completed",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+
+                        items(completedTasks, key = { "completed_${it.id}" }) { task ->
+                            SwipeToDismissItem(
+                                onDismiss = { viewModel.deleteTask(task) }
+                            ) {
+                                ListItem(
+                                    headlineContent = {
+                                        Text(
+                                            task.title,
+                                            style = androidx.compose.ui.text.TextStyle(
+                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            "${task.category} • ${formatDate(task.completedAt ?: System.currentTimeMillis())}",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Bonus Tasks Content
+                if (bonusTasks.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         EmptyState(
-                            message = "No pending tasks. You are free.",
-                            icon = Icons.Default.Check,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp)
+                            message = "No bonus tasks recorded yet.\nDo something extra today!",
+                            icon = Icons.Default.Star
                         )
                     }
                 } else {
-                    items(tasks, key = { it.id }) { task ->
-                        TaskItem(
-                            task = task,
-                            onComplete = { viewModel.completeTask(task) },
-                            onEdit = { editingTaskId = task.id },
-                            onDelete = {
-                                viewModel.deleteTask(task)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Task deleted",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.undoDeleteTask(task)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 100.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(bonusTasks, key = { it.id }) { task ->
+                            BonusTaskItem(
+                                task = task,
+                                onEdit = { editingBonusTask = task },
+                                onDelete = {
+                                    viewModel.deleteBonusTask(task)
+                                    scope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "Bonus task removed",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.addBonusTask(task.title, task.description, task.category)
+                                        }
                                     }
-                                }
-                            },
-                            modifier = Modifier
-                                .animateItem()
-                                .combinedClickable(
-                                    onClick = {
-                                        selectedTaskId = task.id
-                                        showInfoDialog = true
-                                    },
-                                    onLongClick = {
-                                        selectedTaskId = task.id
-                                        showOptionsDialog = true
-                                    }
-                                )
-                        )
-                    }
-                }
-
-                // Completed Tasks Section
-                if (completedTasks.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Completed",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                    }
-
-                    items(completedTasks, key = { "completed_${it.id}" }) { task ->
-                        SwipeToDismissItem(
-                            onDismiss = { viewModel.deleteTask(task) }
-                        ) {
-                            ListItem(
-                                headlineContent = { 
-                                    Text(
-                                        task.title, 
-                                        style = androidx.compose.ui.text.TextStyle(
-                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                        ),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ) 
-                                },
-                                supportingContent = {
-                                    Text(
-                                        "${task.category} • ${formatDate(task.completedAt ?: System.currentTimeMillis())}",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                },
-                                leadingContent = { 
-                                    Icon(
-                                        Icons.Default.Check, 
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    ) 
                                 }
                             )
                         }
@@ -193,6 +271,28 @@ fun TasksScreen(
             }
         }
     }
+
+    if (showAddBonusSheet) {
+        BonusTaskBottomSheet(
+            onDismiss = { showAddBonusSheet = false },
+            onSave = { title, description ->
+                viewModel.addBonusTask(title, description)
+                showAddBonusSheet = false
+            }
+        )
+    }
+
+    if (editingBonusTask != null) {
+        BonusTaskBottomSheet(
+            task = editingBonusTask,
+            onDismiss = { editingBonusTask = null },
+            onSave = { title, description ->
+                viewModel.updateBonusTask(editingBonusTask!!.copy(title = title, description = description))
+                editingBonusTask = null
+            }
+        )
+    }
+
 
     
 
@@ -826,6 +926,79 @@ fun TaskOptionsDialog(
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text("Delete")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BonusTaskItem(
+    task: BonusTask,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    AnvilCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (!task.description.isNullOrBlank()) {
+                    Text(
+                        text = task.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = ForgedGold,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "RECOGNIZED: ${formatDate(task.completedAt).uppercase()}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = ForgedGold
+                    )
+                }
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
