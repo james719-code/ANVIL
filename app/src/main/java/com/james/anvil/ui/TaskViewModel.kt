@@ -373,6 +373,12 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateBonusTask(bonusTask: BonusTask) {
+        viewModelScope.launch {
+            bonusTaskDao.insert(bonusTask) // replaceable insert acts as update
+        }
+    }
+
     fun deleteBonusTask(bonusTask: BonusTask) {
         viewModelScope.launch {
             bonusTaskDao.delete(bonusTask)

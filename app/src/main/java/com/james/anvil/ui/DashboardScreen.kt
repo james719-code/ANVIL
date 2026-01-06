@@ -4,8 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -26,12 +29,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.james.anvil.ui.components.AddBonusTaskBottomSheet
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.components.ContributionGraph
 import com.james.anvil.ui.components.MotivationCard
 import com.james.anvil.ui.theme.ElectricTeal
+import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.WarningOrange
 import java.text.NumberFormat
@@ -59,7 +64,6 @@ fun DashboardScreen(
     // Actually, viewModel.bonusTasks triggers updates, but grace days calculation depends on bonusManager which uses SharedPreferences.
     // It's better if we just assume the value is updated when bonusTaskCount changes or screen recomposes.
     
-    var showBonusSheet by remember { mutableStateOf(false) }
     var showGraceExchangeDialog by remember { mutableStateOf(false) }
 
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
@@ -86,17 +90,41 @@ fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
-            contentPadding = PaddingValues(top = innerPadding.calculateTopPadding() + 16.dp, bottom = 16.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
         ) {
+
+
             // Header Section
             item {
-                AnvilHeader(
-                    title = greeting,
-                    subtitle = "Let's make today count."
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    AnvilHeader(
+                        title = greeting,
+                        subtitle = "Let's make today count.",
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { onNavigateToPage?.invoke(5) },
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                }
             }
+
 
             // Hero Section: Motivation
             item {
@@ -116,6 +144,7 @@ fun DashboardScreen(
                     // Pending
                     StatChip(
                         modifier = Modifier.weight(1f),
+                        onClick = { onNavigateToPage?.invoke(1) },
                         icon = Icons.Outlined.Schedule,
                         label = "Pending",
                         value = "$totalPendingCount",
@@ -124,6 +153,7 @@ fun DashboardScreen(
                     // Completed
                     StatChip(
                         modifier = Modifier.weight(1f),
+                        onClick = { onNavigateToPage?.invoke(1) },
                         icon = Icons.Outlined.CheckCircle,
                         label = "Done",
                         value = "$completedTodayCount",
@@ -131,22 +161,21 @@ fun DashboardScreen(
                     )
                     // Bonus
                     StatChip(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showBonusSheet = true },
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigateToPage?.invoke(4) },
                         icon = Icons.Outlined.Star,
                         label = "Bonus",
                         value = "$bonusTaskCount",
                         color = WarningOrange
                     )
+
                 }
             }
             
             // Grace Period & Exchange
             if (graceDays > 0 || bonusTaskCount >= 3) {
-                 item {
+                  item {
                     AnvilCard(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha=0.4f),
                         onClick = {
                             if (bonusTaskCount >= 3) {
                                 showGraceExchangeDialog = true
@@ -154,38 +183,57 @@ fun DashboardScreen(
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(20.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
-                                Text(
-                                    "Grace Days Available: $graceDays",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                if (bonusTaskCount >= 3) {
-                                    Text(
-                                        "Tap to exchange 3 bonus tasks for 1 grace day",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Star, 
+                                        null, 
+                                        tint = ForgedGold, 
+                                        modifier = Modifier.size(14.dp)
                                     )
-                                } else {
-                                     Text(
-                                        "Earn 3 bonus tasks to get 1 grace day",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        "REWARD SYSTEM",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            letterSpacing = 1.sp,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = ForgedGold
                                     )
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Grace Days: $graceDays",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    if (bonusTaskCount >= 3) "Can exchange bonus tasks now" 
+                                    else "Need ${3 - bonusTaskCount} more bonus tasks for a grace day",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             if (bonusTaskCount >= 3) {
-                                Icon(Icons.Filled.Warning, "Exchange", tint = MaterialTheme.colorScheme.primary)
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(ForgedGold.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Filled.Warning, "Exchange", tint = ForgedGold, modifier = Modifier.size(20.dp))
+                                }
                             }
                         }
                     }
                 }
             }
+
 
             // Finance & Shield Grid
             item {
@@ -222,7 +270,8 @@ fun DashboardScreen(
 
                     // Shield Card
                     AnvilCard(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigateToPage?.invoke(3) }
                     ) {
                         Column(
                             modifier = Modifier.padding(20.dp)
@@ -252,7 +301,6 @@ fun DashboardScreen(
             if (activeLoans.isNotEmpty()) {
                 item {
                     AnvilCard(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.3f), // Warning tint
                         onClick = { onNavigateToPage?.invoke(2) }
                     ) {
                         Row(
@@ -264,18 +312,26 @@ fun DashboardScreen(
                         ) {
                             Column {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.Warning, null, tint = WarningOrange, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Filled.Warning, 
+                                        null, 
+                                        tint = ForgedGold, 
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        "Active Loans",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = WarningOrange
+                                        "ACTIVE DEBT",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            letterSpacing = 1.sp,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = ForgedGold
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     currencyFormat.format(totalActiveLoanedAmount),
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -285,19 +341,25 @@ fun DashboardScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Icon(
-                                Icons.Outlined.People,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurface,
+                            
+                            Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha=0.5f), RoundedCornerShape(16.dp))
-                                    .padding(10.dp)
-                            )
+                                    .size(52.dp)
+                                    .background(ForgedGold.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Outlined.People,
+                                    null,
+                                    tint = ForgedGold,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
+
 
             // Consistency Graph
             item {
@@ -319,16 +381,8 @@ fun DashboardScreen(
         }
     }
     
-    if (showBonusSheet) {
-        AddBonusTaskBottomSheet(
-            onDismiss = { showBonusSheet = false },
-            onSave = { title, description ->
-                viewModel.addBonusTask(title, description)
-            }
-        )
-    }
-    
     if (showGraceExchangeDialog) {
+
         AlertDialog(
             onDismissRequest = { showGraceExchangeDialog = false },
             title = { Text("Redeem Grace Day?") },
@@ -355,12 +409,17 @@ fun DashboardScreen(
 @Composable
 fun StatChip(
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     icon: ImageVector,
     label: String,
     value: String,
     color: Color
 ) {
-    AnvilCard(modifier = modifier) {
+    AnvilCard(
+        modifier = modifier,
+        onClick = onClick
+    ) {
+
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally

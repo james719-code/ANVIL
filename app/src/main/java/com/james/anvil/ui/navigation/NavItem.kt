@@ -12,6 +12,9 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
+
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.reflect.KClass
 
@@ -58,6 +61,15 @@ sealed class NavItem<T : Any>(
         unselectedIcon = Icons.Outlined.Block
     )
     
+    data object BonusTasks : NavItem<BonusTasksRoute>(
+        route = BonusTasksRoute,
+        routeClass = BonusTasksRoute::class,
+        title = "Bonus",
+        selectedIcon = Icons.Filled.Star,
+        unselectedIcon = Icons.Outlined.Star
+    )
+
+    
     data object Settings : NavItem<SettingsRoute>(
         route = SettingsRoute,
         routeClass = SettingsRoute::class,
@@ -67,6 +79,7 @@ sealed class NavItem<T : Any>(
     )
     
     companion object {
-        val bottomNavItems = listOf(Dashboard, Tasks, Budget, Blocklist, Settings)
+        val bottomNavItems = listOf(Dashboard, Tasks, Budget, Blocklist)
     }
+
 }

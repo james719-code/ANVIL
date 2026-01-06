@@ -7,10 +7,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.Brush
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -22,20 +24,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.AnvilCard
-import com.james.anvil.ui.theme.ElectricTeal
-import com.james.anvil.ui.theme.ErrorRed
-import com.james.anvil.ui.theme.InfoBlue
-import com.james.anvil.ui.theme.WarningOrange
+import com.james.anvil.ui.components.AnvilHeader
+import com.james.anvil.ui.theme.*
 import java.text.NumberFormat
+
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -88,44 +92,196 @@ fun BudgetScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 16.dp)
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
+
             // Header
             item {
-                Text(
-                    text = "Budget",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                AnvilHeader(
+                    title = "The Vault",
+                    subtitle = "Financial logistics & audit"
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
+
+            // Ultra-Premium Bank Card Design
+            item {
+                AnvilCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    0.0f to Color(0xFF1E3A8A),
+                                    0.4f to Color(0xFF0F172A),
+                                    1.0f to Color(0xFF000000)
+                                )
+                            )
+                    ) {
+                        // Decorative hologram-like orbs
+                        Box(
+                            modifier = Modifier
+                                .size(240.dp)
+                                .offset(x = 100.dp, y = (-120).dp)
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(Color(0xFF3B82F6).copy(alpha = 0.15f), Color.Transparent)
+                                    )
+                                )
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Top Row: Brand & Wireless
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "ANVIL",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            letterSpacing = 2.sp
+                                        ),
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "PREMIER VAULT",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 3.sp
+                                        ),
+                                        color = ForgedGold.copy(alpha = 0.8f)
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.Contactless,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(28.dp).rotate(90f)
+                                )
+                            }
+
+                            // Middle: The Chip & Balance
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Gold EMV Chip
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 45.dp, height = 35.dp)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(Color(0xFFFFD700), Color(0xFFB8860B))
+                                            ),
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(4.dp)
+                                ) {
+                                    // Subtle chip lines
+                                    Column(verticalArrangement = Arrangement.SpaceEvenly) {
+                                        repeat(3) {
+                                            Divider(color = Color.Black.copy(alpha = 0.2f), thickness = 0.5.dp)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(20.dp))
+                                
+                                Text(
+                                    text = currencyFormat.format(cashBalance + gcashBalance - totalCashLoaned - totalGcashLoaned),
+                                    style = MaterialTheme.typography.displaySmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-1).sp
+                                    ),
+                                    color = Color.White
+                                )
+                            }
+
+                            // Bottom: "Cardholder" Name & Liabilities
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "MEMBERSHIP CAPITAL",
+                                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                        color = Color.White.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        text = "JAMES RYAN", // Standardizing to user label
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = Color.White
+                                    )
+                                }
+
+                                // Liability Labeling
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "TOTAL LIABILITIES",
+                                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                        color = Color.White.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        text = currencyFormat.format(totalCashLoaned + totalGcashLoaned),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = if (totalCashLoaned + totalGcashLoaned > 0) Color(0xFFFFB3B3) else ForgedGold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(30.dp))
+            }
+
+
+
 
             // Balance Cards
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+
                     BalanceCard(
-                        title = "Cash",
+                        title = "Cash Reserves",
                         balance = cashBalance - totalCashLoaned,
                         loaned = totalCashLoaned,
                         currencyFormat = currencyFormat,
                         modifier = Modifier.weight(1f),
-                        color = ElectricTeal
+                        color = SteelBlue,
+                        icon = Icons.Default.Wallet
                     )
                     BalanceCard(
-                        title = "GCash",
+                        title = "GCash Digital",
                         balance = gcashBalance - totalGcashLoaned,
                         loaned = totalGcashLoaned,
                         currencyFormat = currencyFormat,
                         modifier = Modifier.weight(1f),
-                        color = InfoBlue
+                        color = InfoBlue,
+                        icon = Icons.Default.Smartphone
                     )
+
                 }
             }
 
@@ -133,7 +289,7 @@ fun BudgetScreen(
             item {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
@@ -226,8 +382,9 @@ fun BudgetScreen(
                                 currencyFormat = currencyFormat,
                                 onRepayClick = { showRepaymentSheet = loan },
                                 onDeleteClick = { viewModel.deleteLoan(loan) },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                                modifier = Modifier.padding(vertical = 6.dp)
                             )
+
                         }
                     }
                 }
@@ -253,7 +410,7 @@ fun BudgetScreen(
                                 currencyFormat = currencyFormat,
                                 onEdit = { showEditEntrySheet = entry },
                                 onDelete = { viewModel.deleteBudgetEntry(entry) },
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                                modifier = Modifier.padding(vertical = 6.dp)
                             )
                         }
                     }
@@ -347,54 +504,87 @@ private fun BalanceCard(
     loaned: Double,
     currencyFormat: NumberFormat,
     modifier: Modifier = Modifier,
-    color: Color
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.AccountBalanceWallet
 ) {
     AnvilCard(
-        modifier = modifier,
-        containerColor = color
+        modifier = modifier.height(130.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.size(20.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(color.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.9f)
+                    text = title.split(" ").first().uppercase(), // Just first word for professional look
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Black
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = currencyFormat.format(balance),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            if (loaned > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
+            Column {
                 Text(
-                    text = "Loaned: ${currencyFormat.format(loaned)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f)
+                    text = currencyFormat.format(balance),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+
+                if (loaned > 0) {
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "→ ${currencyFormat.format(loaned)}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(ForgedGold.copy(alpha = 0.15f), CircleShape)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                "LOANED",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp),
+                                color = ForgedGold
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
+
+
+
 
 @Composable
 private fun BudgetEntryItem(
@@ -404,21 +594,22 @@ private fun BudgetEntryItem(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isIncome = entry.type == BudgetType.INCOME
-    val isLoanOut = entry.type == BudgetType.LOAN_OUT
-    val isLoanRepayment = entry.type == BudgetType.LOAN_REPAYMENT
     val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
     var showMenu by remember { mutableStateOf(false) }
     
-    // Determine colors and icons based on type
     val (bgColor, iconColor, icon, prefix) = when (entry.type) {
-        BudgetType.INCOME -> Quadruple(ElectricTeal.copy(alpha = 0.1f), ElectricTeal, Icons.Outlined.ArrowDownward, "+")
-        BudgetType.EXPENSE -> Quadruple(ErrorRed.copy(alpha = 0.1f), ErrorRed, Icons.Outlined.ArrowUpward, "-")
-        BudgetType.LOAN_OUT -> Quadruple(WarningOrange.copy(alpha = 0.1f), WarningOrange, Icons.Outlined.Person, "→")
-        BudgetType.LOAN_REPAYMENT -> Quadruple(ElectricTeal.copy(alpha = 0.1f), ElectricTeal, Icons.Outlined.Person, "←")
+        BudgetType.INCOME -> Quadruple(ElectricTeal.copy(alpha = 0.15f), ElectricTeal, Icons.Outlined.ArrowDownward, "+")
+        BudgetType.EXPENSE -> Quadruple(ErrorRed.copy(alpha = 0.15f), ErrorRed, Icons.Outlined.ArrowUpward, "-")
+        BudgetType.LOAN_OUT -> Quadruple(WarningOrange.copy(alpha = 0.15f), WarningOrange, Icons.Outlined.Person, "→")
+        BudgetType.LOAN_REPAYMENT -> Quadruple(ElectricTeal.copy(alpha = 0.15f), ElectricTeal, Icons.Outlined.Person, "←")
     }
 
-    AnvilCard(modifier = modifier) {
+    AnvilCard(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -427,14 +618,15 @@ private fun BudgetEntryItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(bgColor, RoundedCornerShape(12.dp)),
+                    .size(44.dp)
+                    .background(bgColor, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = iconColor
+                    tint = iconColor,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -443,31 +635,32 @@ private fun BudgetEntryItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.description,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = dateFormat.format(Date(entry.timestamp)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = dateFormat.format(Date(entry.timestamp)).uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
+
                     Text(
                         text = "•",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
+
                     Text(
                         text = entry.balanceType.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else ElectricTeal,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                        color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else SteelBlueLight
                     )
                 }
             }
@@ -475,48 +668,35 @@ private fun BudgetEntryItem(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "$prefix${currencyFormat.format(entry.amount)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = iconColor
                 )
 
-                Box {
-                    IconButton(
-                        onClick = { showMenu = true },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "Options",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit") },
-                            onClick = {
-                                showMenu = false
-                                onEdit()
-                            },
+                            onClick = { onEdit(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Edit, null) }
                         )
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
+                            onClick = { onDelete(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
                         )
                     }
                 }
@@ -524,6 +704,7 @@ private fun BudgetEntryItem(
         }
     }
 }
+
 
 @Composable
 private fun LoanItem(
@@ -535,142 +716,146 @@ private fun LoanItem(
 ) {
     val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
     val progress = 1 - (loan.remainingAmount / loan.originalAmount).coerceIn(0.0, 1.0)
-    val isGcash = loan.balanceType == BalanceType.GCASH
     var showMenu by remember { mutableStateOf(false) }
 
-    AnvilCard(modifier = modifier) {
+    AnvilCard(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .background(
-                                WarningOrange.copy(alpha = 0.1f),
-                                RoundedCornerShape(12.dp)
-                            ),
+                            .size(48.dp)
+                            .background(ForgedGold.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Person,
                             contentDescription = null,
-                            tint = WarningOrange
+                            tint = ForgedGold
                         )
                     }
                     Column {
                         Text(
                             text = loan.borrowerName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
                         Text(
-                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate))}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate)).uppercase()}",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
+
                     }
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = currencyFormat.format(loan.remainingAmount),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = WarningOrange
-                        )
-                        if (loan.remainingAmount != loan.originalAmount) {
-                            Text(
-                                text = "of ${currencyFormat.format(loan.originalAmount)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "Options",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Add Repayment") },
-                                onClick = {
-                                    showMenu = false
-                                    onRepayClick()
-                                },
-                                leadingIcon = { Icon(Icons.Default.Add, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    showMenu = false
-                                    onDeleteClick()
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            )
-                        }
-                    }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = currencyFormat.format(loan.remainingAmount),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                        color = ForgedGold
+                    )
+                    Text(
+                        text = "REMAINING",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Bold),
+                        color = ForgedGold.copy(alpha = 0.6f)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Progress bar
-            LinearProgressIndicator(
-                progress = { progress.toFloat() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp),
-                color = WarningOrange,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            // Premium Progress indicator
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "REPAYMENT PROGRESS",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
 
-            if (loan.status != LoanStatus.FULLY_REPAID) {
-                Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                }
+                
+                LinearProgressIndicator(
+                    progress = { progress.toFloat() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = ForgedGold,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                )
+
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Button(
                     onClick = onRepayClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = WarningOrange
-                    )
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ForgedGold, contentColor = Color.Black)
                 ) {
-                    Text("Add Repayment")
+                    Text("SETTLE PAYMENT", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                }
+                
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                ) {
+                    Icon(Icons.Default.MoreVert, null, tint = MaterialTheme.colorScheme.onSurface)
+
+                    
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Delete Audit") },
+                            onClick = { onDeleteClick(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

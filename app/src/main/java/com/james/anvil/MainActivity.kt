@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +27,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import kotlin.math.roundToInt
+
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +58,10 @@ import com.james.anvil.ui.TasksScreen
 import com.james.anvil.ui.BudgetScreen
 import com.james.anvil.ui.BlocklistScreen
 import com.james.anvil.ui.SettingsScreen
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 import com.james.anvil.ui.theme.ANVILTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -67,6 +83,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -87,13 +104,54 @@ class MainActivity : ComponentActivity() {
         setContent {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
             ANVILTheme(darkTheme = isDarkTheme) {
-                MainScreen(viewModel)
+                var showSettings by remember { mutableStateOf(false) }
+                
+                // Handle back button when settings is open
+                BackHandler(enabled = showSettings) {
+                    showSettings = false
+                }
+
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Main App Content - Stays alive in the background
+                        MainScreen(
+                            viewModel = viewModel, 
+                            onNavigateToSettings = { showSettings = true }
+                        )
+                        
+                        // Settings Overlay - Slides over the main content
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showSettings,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(400)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(400)
+                            )
+                        ) {
+                            SettingsScreen(
+                                viewModel = viewModel,
+                                onBack = { showSettings = false }
+                            )
+
+                        }
+                    }
+                }
+
+
+
                 BatteryOptimizationCheck()
                 UsageAccessCheck()
                 NotificationPermissionCheck()
             }
         }
     }
+
 
     private fun scheduleWorkers() {
         val workManager = WorkManager.getInstance(this)
@@ -411,11 +469,12 @@ fun GuideStep(number: Int, title: String, description: String) {
 }
 
 @Composable
-fun MainScreen(viewModel: TaskViewModel) {
+fun MainScreen(viewModel: TaskViewModel, onNavigateToSettings: () -> Unit) {
     val snackbarHostState = remember { SnackbarHostState() }
     val navItems = NavItem.bottomNavItems
-    val pagerState = rememberPagerState(pageCount = { navItems.size })
+    val pagerState = rememberPagerState(pageCount = { 4 }) // Home, Tasks, Budget, Blocklist
     val scope = rememberCoroutineScope()
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -436,22 +495,33 @@ fun MainScreen(viewModel: TaskViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding()),
-                beyondViewportPageCount = 1
+                beyondViewportPageCount = 3
             ) { page ->
                 when (page) {
                     0 -> DashboardScreen(
                         viewModel = viewModel,
                         onNavigateToPage = { targetPage ->
-                            scope.launch { pagerState.animateScrollToPage(targetPage) }
+                            // Map existing indices if needed, or handle special cases
+                            if (targetPage == 5) {
+                                onNavigateToSettings()
+                            } else if (targetPage == 4) {
+                                // Bonus tasks is now a tab in Tasks (index 1)
+                                scope.launch { 
+                                    pagerState.animateScrollToPage(1)
+                                }
+                            } else {
+                                scope.launch { pagerState.animateScrollToPage(targetPage) }
+                            }
                         }
                     )
+
                     1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
                     2 -> BudgetScreen(viewModel = viewModel)
                     3 -> BlocklistScreen(viewModel = viewModel)
-                    4 -> SettingsScreen(viewModel = viewModel)
                 }
             }
         }
+
         
         SnackbarHost(
             hostState = snackbarHostState,
@@ -504,15 +574,16 @@ fun SlidingNavigationBar(
                     ((currentPage + offset) * itemWidth.toPx()).roundToInt()
                 }
                 
+                // Sleek Pill Highlight
                 Box(
                     modifier = Modifier
                         .offset { IntOffset(indicatorOffset, 0) }
                         .width(itemWidth)
                         .height(80.dp)
-                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .padding(horizontal = 10.dp, vertical = 14.dp)
                         .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(16.dp)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(24.dp)
                         )
                 )
                 
@@ -528,37 +599,49 @@ fun SlidingNavigationBar(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable { onItemClick(index) },
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null // Remove default ripple to prevent double highlight
+                                ) { onItemClick(index) },
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
+                            val tint by androidx.compose.animation.animateColorAsState(
+                                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                animationSpec = tween(400)
+                            )
+                            
+                            val scale by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (isSelected) 1.1f else 1f,
+                                animationSpec = tween(400)
+                            )
+
                             Column(
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.scale(scale)
                             ) {
+
                                 Icon(
                                     imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
                                     contentDescription = item.title,
-                                    tint = if (isSelected) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = tint,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = item.title,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSelected) 
-                                        MaterialTheme.colorScheme.primary 
-                                    else 
-                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        letterSpacing = 0.5.sp
+                                    ),
+                                    color = tint
                                 )
                             }
                         }
                     }
                 }
             }
+
         }
     }
 }
