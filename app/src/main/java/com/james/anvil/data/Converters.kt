@@ -39,4 +39,10 @@ class Converters {
 
     @TypeConverter
     fun toLoanStatus(value: String): LoanStatus = LoanStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromCategoryType(value: CategoryType): String = value.name
+
+    @TypeConverter
+    fun toCategoryType(value: String): CategoryType = CategoryType.valueOf(value)
 }

@@ -21,6 +21,7 @@ import com.james.anvil.data.LoanStatus
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.core.BonusManager
+import com.james.anvil.data.CategoryType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -394,7 +395,18 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun getBonusTasksForGrace(): Int = bonusManager.getRequiredBonusForGrace()
 
     // Budget Functions
-    fun addBudgetEntry(type: BudgetType, balanceType: BalanceType, amount: Double, description: String, category: String = "General") {
+    fun addBudgetEntry(
+        type: BudgetType,
+        balanceType: BalanceType,
+        amount: Double,
+        description: String,
+        category: String = "General",
+        categoryType: CategoryType = CategoryType.NONE,
+        borrowerName: String? = null,
+        loanId: Long? = null,
+        dueDate: Long? = null,
+        loanStatus: LoanStatus? = null
+    ) {
         viewModelScope.launch {
             val entry = BudgetEntry(
                 type = type,
@@ -402,6 +414,11 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 amount = amount,
                 description = description,
                 category = category,
+                categoryType = categoryType,
+                borrowerName = borrowerName,
+                loanId = loanId,
+                dueDate = dueDate,
+                loanStatus = loanStatus,
                 timestamp = System.currentTimeMillis()
             )
             budgetDao.insert(entry)
@@ -416,6 +433,26 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteBudgetEntry(entry: BudgetEntry) {
         viewModelScope.launch {
+            if (entry.loanId != null) {
+                if (entry.type == BudgetType.LOAN_OUT) {
+                    // 1. If we delete the original loan disbursement, delete the loan record entirely
+                    loanDao.getLoanById(entry.loanId)?.let { loan ->
+                        loanDao.delete(loan)
+                    }
+                    // 2. Also delete all other historical entries for this loan (repayments)
+                    budgetDao.deleteByLoanId(entry.loanId)
+                } else if (entry.type == BudgetType.LOAN_REPAYMENT) {
+                    // 1. If we delete a repayment record, update the loan status/amount back
+                    loanDao.getLoanById(entry.loanId)?.let { loan ->
+                        val newAmount = loan.remainingAmount + entry.amount
+                        val newStatus = when {
+                            newAmount >= loan.originalAmount -> LoanStatus.ACTIVE
+                            else -> LoanStatus.PARTIALLY_REPAID
+                        }
+                        loanDao.update(loan.copy(remainingAmount = newAmount, status = newStatus))
+                    }
+                }
+            }
             budgetDao.delete(entry)
         }
     }
@@ -431,18 +468,21 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 description = description,
                 dueDate = dueDate
             )
-            loanDao.insert(loan)
+            val id = loanDao.insert(loan)
             
-            // Record in history (LOAN_OUT doesn't affect balance calculation)
-            val historyEntry = BudgetEntry(
+            // Record in history (Now unified in budget_entries)
+            addBudgetEntry(
                 type = BudgetType.LOAN_OUT,
                 balanceType = balanceType,
                 amount = amount,
                 description = "Loan to $borrowerName",
                 category = "Loan",
-                timestamp = System.currentTimeMillis()
+                categoryType = CategoryType.NONE,
+                borrowerName = borrowerName,
+                loanId = id,
+                dueDate = dueDate,
+                loanStatus = LoanStatus.ACTIVE
             )
-            budgetDao.insert(historyEntry)
         }
     }
 
@@ -469,16 +509,18 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             )
             loanDao.update(updatedLoan)
             
-            // Record in history (LOAN_REPAYMENT doesn't affect balance calculation)
-            val historyEntry = BudgetEntry(
+            // Record in history (Now unified)
+            addBudgetEntry(
                 type = BudgetType.LOAN_REPAYMENT,
                 balanceType = loan.balanceType,
                 amount = repaymentAmount,
                 description = "Repayment from ${loan.borrowerName}",
                 category = "Loan Repayment",
-                timestamp = System.currentTimeMillis()
+                categoryType = CategoryType.NONE,
+                borrowerName = loan.borrowerName,
+                loanId = loan.id,
+                loanStatus = newStatus
             )
-            budgetDao.insert(historyEntry)
         }
     }
 

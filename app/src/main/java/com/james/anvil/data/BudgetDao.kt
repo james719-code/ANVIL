@@ -31,18 +31,20 @@ interface BudgetDao {
     @Query("SELECT * FROM budget_entries WHERE timestamp >= :startTime AND timestamp <= :endTime ORDER BY timestamp DESC")
     suspend fun getEntriesInRange(startTime: Long, endTime: Long): List<BudgetEntry>
 
-    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE type = 'INCOME' AND balanceType = :balanceType")
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE (type = 'INCOME' OR type = 'LOAN_REPAYMENT') AND balanceType = :balanceType")
     fun getTotalIncome(balanceType: BalanceType): Flow<Double>
 
-    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE type = 'EXPENSE' AND balanceType = :balanceType")
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE (type = 'EXPENSE' OR type = 'LOAN_OUT') AND balanceType = :balanceType")
     fun getTotalExpenses(balanceType: BalanceType): Flow<Double>
 
     @Query("""
         SELECT COALESCE(
-            (SELECT SUM(amount) FROM budget_entries WHERE type = 'INCOME' AND balanceType = :balanceType), 0.0
+            (SELECT SUM(amount) FROM budget_entries WHERE (type = 'INCOME' OR type = 'LOAN_REPAYMENT') AND balanceType = :balanceType), 0.0
         ) - COALESCE(
-            (SELECT SUM(amount) FROM budget_entries WHERE type = 'EXPENSE' AND balanceType = :balanceType), 0.0
+            (SELECT SUM(amount) FROM budget_entries WHERE (type = 'EXPENSE' OR type = 'LOAN_OUT') AND balanceType = :balanceType), 0.0
         )
     """)
     fun getCurrentBalance(balanceType: BalanceType): Flow<Double>
+    @Query("DELETE FROM budget_entries WHERE loanId = :loanId")
+    suspend fun deleteByLoanId(loanId: Long)
 }

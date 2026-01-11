@@ -261,7 +261,7 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("Budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                currencyFormat.format(cashBalance + gcashBalance - totalActiveLoanedAmount),
+                                currencyFormat.format(cashBalance + gcashBalance),
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )

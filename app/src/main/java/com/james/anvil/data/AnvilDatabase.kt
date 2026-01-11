@@ -18,7 +18,7 @@ import androidx.room.TypeConverters
         Loan::class,
         LoanRepayment::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -35,6 +35,17 @@ abstract class AnvilDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AnvilDatabase? = null
 
+        private val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Add new columns to budget_entries
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `categoryType` TEXT NOT NULL DEFAULT 'NONE'")
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `borrowerName` TEXT")
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `loanId` INTEGER")
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `dueDate` INTEGER")
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `loanStatus` TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -42,7 +53,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_7_8)
                 .build()
                 INSTANCE = instance
                 instance
