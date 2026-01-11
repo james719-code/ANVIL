@@ -27,12 +27,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
+import com.james.anvil.data.CategoryType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.AnvilCard
@@ -43,9 +46,8 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Filter types for budget entries
 enum class BudgetFilter {
-    ALL, INCOME, EXPENSES, LOANS
+    ALL, NECESSITY, LEISURE, LOANS
 }
 
 // Helper data class for 4 values
@@ -64,14 +66,256 @@ fun BudgetScreen(
     val totalGcashLoaned by viewModel.totalGcashLoaned.collectAsState(initial = 0.0)
 
     var selectedFilter by remember { mutableStateOf(BudgetFilter.ALL) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchTypeFilter by remember { mutableStateOf<BudgetType?>(null) } // null = All types
+    
     var showAddEntrySheet by remember { mutableStateOf(false) }
     var showAddLoanSheet by remember { mutableStateOf(false) }
     var showEditEntrySheet by remember { mutableStateOf<BudgetEntry?>(null) }
     var showRepaymentSheet by remember { mutableStateOf<Loan?>(null) }
 
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
+    
+    // Custom height settings for the collapsing header
+    val maxHeaderHeight = 460.dp
+    val minHeaderHeight = 64.dp
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        rememberTopAppBarState()
+    )
+    
+    // Dynamically set the height offset limit based on intended range
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    LaunchedEffect(maxHeaderHeight, minHeaderHeight) {
+        val maxPx = with(density) { maxHeaderHeight.toPx() }
+        val minPx = with(density) { minHeaderHeight.toPx() }
+        scrollBehavior.state.heightOffsetLimit = minPx - maxPx
+    }
+
+    val collapsedFraction = scrollBehavior.state.collapsedFraction
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(androidx.compose.ui.unit.lerp(maxHeaderHeight, minHeaderHeight, collapsedFraction)),
+                color = MaterialTheme.colorScheme.background,
+                tonalElevation = if (collapsedFraction > 0.9f) 3.dp else 0.dp
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // 1. Collapsed Title (Centered or start, visible only when collapsed)
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = collapsedFraction > 0.8f,
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(),
+                        modifier = Modifier.align(Alignment.Center)
+                    ) {
+                        Text(
+                            text = "The Vault",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // 2. Expanded Content (Fades out as we scroll)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp)
+                            .graphicsLayer {
+                                alpha = (1f - collapsedFraction * 1.5f).coerceIn(0f, 1f)
+                                translationY = -collapsedFraction * 100f // Subtle parallax
+                            }
+                    ) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Large Title
+                        Text(
+                            text = "The Vault",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        
+                        Text(
+                            text = "Financial logistics & audit",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        // Ultra-Premium Bank Card Design
+                        AnvilCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            0.0f to Color(0xFF1E3A8A),
+                                            0.4f to Color(0xFF0F172A),
+                                            1.0f to Color(0xFF000000)
+                                        )
+                                    )
+                            ) {
+                                // Decorative hologram-like orbs
+                                Box(
+                                    modifier = Modifier
+                                        .size(240.dp)
+                                        .offset(x = 100.dp, y = (-120).dp)
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(Color(0xFF3B82F6).copy(alpha = 0.15f), Color.Transparent)
+                                            )
+                                        )
+                                )
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(24.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // Top Row: Brand & Wireless
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "ANVIL",
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    letterSpacing = 2.sp
+                                                ),
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = "PREMIER VAULT",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Black,
+                                                    letterSpacing = 3.sp
+                                                ),
+                                                color = ForgedGold.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.Contactless,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(28.dp).rotate(90f)
+                                        )
+                                    }
+
+                                    // Middle Row: Chip & Balance
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Gold EMV Chip
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 45.dp, height = 35.dp)
+                                                .background(
+                                                    Brush.linearGradient(
+                                                        colors = listOf(Color(0xFFFFD700), Color(0xFFB8860B))
+                                                    ),
+                                                    RoundedCornerShape(6.dp)
+                                                )
+                                                .padding(4.dp)
+                                        ) {
+                                            Column(verticalArrangement = Arrangement.SpaceEvenly) {
+                                                repeat(3) {
+                                                    Divider(color = Color.Black.copy(alpha = 0.2f), thickness = 0.5.dp)
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(20.dp))
+                                        Text(
+                                            text = currencyFormat.format(cashBalance + gcashBalance),
+                                            style = MaterialTheme.typography.displaySmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = (-1).sp
+                                            ),
+                                            color = Color.White
+                                        )
+                                    }
+
+                                    // Bottom Row: Cardholder & Liabilities
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "MEMBERSHIP CAPITAL",
+                                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                                color = Color.White.copy(alpha = 0.5f)
+                                            )
+                                            Text(
+                                                text = "JAMES RYAN",
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                                                color = Color.White
+                                            )
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "TOTAL LIABILITIES",
+                                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                                color = Color.White.copy(alpha = 0.5f)
+                                            )
+                                            Text(
+                                                text = currencyFormat.format(totalCashLoaned + totalGcashLoaned),
+                                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = if (totalCashLoaned + totalGcashLoaned > 0) Color(0xFFFFB3B3) else ForgedGold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Balance Cards inside Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            BalanceCard(
+                                title = "Cash Reserves",
+                                balance = cashBalance,
+                                loaned = totalCashLoaned,
+                                currencyFormat = currencyFormat,
+                                modifier = Modifier.weight(1f),
+                                color = SteelBlue,
+                                icon = Icons.Default.Wallet
+                            )
+                            BalanceCard(
+                                title = "GCash Digital",
+                                balance = gcashBalance,
+                                loaned = totalGcashLoaned,
+                                currencyFormat = currencyFormat,
+                                modifier = Modifier.weight(1f),
+                                color = InfoBlue,
+                                icon = Icons.Default.Smartphone
+                            )
+                        }
+                    }
+                }
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
@@ -94,198 +338,81 @@ fun BudgetScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
+            contentPadding = PaddingValues(top = 4.dp, bottom = 100.dp)
         ) {
 
-            // Header
+            // Search Bar & Type Toggle
             item {
-                AnvilHeader(
-                    title = "The Vault",
-                    subtitle = "Financial logistics & audit"
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Ultra-Premium Bank Card Design
-            item {
-                AnvilCard(
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    0.0f to Color(0xFF1E3A8A),
-                                    0.4f to Color(0xFF0F172A),
-                                    1.0f to Color(0xFF000000)
-                                )
-                            )
-                    ) {
-                        // Decorative hologram-like orbs
-                        Box(
-                            modifier = Modifier
-                                .size(240.dp)
-                                .offset(x = 100.dp, y = (-120).dp)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(Color(0xFF3B82F6).copy(alpha = 0.15f), Color.Transparent)
-                                    )
-                                )
-                        )
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Top Row: Brand & Wireless
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "ANVIL",
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                            letterSpacing = 2.sp
-                                        ),
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "PREMIER VAULT",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Black,
-                                            letterSpacing = 3.sp
-                                        ),
-                                        color = ForgedGold.copy(alpha = 0.8f)
-                                    )
+                        .padding(vertical = 8.dp),
+                    placeholder = { Text("Search transactions...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
-                                Icon(
-                                    imageVector = Icons.Default.Contactless,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(28.dp).rotate(90f)
-                                )
                             }
-
-                            // Middle: The Chip & Balance
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Gold EMV Chip
-                                Box(
-                                    modifier = Modifier
-                                        .size(width = 45.dp, height = 35.dp)
-                                        .background(
-                                            Brush.linearGradient(
-                                                colors = listOf(Color(0xFFFFD700), Color(0xFFB8860B))
-                                            ),
-                                            RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(4.dp)
-                                ) {
-                                    // Subtle chip lines
-                                    Column(verticalArrangement = Arrangement.SpaceEvenly) {
-                                        repeat(3) {
-                                            Divider(color = Color.Black.copy(alpha = 0.2f), thickness = 0.5.dp)
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                        }
+                            
+                            // Type filter toggle inside search bar
+                            Box(modifier = Modifier.padding(end = 4.dp)) {
+                                var showMenu by remember { mutableStateOf(false) }
+                                IconButton(onClick = { showMenu = true }) {
+                                    val icon = when (searchTypeFilter) {
+                                        BudgetType.INCOME -> Icons.Default.ArrowDownward
+                                        BudgetType.EXPENSE -> Icons.Default.ArrowUpward
+                                        else -> Icons.Default.FilterList
                                     }
-                                }
-                                
-                                Spacer(modifier = Modifier.width(20.dp))
-                                
-                                Text(
-                                    text = currencyFormat.format(cashBalance + gcashBalance - totalCashLoaned - totalGcashLoaned),
-                                    style = MaterialTheme.typography.displaySmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = (-1).sp
-                                    ),
-                                    color = Color.White
-                                )
-                            }
-
-                            // Bottom: "Cardholder" Name & Liabilities
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Bottom
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "MEMBERSHIP CAPITAL",
-                                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                                        color = Color.White.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        text = "JAMES RYAN", // Standardizing to user label
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = Color.White
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = "Filter Type",
+                                        tint = when (searchTypeFilter) {
+                                            BudgetType.INCOME -> ElectricTeal
+                                            BudgetType.EXPENSE -> ErrorRed
+                                            else -> MaterialTheme.colorScheme.primary
+                                        }
                                     )
                                 }
-
-                                // Liability Labeling
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "TOTAL LIABILITIES",
-                                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                                        color = Color.White.copy(alpha = 0.5f)
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("All Types") },
+                                        onClick = { searchTypeFilter = null; showMenu = false },
+                                        leadingIcon = { Icon(Icons.Default.FilterList, null) }
                                     )
-                                    Text(
-                                        text = currencyFormat.format(totalCashLoaned + totalGcashLoaned),
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (totalCashLoaned + totalGcashLoaned > 0) Color(0xFFFFB3B3) else ForgedGold
+                                    DropdownMenuItem(
+                                        text = { Text("Income Only") },
+                                        onClick = { searchTypeFilter = BudgetType.INCOME; showMenu = false },
+                                        leadingIcon = { Icon(Icons.Default.ArrowDownward, null, tint = ElectricTeal) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Expenses Only") },
+                                        onClick = { searchTypeFilter = BudgetType.EXPENSE; showMenu = false },
+                                        leadingIcon = { Icon(Icons.Default.ArrowUpward, null, tint = ErrorRed) }
                                     )
                                 }
                             }
                         }
-                    }
-                }
-                Spacer(modifier = Modifier.height(30.dp))
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    ),
+                    singleLine = true
+                )
             }
 
-
-
-
-            // Balance Cards
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                    BalanceCard(
-                        title = "Cash Reserves",
-                        balance = cashBalance - totalCashLoaned,
-                        loaned = totalCashLoaned,
-                        currencyFormat = currencyFormat,
-                        modifier = Modifier.weight(1f),
-                        color = SteelBlue,
-                        icon = Icons.Default.Wallet
-                    )
-                    BalanceCard(
-                        title = "GCash Digital",
-                        balance = gcashBalance - totalGcashLoaned,
-                        loaned = totalGcashLoaned,
-                        currencyFormat = currencyFormat,
-                        modifier = Modifier.weight(1f),
-                        color = InfoBlue,
-                        icon = Icons.Default.Smartphone
-                    )
-
-                }
-            }
-
-            // Filter Chips
+            // Filter Chips (Type-based)
             item {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -304,10 +431,10 @@ fun BudgetScreen(
                     }
                     item {
                         FilterChip(
-                            selected = selectedFilter == BudgetFilter.INCOME,
-                            onClick = { selectedFilter = BudgetFilter.INCOME },
-                            label = { Text("Income") },
-                            leadingIcon = if (selectedFilter == BudgetFilter.INCOME) {
+                            selected = selectedFilter == BudgetFilter.NECESSITY,
+                            onClick = { selectedFilter = BudgetFilter.NECESSITY },
+                            label = { Text("Necessity") },
+                            leadingIcon = if (selectedFilter == BudgetFilter.NECESSITY) {
                                 { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                             } else null,
                             colors = FilterChipDefaults.filterChipColors(
@@ -319,16 +446,16 @@ fun BudgetScreen(
                     }
                     item {
                         FilterChip(
-                            selected = selectedFilter == BudgetFilter.EXPENSES,
-                            onClick = { selectedFilter = BudgetFilter.EXPENSES },
-                            label = { Text("Expenses") },
-                            leadingIcon = if (selectedFilter == BudgetFilter.EXPENSES) {
+                            selected = selectedFilter == BudgetFilter.LEISURE,
+                            onClick = { selectedFilter = BudgetFilter.LEISURE },
+                            label = { Text("Leisure") },
+                            leadingIcon = if (selectedFilter == BudgetFilter.LEISURE) {
                                 { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
                             } else null,
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
-                                selectedLabelColor = ErrorRed,
-                                selectedLeadingIconColor = ErrorRed
+                                selectedContainerColor = ForgedGold.copy(alpha = 0.1f),
+                                selectedLabelColor = ForgedGold,
+                                selectedLeadingIconColor = ForgedGold
                             )
                         )
                     }
@@ -381,7 +508,6 @@ fun BudgetScreen(
                                 loan = loan,
                                 currencyFormat = currencyFormat,
                                 onRepayClick = { showRepaymentSheet = loan },
-                                onDeleteClick = { viewModel.deleteLoan(loan) },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
 
@@ -390,10 +516,16 @@ fun BudgetScreen(
                 }
                 else -> {
                     // Budget Entries
-                    val filteredEntries = when (selectedFilter) {
-                        BudgetFilter.INCOME -> budgetEntries.filter { it.type == BudgetType.INCOME }
-                        BudgetFilter.EXPENSES -> budgetEntries.filter { it.type == BudgetType.EXPENSE }
-                        else -> budgetEntries
+                    val filteredEntries = budgetEntries.filter { entry ->
+                        val matchesSearch = entry.description.contains(searchQuery, ignoreCase = true)
+                        val matchesMainFilter = when (selectedFilter) {
+                            BudgetFilter.NECESSITY -> entry.categoryType == CategoryType.NECESSITY
+                            BudgetFilter.LEISURE -> entry.categoryType == CategoryType.LEISURE
+                            else -> true
+                        }
+                        val matchesTypeFilter = searchTypeFilter == null || entry.type == searchTypeFilter
+                        
+                        matchesSearch && matchesMainFilter && matchesTypeFilter
                     }.sortedByDescending { it.timestamp }
 
                     if (filteredEntries.isEmpty()) {
@@ -423,8 +555,8 @@ fun BudgetScreen(
     if (showAddEntrySheet) {
         AddBudgetEntrySheet(
             onDismiss = { showAddEntrySheet = false },
-            onSave = { type, balanceType, amount, description, category ->
-                viewModel.addBudgetEntry(type, balanceType, amount, description, category)
+            onSave = { type, balanceType, amount, description, category, categoryType ->
+                viewModel.addBudgetEntry(type, balanceType, amount, description, category, categoryType)
             }
         )
     }
@@ -442,12 +574,13 @@ fun BudgetScreen(
         EditBudgetEntrySheet(
             entry = entry,
             onDismiss = { showEditEntrySheet = null },
-            onSave = { type, balanceType, amount, description ->
+                onSave = { type, balanceType, amount, description, categoryType ->
                 viewModel.updateBudgetEntry(entry.copy(
                     type = type,
                     balanceType = balanceType,
                     amount = amount,
-                    description = description
+                    description = description,
+                    categoryType = categoryType
                 ))
             },
             onDelete = {
@@ -652,16 +785,34 @@ private fun BudgetEntryItem(
                     )
 
                     Text(
-                        text = "•",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                    )
-
-                    Text(
                         text = entry.balanceType.name,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
                         color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else SteelBlueLight
                     )
+
+                    if (entry.categoryType != CategoryType.NONE) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (entry.categoryType == CategoryType.NECESSITY) ElectricTeal.copy(alpha = 0.15f) 
+                                    else ForgedGold.copy(alpha = 0.15f), 
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = entry.categoryType.name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Black),
+                                color = if (entry.categoryType == CategoryType.NECESSITY) ElectricTeal else ForgedGold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -711,7 +862,6 @@ private fun LoanItem(
     loan: Loan,
     currencyFormat: NumberFormat,
     onRepayClick: () -> Unit,
-    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
@@ -831,26 +981,6 @@ private fun LoanItem(
                     Text("SETTLE PAYMENT", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
                 }
                 
-                IconButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-                ) {
-                    Icon(Icons.Default.MoreVert, null, tint = MaterialTheme.colorScheme.onSurface)
-
-                    
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Delete Audit") },
-                            onClick = { onDeleteClick(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                        )
-                    }
-                }
             }
         }
     }
@@ -861,10 +991,11 @@ private fun LoanItem(
 @Composable
 private fun AddBudgetEntrySheet(
     onDismiss: () -> Unit,
-    onSave: (BudgetType, BalanceType, Double, String, String) -> Unit
+    onSave: (BudgetType, BalanceType, Double, String, String, CategoryType) -> Unit
 ) {
     var type by remember { mutableStateOf(BudgetType.EXPENSE) }
     var balanceType by remember { mutableStateOf(BalanceType.CASH) }
+    var categoryType by remember { mutableStateOf(CategoryType.NONE) }
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("General") }
@@ -949,6 +1080,46 @@ private fun AddBudgetEntrySheet(
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Transaction Category Type (Necessity/Leisure)
+            if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) {
+                Text("Classification", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = categoryType == CategoryType.NECESSITY,
+                        onClick = { categoryType = CategoryType.NECESSITY },
+                        label = { Text("Necessity") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
+                            selectedLabelColor = ElectricTeal
+                        )
+                    )
+                    FilterChip(
+                        selected = categoryType == CategoryType.LEISURE,
+                        onClick = { categoryType = CategoryType.LEISURE },
+                        label = { Text("Leisure") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ForgedGold.copy(alpha = 0.1f),
+                            selectedLabelColor = ForgedGold
+                        )
+                    )
+                    FilterChip(
+                        selected = categoryType == CategoryType.NONE,
+                        onClick = { categoryType = CategoryType.NONE },
+                        label = { Text("None") },
+                        modifier = Modifier.weight(0.8f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
@@ -989,7 +1160,7 @@ private fun AddBudgetEntrySheet(
                         amountValue == null || amountValue <= 0 -> amountError = true
                         description.isBlank() -> descriptionError = true
                         else -> {
-                            onSave(type, balanceType, amountValue, description.trim(), category)
+                            onSave(type, balanceType, amountValue, description.trim(), category, categoryType)
                             onDismiss()
                         }
                     }
@@ -1141,13 +1312,14 @@ private fun AddLoanSheet(
 private fun EditBudgetEntrySheet(
     entry: BudgetEntry,
     onDismiss: () -> Unit,
-    onSave: (BudgetType, BalanceType, Double, String) -> Unit,
+    onSave: (BudgetType, BalanceType, Double, String, CategoryType) -> Unit,
     onDelete: () -> Unit
 ) {
-    var type by remember { mutableStateOf(entry.type) }
-    var balanceType by remember { mutableStateOf(entry.balanceType) }
-    var amount by remember { mutableStateOf(entry.amount.toString()) }
-    var description by remember { mutableStateOf(entry.description) }
+    var type by remember(entry.id) { mutableStateOf(entry.type) }
+    var balanceType by remember(entry.id) { mutableStateOf(entry.balanceType) }
+    var categoryType by remember(entry.id) { mutableStateOf(entry.categoryType) }
+    var amount by remember(entry.id) { mutableStateOf(entry.amount.toString()) }
+    var description by remember(entry.id) { mutableStateOf(entry.description) }
     var amountError by remember { mutableStateOf(false) }
     var descriptionError by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -1204,7 +1376,7 @@ private fun EditBudgetEntrySheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterChip(
-                    selected = type == BudgetType.EXPENSE,
+                    selected = type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT,
                     onClick = { type = BudgetType.EXPENSE },
                     label = { Text("Expense") },
                     modifier = Modifier.weight(1f),
@@ -1214,7 +1386,7 @@ private fun EditBudgetEntrySheet(
                     )
                 )
                 FilterChip(
-                    selected = type == BudgetType.INCOME,
+                    selected = type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT,
                     onClick = { type = BudgetType.INCOME },
                     label = { Text("Income") },
                     modifier = Modifier.weight(1f),
@@ -1243,6 +1415,46 @@ private fun EditBudgetEntrySheet(
                     label = { Text("GCash") },
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Transaction Category Type (Necessity/Leisure)
+            if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) {
+                Text("Classification", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = categoryType == CategoryType.NECESSITY,
+                        onClick = { categoryType = CategoryType.NECESSITY },
+                        label = { Text("Necessity") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
+                            selectedLabelColor = ElectricTeal
+                        )
+                    )
+                    FilterChip(
+                        selected = categoryType == CategoryType.LEISURE,
+                        onClick = { categoryType = CategoryType.LEISURE },
+                        label = { Text("Leisure") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ForgedGold.copy(alpha = 0.1f),
+                            selectedLabelColor = ForgedGold
+                        )
+                    )
+                    FilterChip(
+                        selected = categoryType == CategoryType.NONE,
+                        onClick = { categoryType = CategoryType.NONE },
+                        label = { Text("None") },
+                        modifier = Modifier.weight(0.8f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1278,7 +1490,7 @@ private fun EditBudgetEntrySheet(
                     when {
                         amountValue == null || amountValue <= 0 -> amountError = true
                         description.isBlank() -> descriptionError = true
-                        else -> { onSave(type, balanceType, amountValue, description.trim()); onDismiss() }
+                        else -> { onSave(type, balanceType, amountValue, description.trim(), categoryType); onDismiss() }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),

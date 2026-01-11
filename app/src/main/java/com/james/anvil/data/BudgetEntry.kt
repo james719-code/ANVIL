@@ -15,6 +15,12 @@ enum class BalanceType {
     GCASH
 }
 
+enum class CategoryType {
+    NONE,
+    NECESSITY,
+    LEISURE
+}
+
 @Entity(tableName = "budget_entries")
 data class BudgetEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -24,5 +30,12 @@ data class BudgetEntry(
     val description: String,
     val category: String = "General",
     val timestamp: Long = System.currentTimeMillis(),
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val categoryType: CategoryType = CategoryType.NONE,
+    
+    // Loan-related fields for normalization
+    val borrowerName: String? = null,
+    val loanId: Long? = null, // Used for repayments to link to original loan entry
+    val dueDate: Long? = null,
+    val loanStatus: LoanStatus? = null
 )
