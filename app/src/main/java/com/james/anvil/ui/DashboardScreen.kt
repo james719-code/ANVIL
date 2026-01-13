@@ -66,22 +66,27 @@ fun DashboardScreen(
     
     var showGraceExchangeDialog by remember { mutableStateOf(false) }
 
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "PH")) }
+    val calendar = remember { java.util.Calendar.getInstance() }
 
-    val completedTodayCount = completedTasks.count {
-        val calendar = java.util.Calendar.getInstance()
-        val todayYear = calendar.get(java.util.Calendar.YEAR)
-        val todayDay = calendar.get(java.util.Calendar.DAY_OF_YEAR)
-        calendar.timeInMillis = it.completedAt ?: 0L
-        calendar.get(java.util.Calendar.YEAR) == todayYear && calendar.get(java.util.Calendar.DAY_OF_YEAR) == todayDay
+    val completedTodayCount = remember(completedTasks) {
+        completedTasks.count {
+            val taskCal = java.util.Calendar.getInstance()
+            val todayYear = calendar.get(java.util.Calendar.YEAR)
+            val todayDay = calendar.get(java.util.Calendar.DAY_OF_YEAR)
+            taskCal.timeInMillis = it.completedAt ?: 0L
+            taskCal.get(java.util.Calendar.YEAR) == todayYear && taskCal.get(java.util.Calendar.DAY_OF_YEAR) == todayDay
+        }
     }
 
     // Time-based greeting
-    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    val greeting = when (hour) {
-        in 5..11 -> "Good Morning"
-        in 12..17 -> "Good Afternoon"
-        else -> "Good Evening"
+    val greeting = remember {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 5..11 -> "Good Morning"
+            in 12..17 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
     }
 
     Scaffold(

@@ -81,15 +81,23 @@ fun TasksScreen(
         allTasks.find { it.id == editingTaskId }
     }
     
-    val existingCategories = remember(allTasks) {
-        allTasks.map { it.category }.distinct().filter { it != "General" }.sorted()
+    val existingCategories = remember(allTasks, completedTasks) {
+        (allTasks.map { it.category } + completedTasks.map { it.category })
+            .distinct()
+            .filter { it != "General" }
+            .sorted()
     }
-
     
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    
     val tasks = remember(allTasks, selectedCategory) {
         if (selectedCategory == null) allTasks
         else allTasks.filter { it.category == selectedCategory }
+    }
+
+    val filteredCompletedTasks = remember(completedTasks, selectedCategory) {
+        if (selectedCategory == null) completedTasks
+        else completedTasks.filter { it.category == selectedCategory }
     }
     
     CollapsibleScreenScaffold(
@@ -184,7 +192,7 @@ fun TasksScreen(
                     }
 
                     // Completed Tasks Section
-                    if (completedTasks.isNotEmpty()) {
+                    if (filteredCompletedTasks.isNotEmpty()) {
                         item {
                             Text(
                                 text = "Completed",
@@ -195,7 +203,7 @@ fun TasksScreen(
                             )
                         }
 
-                        items(completedTasks, key = { "completed_${it.id}" }) { task ->
+                        items(filteredCompletedTasks, key = { "completed_${it.id}" }) { task ->
                             SwipeToDismissItem(
                                 onDismiss = { viewModel.deleteTask(task) }
                             ) {
