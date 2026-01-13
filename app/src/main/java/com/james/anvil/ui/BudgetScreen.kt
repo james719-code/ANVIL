@@ -74,7 +74,21 @@ fun BudgetScreen(
     var showEditEntrySheet by remember { mutableStateOf<BudgetEntry?>(null) }
     var showRepaymentSheet by remember { mutableStateOf<Loan?>(null) }
 
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "PH")) }
+    
+    val filteredEntries = remember(budgetEntries, searchQuery, selectedFilter, searchTypeFilter) {
+        budgetEntries.filter { entry ->
+            val matchesSearch = entry.description.contains(searchQuery, ignoreCase = true)
+            val matchesMainFilter = when (selectedFilter) {
+                BudgetFilter.NECESSITY -> entry.categoryType == CategoryType.NECESSITY
+                BudgetFilter.LEISURE -> entry.categoryType == CategoryType.LEISURE
+                else -> true
+            }
+            val matchesTypeFilter = searchTypeFilter == null || entry.type == searchTypeFilter
+            
+            matchesSearch && matchesMainFilter && matchesTypeFilter
+        }.sortedByDescending { it.timestamp }
+    }
     
     // Custom height settings for the collapsing header
     val maxHeaderHeight = 460.dp
@@ -515,19 +529,6 @@ fun BudgetScreen(
                     }
                 }
                 else -> {
-                    // Budget Entries
-                    val filteredEntries = budgetEntries.filter { entry ->
-                        val matchesSearch = entry.description.contains(searchQuery, ignoreCase = true)
-                        val matchesMainFilter = when (selectedFilter) {
-                            BudgetFilter.NECESSITY -> entry.categoryType == CategoryType.NECESSITY
-                            BudgetFilter.LEISURE -> entry.categoryType == CategoryType.LEISURE
-                            else -> true
-                        }
-                        val matchesTypeFilter = searchTypeFilter == null || entry.type == searchTypeFilter
-                        
-                        matchesSearch && matchesMainFilter && matchesTypeFilter
-                    }.sortedByDescending { it.timestamp }
-
                     if (filteredEntries.isEmpty()) {
                         item {
                             EmptyStateContent(
