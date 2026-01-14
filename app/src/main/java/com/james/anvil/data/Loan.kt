@@ -20,5 +20,7 @@ data class Loan(
     val loanDate: Long = System.currentTimeMillis(),
     val dueDate: Long? = null,
     val status: LoanStatus = LoanStatus.ACTIVE,
+    val interestRate: Double = 0.0,
+    val totalExpectedAmount: Double = originalAmount,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -52,6 +52,8 @@ fun DashboardScreen(
     val totalPendingCount by viewModel.totalPendingCount.collectAsState(initial = 0)
     val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
     val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
+    val allCompletedTasks by viewModel.allCompletedTasks.collectAsState(initial = emptyList())
+    val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
     val blockedApps by viewModel.blockedApps.collectAsState(initial = emptyList())
     val blockedLinks by viewModel.blockedLinks.collectAsState(initial = emptyList())
     val bonusTaskCount by viewModel.bonusTaskCount.collectAsState(initial = 0)
@@ -66,7 +68,7 @@ fun DashboardScreen(
     
     var showGraceExchangeDialog by remember { mutableStateOf(false) }
 
-    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "PH")) }
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH")) }
     val calendar = remember { java.util.Calendar.getInstance() }
 
     val completedTodayCount = remember(completedTasks) {
@@ -378,7 +380,10 @@ fun DashboardScreen(
                    )
                    AnvilCard {
                        Box(modifier = Modifier.padding(16.dp)) {
-                           ContributionGraph(completedTasks = completedTasks)
+                           ContributionGraph(
+                                completedTasks = allCompletedTasks,
+                                bonusTasks = bonusTasks
+                            )
                        }
                    }
                }

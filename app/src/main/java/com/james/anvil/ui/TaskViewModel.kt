@@ -100,6 +100,9 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     val completedTasks: Flow<List<Task>> = taskDao.observeCompletedTasks(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
+    val allCompletedTasks: Flow<List<Task>> = taskDao.observeAllCompletedTasks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
     val blockedApps: Flow<List<String>> = blocklistDao.observeEnabledBlockedAppPackages()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
@@ -143,6 +146,8 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+
+
 
     private val _dailyQuote = MutableStateFlow("")
     val dailyQuote: StateFlow<String> = _dailyQuote.asStateFlow()
@@ -458,13 +463,23 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Loan Functions
-    fun createLoan(borrowerName: String, amount: Double, balanceType: BalanceType, description: String? = null, dueDate: Long? = null) {
+    fun createLoan(
+        borrowerName: String, 
+        amount: Double, 
+        balanceType: BalanceType, 
+        interestRate: Double = 0.0,
+        totalExpectedAmount: Double = amount,
+        description: String? = null, 
+        dueDate: Long? = null
+    ) {
         viewModelScope.launch {
             val loan = Loan(
                 borrowerName = borrowerName,
                 originalAmount = amount,
-                remainingAmount = amount,
+                remainingAmount = totalExpectedAmount,
                 balanceType = balanceType,
+                interestRate = interestRate,
+                totalExpectedAmount = totalExpectedAmount,
                 description = description,
                 dueDate = dueDate
             )
@@ -486,7 +501,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addLoanRepayment(loan: Loan, repaymentAmount: Double, note: String? = null) {
+    fun addLoanRepayment(loan: Loan, repaymentAmount: Double, balanceType: BalanceType, note: String? = null) {
         viewModelScope.launch {
             val repayment = LoanRepayment(
                 loanId = loan.id,
@@ -512,7 +527,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             // Record in history (Now unified)
             addBudgetEntry(
                 type = BudgetType.LOAN_REPAYMENT,
-                balanceType = loan.balanceType,
+                balanceType = balanceType,
                 amount = repaymentAmount,
                 description = "Repayment from ${loan.borrowerName}",
                 category = "Loan Repayment",
