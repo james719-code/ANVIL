@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.james.anvil.data.BonusTask
 import com.james.anvil.data.Task
 import com.james.anvil.ui.theme.DeepTeal
 import java.text.SimpleDateFormat
@@ -31,12 +32,13 @@ data class ContributionDay(
 @Composable
 fun ContributionGraph(
     completedTasks: List<Task>,
+    bonusTasks: List<BonusTask>,
     modifier: Modifier = Modifier
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     
-    val contributionData = remember(completedTasks, currentYear) {
-        calculateYearContributionData(completedTasks, currentYear)
+    val contributionData = remember(completedTasks, bonusTasks, currentYear) {
+        calculateYearContributionData(completedTasks, bonusTasks, currentYear)
     }
     
     val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -261,7 +263,11 @@ data class MonthContributionData(
  * Calculates contribution data for an entire year, organized by months.
  * Each month contains weeks, and each week contains days.
  */
-private fun calculateYearContributionData(completedTasks: List<Task>, year: Int): YearContributionData {
+private fun calculateYearContributionData(
+    completedTasks: List<Task>,
+    bonusTasks: List<BonusTask>,
+    year: Int
+): YearContributionData {
     val calendar = Calendar.getInstance()
     val today = Calendar.getInstance()
     
@@ -297,13 +303,20 @@ private fun calculateYearContributionData(completedTasks: List<Task>, year: Int)
             
             val isFuture = calendar.after(today)
             
-            val count = if (isFuture) 0 else completedTasks.count { task ->
+            val standardCount = if (isFuture) 0 else completedTasks.count { task ->
                 task.completedAt != null && task.completedAt >= startOfDay && task.completedAt < endOfDay
             }
             
+            val bonusCount = if (isFuture) 0 else bonusTasks.count { bonus ->
+                bonus.completedAt >= startOfDay && bonus.completedAt < endOfDay
+            }
+            
+            // Every 3 bonus tasks adds 1 to the contribution "green"
+            val totalCount = standardCount + (bonusCount / 3)
+            
             currentWeek.add(ContributionDay(
                 date = startOfDay,
-                count = count,
+                count = totalCount,
                 dayOfWeek = dayOfWeek,
                 isCurrentYear = true,
                 isFuture = isFuture

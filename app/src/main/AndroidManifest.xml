@@ -40,6 +40,22 @@
             android:noHistory="true"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".QuickAddBudgetEntryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ANVIL.Dialog"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".QuickAddLoanActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ANVIL.Dialog"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTop" />
+
         <service
             android:name=".service.AnvilAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"

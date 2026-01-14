@@ -52,13 +52,13 @@ fun TasksScreen(
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Standard", "Bonus")
-    
+
     var showAddTaskSheet by remember { mutableStateOf(false) }
     var showAddBonusSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
 
-    
+
     var showInfoDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
     var selectedTaskId by remember { mutableStateOf<Long?>(null) }
@@ -68,11 +68,11 @@ fun TasksScreen(
 
     val scope = rememberCoroutineScope()
 
-    
+
     val allTasks by viewModel.tasks.collectAsState(initial = emptyList())
     val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
     val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
-    
+
     val selectedTask = remember(allTasks, selectedTaskId) {
         allTasks.find { it.id == selectedTaskId }
     }
@@ -80,16 +80,16 @@ fun TasksScreen(
     val editingTask = remember(allTasks, editingTaskId) {
         allTasks.find { it.id == editingTaskId }
     }
-    
+
     val existingCategories = remember(allTasks, completedTasks) {
         (allTasks.map { it.category } + completedTasks.map { it.category })
             .distinct()
             .filter { it != "General" }
             .sorted()
     }
-    
+
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    
+
     val tasks = remember(allTasks, selectedCategory) {
         if (selectedCategory == null) allTasks
         else allTasks.filter { it.category == selectedCategory }
@@ -99,15 +99,15 @@ fun TasksScreen(
         if (selectedCategory == null) completedTasks
         else completedTasks.filter { it.category == selectedCategory }
     }
-    
+
     CollapsibleScreenScaffold(
         title = "Tasks",
         subtitle = "Manage your work",
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { 
-                    if (selectedTabIndex == 0) showAddTaskSheet = true 
-                    else showAddBonusSheet = true 
+                onClick = {
+                    if (selectedTabIndex == 0) showAddTaskSheet = true
+                    else showAddBonusSheet = true
                 },
                 containerColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.primary else ForgedGold,
                 contentColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.onPrimary else Color.Black
@@ -122,7 +122,12 @@ fun TasksScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            TabRow(selectedTabIndex = selectedTabIndex) {
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
+            ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
@@ -204,38 +209,104 @@ fun TasksScreen(
                         }
 
                         items(filteredCompletedTasks, key = { "completed_${it.id}" }) { task ->
-                            SwipeToDismissItem(
-                                onDismiss = { viewModel.deleteTask(task) }
-                            ) {
-                                ListItem(
-                                    headlineContent = {
-                                        Text(
-                                            task.title,
-                                            style = androidx.compose.ui.text.TextStyle(
-                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                            ),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    supportingContent = {
-                                        Text(
-                                            "${task.category} • ${formatDate(task.completedAt ?: System.currentTimeMillis())}",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                        )
-                                    },
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
+                            var showMenu by remember { mutableStateOf(false) }
+                            AnvilCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    onClick = {
+                                        selectedTaskId = task.id
+                                        showInfoDialog = true
                                     }
-                                )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Completion checkbox (allows un-completing)
+                                        IconButton(
+                                            onClick = { viewModel.updateTask(task.copy(isCompleted = false, completedAt = null)) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Uncomplete task",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(16.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = task.title,
+                                                style = MaterialTheme.typography.bodyLarge.copy(
+                                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                                                    fontWeight = FontWeight.Medium
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = task.category,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                )
+                                                Text(
+                                                    text = " • ",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                                )
+                                                Text(
+                                                    text = "Completed ${formatDate(task.completedAt ?: System.currentTimeMillis())}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                )
+                                            }
+                                        }
+
+                                        Box {
+                                            IconButton(onClick = { showMenu = true }) {
+                                                Icon(
+                                                    imageVector = Icons.Default.MoreVert,
+                                                    contentDescription = "More options",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = showMenu,
+                                                onDismissRequest = { showMenu = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Uncheck") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        viewModel.updateTask(task.copy(isCompleted = false, completedAt = null))
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        viewModel.deleteTask(task)
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            } else {
+             else {
                 // Bonus Tasks Content
                 if (bonusTasks.isEmpty()) {
                     Box(
@@ -395,6 +466,7 @@ fun TasksScreen(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryFilterRow(
@@ -524,8 +596,10 @@ fun TaskInfoBottomSheetContent(
 
         Text(text = "Category: ${task.category}")
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "Deadline: ${formatDate(task.deadline)}")
-        Spacer(modifier = Modifier.height(8.dp))
+        if (!task.isDaily) {
+            Text(text = "Deadline: ${formatDate(task.deadline)}")
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         Text(text = "Status: ${if (task.isCompleted) "Completed" else "Pending"}")
         if (task.isCompleted && task.completedAt != null) {
             Text(text = "Completed at: ${formatDate(task.completedAt)}")
@@ -575,6 +649,7 @@ fun EditTaskBottomSheetContent(
     var steps by remember { mutableStateOf(task.steps) }
     var currentStepTitle by remember { mutableStateOf("") }
     var isDaily by remember { mutableStateOf(task.isDaily) }
+    var hardnessLevel by remember { mutableFloatStateOf(task.hardnessLevel.toFloat()) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -624,10 +699,12 @@ fun EditTaskBottomSheetContent(
             existingCategories = existingCategories
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Deadline:")
-        Button(onClick = { datePickerDialog.show() }) {
-            Text(text = formatDate(selectedDeadline))
+        if (!isDaily) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Deadline:")
+            Button(onClick = { datePickerDialog.show() }) {
+                Text(text = formatDate(selectedDeadline))
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -650,6 +727,47 @@ fun EditTaskBottomSheetContent(
                 checked = isDaily,
                 onCheckedChange = { isDaily = it }
             )
+        }
+        
+        if (!isDaily) {
+            Spacer(modifier = Modifier.height(16.dp))
+            // Hardness Level Slider
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Hardness Level", fontWeight = FontWeight.Medium)
+                        Text(
+                            when (hardnessLevel.toInt()) {
+                                1 -> "Complete by deadline"
+                                2 -> "Complete 2 days before"
+                                3 -> "Complete 3 days before"
+                                4 -> "Complete 4 days before"
+                                5 -> "Complete 5 days before"
+                                else -> ""
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "${hardnessLevel.toInt()}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Slider(
+                    value = hardnessLevel,
+                    onValueChange = { hardnessLevel = it },
+                    valueRange = 1f..5f,
+                    steps = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -705,7 +823,8 @@ fun EditTaskBottomSheetContent(
                         deadline = selectedDeadline, 
                         category = category.ifBlank { "General" }, 
                         steps = steps,
-                        isDaily = isDaily
+                        isDaily = isDaily,
+                        hardnessLevel = hardnessLevel.toInt()
                     ))
                 }
             }) {
@@ -777,10 +896,12 @@ fun AddTaskBottomSheetContent(
             existingCategories = existingCategories
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Deadline:")
-        Button(onClick = { datePickerDialog.show() }) {
-            Text(text = formatDate(selectedDeadline))
+        if (!isDaily) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Deadline:")
+            Button(onClick = { datePickerDialog.show() }) {
+                Text(text = formatDate(selectedDeadline))
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -807,45 +928,46 @@ fun AddTaskBottomSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Hardness Level Slider
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Hardness Level", fontWeight = FontWeight.Medium)
+        if (!isDaily) {
+            // Hardness Level Slider
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Hardness Level", fontWeight = FontWeight.Medium)
+                        Text(
+                            when (hardnessLevel.toInt()) {
+                                1 -> "Complete by deadline"
+                                2 -> "Complete 2 days before"
+                                3 -> "Complete 3 days before"
+                                4 -> "Complete 4 days before"
+                                5 -> "Complete 5 days before"
+                                else -> ""
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text(
-                        when (hardnessLevel.toInt()) {
-                            1 -> "Complete by deadline"
-                            2 -> "Complete 2 days before"
-                            3 -> "Complete 3 days before"
-                            4 -> "Complete 4 days before"
-                            5 -> "Complete 5 days before"
-                            else -> ""
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "${hardnessLevel.toInt()}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Text(
-                    text = "${hardnessLevel.toInt()}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                Slider(
+                    value = hardnessLevel,
+                    onValueChange = { hardnessLevel = it },
+                    valueRange = 1f..5f,
+                    steps = 3,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-            Slider(
-                value = hardnessLevel,
-                onValueChange = { hardnessLevel = it },
-                valueRange = 1f..5f,
-                steps = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
         Text("Steps:")
         Row(
             modifier = Modifier.fillMaxWidth(),

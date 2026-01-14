@@ -92,6 +92,9 @@ import com.james.anvil.worker.ReminderWorker
 import com.james.anvil.worker.WidgetRefreshWorker
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -101,6 +104,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         scheduleWorkers()
+        setupShortcuts()
+        handleIntent(intent)
         setContent {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
             ANVILTheme(darkTheme = isDarkTheme) {
@@ -152,6 +157,52 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        // Handle other intents if any
+    }
+
+    private fun setupShortcuts() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            val shortcutManager = getSystemService(ShortcutManager::class.java)
+
+            val expenseShortcut = ShortcutInfo.Builder(this, "add_expense")
+                .setShortLabel("Add Expense")
+                .setLongLabel("Record a new expense")
+                .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+                .setIntent(Intent(this, QuickAddBudgetEntryActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    putExtra("type", "EXPENSE")
+                })
+                .build()
+
+            val incomeShortcut = ShortcutInfo.Builder(this, "add_income")
+                .setShortLabel("Add Income")
+                .setLongLabel("Record a new income")
+                .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+                .setIntent(Intent(this, QuickAddBudgetEntryActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    putExtra("type", "INCOME")
+                })
+                .build()
+
+            val loanShortcut = ShortcutInfo.Builder(this, "add_loan")
+                .setShortLabel("Add Loan")
+                .setLongLabel("Record a new loan")
+                .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+                .setIntent(Intent(this, QuickAddLoanActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                })
+                .build()
+
+            shortcutManager.dynamicShortcuts = listOf(expenseShortcut, incomeShortcut, loanShortcut)
+        }
+    }
 
     private fun scheduleWorkers() {
         val workManager = WorkManager.getInstance(this)

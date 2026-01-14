@@ -14,6 +14,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Person
@@ -53,14 +54,14 @@ fun LoansScreen(
     val scope = rememberCoroutineScope()
 
     val tabs = listOf("Active (${activeLoans.size})", "Repaid (${repaidLoans.size})")
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("en", "PH"))
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH"))
 
     CollapsibleScreenScaffold(
         title = "Loans",
         subtitle = "Track what you owe",
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         },
         floatingActionButton = {
@@ -80,7 +81,8 @@ fun LoansScreen(
             // Animated Tab Row
             TabRow(
                 selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.Transparent,
+                divider = {},
                 indicator = { tabPositions ->
                     if (pagerState.currentPage < tabPositions.size) {
                         val indicatorOffset by animateDpAsState(
@@ -186,8 +188,8 @@ fun LoansScreen(
     if (showAddLoanSheet) {
         AddLoanSheet(
             onDismiss = { showAddLoanSheet = false },
-            onSave = { borrowerName, amount, balanceType, description, dueDate ->
-                viewModel.createLoan(borrowerName, amount, balanceType, description, dueDate)
+            onSave = { borrowerName, amount, balanceType, interestRate, totalExpectedAmount, description, dueDate ->
+                viewModel.createLoan(borrowerName, amount, balanceType, interestRate, totalExpectedAmount, description, dueDate)
             }
         )
     }
@@ -197,14 +199,15 @@ fun LoansScreen(
             loan = loan,
             currencyFormat = currencyFormat,
             onDismiss = { showRepaymentSheet = null },
-            onSave = { amount, note ->
-                viewModel.addLoanRepayment(loan, amount, note)
+            onSave = { amount, balanceType, note ->
+                viewModel.addLoanRepayment(loan, amount, balanceType, note)
             }
         )
     }
     
-    showHistorySheet?.let { loan ->
-        val repayments by viewModel.getLoanRepayments(loan.id).collectAsState(initial = emptyList<LoanRepayment>())
+    val repayments by viewModel.getLoanRepayments(showHistorySheet?.id ?: -1L).collectAsState(initial = emptyList())
+    
+    showHistorySheet?.let { loan: com.james.anvil.data.Loan ->
         RepaymentHistorySheet(
             loan = loan,
             repayments = repayments,
@@ -224,7 +227,7 @@ private fun LoanItem(
     onViewHistory: () -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-    val progress = 1 - (loan.remainingAmount / loan.originalAmount).coerceIn(0.0, 1.0)
+    val progress = 1 - (loan.remainingAmount / loan.totalExpectedAmount).coerceIn(0.0, 1.0)
     val isGcash = loan.balanceType == BalanceType.GCASH
     val isActive = loan.status != LoanStatus.FULLY_REPAID
     var showMenu by remember { mutableStateOf(false) }
@@ -277,7 +280,7 @@ private fun LoanItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate))}",
+                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate))}${if (loan.interestRate > 0) " • ${loan.interestRate}% Int." else ""}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -295,9 +298,9 @@ private fun LoanItem(
                             fontWeight = FontWeight.Bold,
                             color = if (isActive) MaterialTheme.colorScheme.onSurface else DeepTeal
                         )
-                        if (loan.remainingAmount != loan.originalAmount) {
+                        if (loan.remainingAmount != loan.totalExpectedAmount) {
                             Text(
-                                text = "of ${currencyFormat.format(loan.originalAmount)}",
+                                text = "of ${currencyFormat.format(loan.totalExpectedAmount)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -416,442 +419,5 @@ private fun LoanItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddLoanSheet(
-    onDismiss: () -> Unit,
-    onSave: (String, Double, BalanceType, String?, Long?) -> Unit
-) {
-    var borrowerName by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var balanceType by remember { mutableStateOf(BalanceType.CASH) }
-    var description by remember { mutableStateOf("") }
-    var borrowerError by remember { mutableStateOf(false) }
-    var amountError by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                text = "Add Loan",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = borrowerName,
-                onValueChange = {
-                    borrowerName = it
-                    borrowerError = false
-                },
-                label = { Text("Borrower Name") },
-                isError = borrowerError,
-                supportingText = if (borrowerError) {
-                    { Text("Name is required") }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = amount,
-                onValueChange = {
-                    amount = it.filter { c -> c.isDigit() || c == '.' }
-                    amountError = false
-                },
-                label = { Text("Amount") },
-                prefix = { Text("₱") },
-                isError = amountError,
-                supportingText = if (amountError) {
-                    { Text("Enter a valid amount") }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Balance Type Selector
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = balanceType == BalanceType.CASH,
-                    onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
-                    leadingIcon = if (balanceType == BalanceType.CASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = balanceType == BalanceType.GCASH,
-                    onClick = { balanceType = BalanceType.GCASH },
-                    label = { Text("GCash") },
-                    leadingIcon = if (balanceType == BalanceType.GCASH) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Note (optional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    val amountValue = amount.toDoubleOrNull()
-                    when {
-                        borrowerName.isBlank() -> borrowerError = true
-                        amountValue == null || amountValue <= 0 -> amountError = true
-                        else -> {
-                            onSave(borrowerName.trim(), amountValue, balanceType, description.ifEmpty { null }, null)
-                            onDismiss()
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "Create Loan",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddRepaymentSheet(
-    loan: Loan,
-    currencyFormat: NumberFormat,
-    onDismiss: () -> Unit,
-    onSave: (Double, String?) -> Unit
-) {
-    var amount by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
-    var amountError by remember { mutableStateOf(false) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                text = "Add Repayment",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "From ${loan.borrowerName} • Remaining: ${currencyFormat.format(loan.remainingAmount)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = amount,
-                onValueChange = {
-                    amount = it.filter { c -> c.isDigit() || c == '.' }
-                    amountError = false
-                },
-                label = { Text("Repayment Amount") },
-                prefix = { Text("₱") },
-                isError = amountError,
-                supportingText = if (amountError) {
-                    { Text("Enter a valid amount") }
-                } else null,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Quick amount buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { amount = loan.remainingAmount.toString() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Full Amount")
-                }
-                OutlinedButton(
-                    onClick = { amount = (loan.remainingAmount / 2).toString() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Half")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("Note (optional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    val amountValue = amount.toDoubleOrNull()
-                    when {
-                        amountValue == null || amountValue <= 0 -> amountError = true
-                        else -> {
-                            onSave(amountValue, note.ifEmpty { null })
-                            onDismiss()
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "Record Repayment",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RepaymentHistorySheet(
-    loan: Loan,
-    repayments: List<LoanRepayment>,
-    currencyFormat: NumberFormat,
-    onDismiss: () -> Unit
-) {
-    val dateFormat = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
-    val isGcash = loan.balanceType == BalanceType.GCASH
-    val accentColor = if (isGcash) Color(0xFF007DFE) else DeepTeal
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                text = "Repayment History",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = loan.borrowerName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Summary card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = accentColor.copy(alpha = 0.1f)
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Original",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currencyFormat.format(loan.originalAmount),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Paid",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currencyFormat.format(loan.originalAmount - loan.remainingAmount),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = accentColor
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Remaining",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currencyFormat.format(loan.remainingAmount),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (loan.remainingAmount > 0) MaterialTheme.colorScheme.onSurface else accentColor
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (repayments.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "No repayments yet",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    text = "Transactions",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val sortedRepayments = repayments.sortedByDescending { it.repaymentDate }
-                
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 300.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(sortedRepayments) { repayment ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = dateFormat.format(Date(repayment.repaymentDate)),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                repayment.note?.let { note ->
-                                    if (note.isNotBlank()) {
-                                        Text(
-                                            text = note,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                text = "+${currencyFormat.format(repayment.amount)}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = accentColor
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Close")
-            }
-        }
-    }
-}
+// Private sheets removed - now in BudgetSheets.kt

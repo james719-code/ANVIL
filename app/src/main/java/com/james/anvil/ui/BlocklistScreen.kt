@@ -20,6 +20,7 @@ import com.james.anvil.ui.components.CollapsibleScreenScaffold
 import com.james.anvil.ui.components.EmptyState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +33,12 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
         subtitle = "Shield yourself from distractions"
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            TabRow(selectedTabIndex = selectedTabIndex) {
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
+            ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
