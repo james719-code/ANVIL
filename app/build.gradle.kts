@@ -55,9 +55,14 @@ android {
         compose = true
     }
 
-    // Simplified naming is handled by the build process defaults
-    // or manually in the workflow if needed.
-
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                output.outputFileName = "anvil_${variant.name}.apk"
+            }
+    }
 }
 
 dependencies {
