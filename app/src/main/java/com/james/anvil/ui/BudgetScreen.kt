@@ -93,8 +93,7 @@ fun BudgetScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         rememberTopAppBarState()
     )
-    
-    // Dynamically set the height offset limit based on intended range
+
     val density = androidx.compose.ui.platform.LocalDensity.current
     LaunchedEffect(maxHeaderHeight, minHeaderHeight) {
         val maxPx = with(density) { maxHeaderHeight.toPx() }
