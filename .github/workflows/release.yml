@@ -1,0 +1,46 @@
+name: Android CI/CD Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger only when you push a tag like v1.0, v2.1.4, etc.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Decode Keystore
+        id: decode_keystore
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: 'release_key.jks'
+          encodedString: ${{ secrets.SIGNING_KEY }}
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+        env:
+          # These env variables must match your build.gradle signingConfig
+          RELEASE_STORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/anvil_release.apk
+          name: Release ${{ github.ref_name }}
+          body: "Automated Build for version ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in, no need to create
