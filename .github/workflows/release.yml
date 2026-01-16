@@ -37,10 +37,22 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Debug Output
+        run: |
+          ls -R app/build/outputs/apk/
+          if [ -z "$(find app/build/outputs/apk/ -name '*.apk')" ]; then
+            echo "Error: No APK found!"
+            exit 1
+          fi
+
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/anvil_release.apk
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/**/*.apk
+          fail_on_unmatched_files: true
           name: Release ${{ github.ref_name }}
           body: "Automated Build for version ${{ github.ref_name }}"
           draft: false
