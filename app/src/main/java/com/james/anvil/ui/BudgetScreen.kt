@@ -88,7 +88,6 @@ fun BudgetScreen(
         }.sortedByDescending { it.timestamp }
     }
     
-    // Custom height settings for the collapsing header
     val maxHeaderHeight = 460.dp
     val minHeaderHeight = 64.dp
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
