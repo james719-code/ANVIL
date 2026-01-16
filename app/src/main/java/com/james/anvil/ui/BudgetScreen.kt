@@ -156,7 +156,6 @@ fun BudgetScreen(
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
-                        // Ultra-Premium Bank Card Design
                         AnvilCard(
                             modifier = Modifier
                                 .fillMaxWidth()
