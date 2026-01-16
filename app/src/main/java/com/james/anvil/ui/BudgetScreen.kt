@@ -49,8 +49,6 @@ import java.util.*
 enum class BudgetFilter {
     ALL, NECESSITY, LEISURE, LOANS
 }
-
-// Helper data class for 4 values
 private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +88,6 @@ fun BudgetScreen(
         }.sortedByDescending { it.timestamp }
     }
     
-    // Custom height settings for the collapsing header
     val maxHeaderHeight = 460.dp
     val minHeaderHeight = 64.dp
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
