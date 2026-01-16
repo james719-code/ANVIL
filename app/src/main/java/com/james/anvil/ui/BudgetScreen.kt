@@ -49,8 +49,6 @@ import java.util.*
 enum class BudgetFilter {
     ALL, NECESSITY, LEISURE, LOANS
 }
-
-// Helper data class for 4 values
 private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 @OptIn(ExperimentalMaterial3Api::class)
