@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,7 +28,9 @@ jobs:
           encodedString: ${{ secrets.SIGNING_KEY }}
 
       - name: Make gradlew executable
-        run: chmod +x gradlew
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
@@ -40,10 +44,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/anvil_release.apk
+          files: "app/build/outputs/apk/release/*.apk"
           name: Release ${{ github.ref_name }}
           body: "Automated Build for version ${{ github.ref_name }}"
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in, no need to create
