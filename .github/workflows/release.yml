@@ -25,6 +25,9 @@ jobs:
           fileName: 'release_key.jks'
           encodedString: ${{ secrets.SIGNING_KEY }}
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Build Release APK
         run: ./gradlew assembleRelease
         env:
