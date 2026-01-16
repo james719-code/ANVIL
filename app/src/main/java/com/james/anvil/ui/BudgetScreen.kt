@@ -174,7 +174,6 @@ fun BudgetScreen(
                                         )
                                     )
                             ) {
-                                // Decorative hologram-like orbs
                                 Box(
                                     modifier = Modifier
                                         .size(240.dp)
