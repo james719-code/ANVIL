@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
 import com.james.anvil.widget.StatsWidget
+import com.james.anvil.util.PrefsKeys
 
 data class AppInfo(
     val name: String,
@@ -58,7 +59,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val bonusTaskDao = db.bonusTaskDao()
     private val budgetDao = db.budgetDao()
     private val loanDao = db.loanDao()
-    private val prefs: SharedPreferences = application.getSharedPreferences("anvil_settings", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = application.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
     private val bonusManager = BonusManager(application)
 
     private val quotes = listOf(
@@ -235,27 +236,27 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun updateDailyQuote() {
         val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-        val lastShownDay = prefs.getInt("last_quote_day", -1)
+        val lastShownDay = prefs.getInt(PrefsKeys.LAST_QUOTE_DAY, -1)
 
         if (today != lastShownDay) {
             val randomIndex = Random.nextInt(quotes.size)
             prefs.edit()
-                .putInt("last_quote_day", today)
-                .putInt("current_quote_index", randomIndex)
+                .putInt(PrefsKeys.LAST_QUOTE_DAY, today)
+                .putInt(PrefsKeys.CURRENT_QUOTE_INDEX, randomIndex)
                 .apply()
             _dailyQuote.value = quotes[randomIndex]
         } else {
-            val index = prefs.getInt("current_quote_index", 0)
+            val index = prefs.getInt(PrefsKeys.CURRENT_QUOTE_INDEX, 0)
             _dailyQuote.value = quotes.getOrElse(index) { quotes[0] }
         }
     }
 
-    private val _isDarkTheme = MutableStateFlow(prefs.getBoolean("dark_theme", false))
+    private val _isDarkTheme = MutableStateFlow(prefs.getBoolean(PrefsKeys.DARK_THEME, false))
     val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
 
     fun toggleTheme(isDark: Boolean) {
         _isDarkTheme.value = isDark
-        prefs.edit().putBoolean("dark_theme", isDark).apply()
+        prefs.edit().putBoolean(PrefsKeys.DARK_THEME, isDark).apply()
     }
 
     fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1) {

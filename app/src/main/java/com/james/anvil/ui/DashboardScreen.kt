@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.james.anvil.R
 import com.james.anvil.ui.components.AddBonusTaskBottomSheet
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
@@ -85,10 +87,16 @@ fun DashboardScreen(
     val greeting = remember {
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         when (hour) {
-            in 5..11 -> "Good Morning"
-            in 12..17 -> "Good Afternoon"
-            else -> "Good Evening"
+            in 5..11 -> "morning"
+            in 12..17 -> "afternoon"
+            else -> "evening"
         }
+    }
+    
+    val greetingText = when(greeting) {
+        "morning" -> stringResource(R.string.dashboard_greeting_morning)
+        "afternoon" -> stringResource(R.string.dashboard_greeting_afternoon)
+        else -> stringResource(R.string.dashboard_greeting_evening)
     }
 
     Scaffold(
@@ -112,7 +120,7 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.Top
                 ) {
                     AnvilHeader(
-                        title = greeting,
+                        title = greetingText,
                         subtitle = "Let's make today count.",
                         modifier = Modifier.weight(1f)
                     )
@@ -124,7 +132,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = stringResource(R.string.cd_settings_button),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

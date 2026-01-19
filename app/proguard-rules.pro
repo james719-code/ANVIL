@@ -73,3 +73,39 @@
 -dontwarn com.google.errorprone.annotations.CheckReturnValue
 -dontwarn com.google.errorprone.annotations.Immutable
 -dontwarn com.google.errorprone.annotations.RestrictedApi
+
+# ============================================
+# Utility Classes
+# ============================================
+-keep class com.james.anvil.util.** { *; }
+
+# ============================================
+# Hilt Dependency Injection
+# ============================================
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keepclasseswithmembers class * {
+    @dagger.hilt.* <methods>;
+}
+-keepclasseswithmembers class * {
+    @javax.inject.* <fields>;
+}
+
+# ============================================
+# Kotlin Serialization
+# ============================================
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.james.anvil.**$$serializer { *; }
+-keepclassmembers class com.james.anvil.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.james.anvil.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
