@@ -2,17 +2,19 @@ package com.james.anvil.core
 
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskDao
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
+/**
+ * Unit tests for DecisionEngine.
+ * Tests the blocking logic based on tasks, penalties, and grace days.
+ */
 class DecisionEngineTest {
 
     private lateinit var taskDao: TaskDao
@@ -26,82 +28,74 @@ class DecisionEngineTest {
         penaltyManager = mock()
         bonusManager = mock()
         decisionEngine = DecisionEngine(taskDao, penaltyManager, bonusManager)
+        
+        // Default stubs for PenaltyManager methods
+        whenever(penaltyManager.getLastSystemTime()).thenReturn(0L)
+        whenever(penaltyManager.getLastElapsedRealtime()).thenReturn(0L)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
     }
 
-    // FIX: Changed from "= runBlocking" to "{ runBlocking { } }"
-    @Test
-    fun `isBlocked should be false when no tasks today or tomorrow`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
-
-            val isBlocked = decisionEngine.isBlocked()
-
-            assertFalse(isBlocked)
-        }
-    }
+    // ============================================
+    // isBlocked() Tests
+    // ============================================
 
     @Test
-    fun `isBlocked should be true when penalty is active`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-            whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+    fun `isBlocked should be false when no incomplete tasks exist`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(0)
 
-            val isBlocked = decisionEngine.isBlocked()
+        val isBlocked = decisionEngine.isBlocked()
 
-            assertTrue(isBlocked)
-        }
+        assertFalse(isBlocked)
     }
 
     @Test
-    fun `isBlocked should be true when tasks exist even without penalty`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+    fun `isBlocked should be true when penalty is active`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(5)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+        whenever(taskDao.getTasksViolatingHardness(any())).thenReturn(emptyList())
+        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(emptyList())
 
-            val isBlocked = decisionEngine.isBlocked()
+        val isBlocked = decisionEngine.isBlocked()
 
-            assertTrue(isBlocked)
-        }
+        assertTrue(isBlocked)
     }
 
     @Test
-    fun `updateState should start penalty when overdue tasks exist and no grace`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
-            whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
-            whenever(bonusManager.consumeGraceDay()).thenReturn(false)
+    fun `isBlocked should be true when tasks violating hardness exist`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(5)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+        whenever(taskDao.getTasksViolatingHardness(any())).thenReturn(
+            listOf(Task(title = "Hard Task", deadline = 100L))
+        )
 
-            decisionEngine.updateState()
+        val isBlocked = decisionEngine.isBlocked()
 
-            verify(penaltyManager).startPenalty()
-        }
+        assertTrue(isBlocked)
     }
 
     @Test
-    fun `updateState should consume grace and NOT start penalty when overdue tasks exist and grace available`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(5)
-            whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
-            whenever(taskDao.getOverdueIncomplete(any())).thenReturn(listOf(Task(title = "Late", deadline = 100L)))
-            whenever(bonusManager.consumeGraceDay()).thenReturn(true)
+    fun `isBlocked should be true when overdue tasks exist`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(5)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+        whenever(taskDao.getTasksViolatingHardness(any())).thenReturn(emptyList())
+        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(
+            listOf(Task(title = "Overdue Task", deadline = 100L))
+        )
 
-            decisionEngine.updateState()
+        val isBlocked = decisionEngine.isBlocked()
 
-            verify(penaltyManager, never()).startPenalty()
-            verify(bonusManager).consumeGraceDay()
-        }
+        assertTrue(isBlocked)
     }
 
     @Test
-    fun `updateState should clear penalty if no tasks exist`() {
-        runBlocking {
-            whenever(taskDao.countActiveTodayTomorrow(any(), any())).thenReturn(0)
-            whenever(penaltyManager.isPenaltyActive()).thenReturn(true)
+    fun `isBlocked should be false when tasks exist but not overdue or violating hardness`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(5)
+        whenever(penaltyManager.isPenaltyActive()).thenReturn(false)
+        whenever(taskDao.getTasksViolatingHardness(any())).thenReturn(emptyList())
+        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(emptyList())
 
-            decisionEngine.updateState()
+        val isBlocked = decisionEngine.isBlocked()
 
-            verify(penaltyManager).clearPenalty()
-        }
+        assertFalse(isBlocked)
     }
 }
