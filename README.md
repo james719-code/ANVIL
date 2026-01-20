@@ -49,13 +49,15 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 * **App Shield**: Toggle-based blocking for any installed application
 * **Smart Categorization**: Organize blocked apps by custom categories
 * **Link Warden**: Block specific URLs or domain patterns globally
+* **Schedule-Based Blocking**: Block apps and links based on time ranges and specific days (Everyday, Weekdays, or Custom)
 * **Privacy Mode**: Encrypt sensitive blocked URLs (hidden from display)
 * **YouTube Shorts Blocking**: Intelligent detection and blocking of YouTube Shorts content
 * **Hardness-Based Blocking**: Apps are blocked when tasks approach their hardness-adjusted deadlines
 * **Real-time Enforcement**: Uses Android Accessibility Services to detect and intercept distracting habits
 
-### Dashboard & Analytics
+### Dashboard & UX
 
+* **Splash Screen**: Animated loading screen with progress tracking and branding
 * **Contribution Graph**: GitHub-style activity chart showing completed tasks over 3 months
 * **Material You Design**: Built with Jetpack Compose for a modern, responsive feel
 * **Adaptive Themes**: Full support for Light and Dark modes with a subtle blue-green color palette
