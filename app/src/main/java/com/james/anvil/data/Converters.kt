@@ -45,4 +45,10 @@ class Converters {
 
     @TypeConverter
     fun toCategoryType(value: String): CategoryType = CategoryType.valueOf(value)
+
+    @TypeConverter
+    fun fromBlockScheduleType(value: BlockScheduleType): String = value.name
+
+    @TypeConverter
+    fun toBlockScheduleType(value: String): BlockScheduleType = BlockScheduleType.valueOf(value)
 }

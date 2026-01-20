@@ -23,6 +23,7 @@ fun BlocklistItem(
     app: AppInfoWithCategory,
     onToggleBlock: (Boolean) -> Unit,
     onCategoryClick: () -> Unit,
+    onScheduleClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -78,6 +79,17 @@ fun BlocklistItem(
                     ),
                     modifier = Modifier.clickable { onCategoryClick() }
                 )
+                // Show schedule when blocked
+                if (app.isBlocked) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = app.scheduleDescription,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.tertiary
+                        ),
+                        modifier = Modifier.clickable { onScheduleClick() }
+                    )
+                }
             }
 
             Switch(
@@ -91,3 +103,4 @@ fun BlocklistItem(
         }
     }
 }
+
