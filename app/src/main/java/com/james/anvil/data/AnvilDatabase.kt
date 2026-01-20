@@ -18,7 +18,7 @@ import androidx.room.TypeConverters
         Loan::class,
         LoanRepayment::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -54,6 +54,29 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration to add schedule-based blocking support.
+         * - scheduleType: EVERYDAY by default (existing entries remain blocked everyday)
+         * - dayMask: 127 = all days (0b1111111 = Sun|Mon|Tue|Wed|Thu|Fri|Sat)
+         * - startTimeMinutes: 0 (midnight start)
+         * - endTimeMinutes: 1439 (11:59 PM end = all day)
+         */
+        private val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Add schedule columns to blocked_apps table
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `scheduleType` TEXT NOT NULL DEFAULT 'EVERYDAY'")
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `dayMask` INTEGER NOT NULL DEFAULT 127")
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `startTimeMinutes` INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `endTimeMinutes` INTEGER NOT NULL DEFAULT 1439")
+
+                // Add schedule columns to blocked_links table
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `scheduleType` TEXT NOT NULL DEFAULT 'EVERYDAY'")
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `dayMask` INTEGER NOT NULL DEFAULT 127")
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `startTimeMinutes` INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `endTimeMinutes` INTEGER NOT NULL DEFAULT 1439")
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -61,7 +84,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .build()
                 INSTANCE = instance
                 instance

@@ -1,6 +1,7 @@
 package com.james.anvil.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -62,7 +63,9 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
 fun BlockedAppsTab(viewModel: TaskViewModel) {
     val appListWithCategories by viewModel.appListWithCategories.collectAsState(initial = emptyList())
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showScheduleDialog by remember { mutableStateOf(false) }
     var selectedAppForCategory by remember { mutableStateOf<AppInfoWithCategory?>(null) }
+    var selectedAppForSchedule by remember { mutableStateOf<AppInfoWithCategory?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     
     val filteredApps = remember(appListWithCategories, searchQuery) {
@@ -105,6 +108,10 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
                         onCategoryClick = {
                             selectedAppForCategory = app
                             showCategoryDialog = true
+                        },
+                        onScheduleClick = {
+                            selectedAppForSchedule = app
+                            showScheduleDialog = true
                         }
                     )
                 }
@@ -112,6 +119,7 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
         }
     }
 
+    // Category Edit Dialog
     if (showCategoryDialog && selectedAppForCategory != null) {
         CategoryEditDialog(
             app = selectedAppForCategory!!,
@@ -121,6 +129,31 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
                 showCategoryDialog = false
             }
         )
+    }
+
+    // Schedule Edit Dialog
+    if (showScheduleDialog && selectedAppForSchedule != null) {
+        val blockedApp = selectedAppForSchedule!!.blockedApp
+        if (blockedApp != null) {
+            com.james.anvil.ui.components.ScheduleEditDialog(
+                title = "Schedule for ${selectedAppForSchedule!!.appInfo.name}",
+                currentScheduleType = blockedApp.scheduleType,
+                currentDayMask = blockedApp.dayMask,
+                currentStartMinutes = blockedApp.startTimeMinutes,
+                currentEndMinutes = blockedApp.endTimeMinutes,
+                onDismiss = { showScheduleDialog = false },
+                onSave = { scheduleType, dayMask, startMinutes, endMinutes ->
+                    viewModel.updateAppSchedule(
+                        packageName = blockedApp.packageName,
+                        scheduleType = scheduleType,
+                        dayMask = dayMask,
+                        startTimeMinutes = startMinutes,
+                        endTimeMinutes = endMinutes
+                    )
+                    showScheduleDialog = false
+                }
+            )
+        }
     }
 }
 
@@ -164,6 +197,8 @@ fun CategoryEditDialog(
 fun BlockedLinksTab(viewModel: TaskViewModel) {
     val blockedLinks by viewModel.blockedLinkObjects.collectAsState(initial = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
+    var showScheduleDialog by remember { mutableStateOf(false) }
+    var selectedLinkForSchedule by remember { mutableStateOf<com.james.anvil.data.BlockedLink?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (blockedLinks.isEmpty()) {
@@ -188,12 +223,24 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
                 }
                 items(blockedLinks) { link ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedLinkForSchedule = link
+                                showScheduleDialog = true
+                            },
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         val displayText = if (link.isEncrypted) "****** (Hidden)" else link.pattern
                         ListItem(
                             headlineContent = { Text(displayText) },
+                            supportingContent = {
+                                Text(
+                                    text = link.getScheduleDescription(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            },
                             trailingContent = {
                                 IconButton(onClick = { viewModel.unblockLink(link.pattern) }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Remove")
@@ -221,6 +268,29 @@ fun BlockedLinksTab(viewModel: TaskViewModel) {
             onAdd = { link, isEncrypted ->
                 viewModel.blockLink(link, isEncrypted)
                 showAddDialog = false
+            }
+        )
+    }
+
+    // Schedule Edit Dialog for Links
+    if (showScheduleDialog && selectedLinkForSchedule != null) {
+        val link = selectedLinkForSchedule!!
+        com.james.anvil.ui.components.ScheduleEditDialog(
+            title = "Schedule for ${if (link.isEncrypted) "Hidden Link" else link.pattern}",
+            currentScheduleType = link.scheduleType,
+            currentDayMask = link.dayMask,
+            currentStartMinutes = link.startTimeMinutes,
+            currentEndMinutes = link.endTimeMinutes,
+            onDismiss = { showScheduleDialog = false },
+            onSave = { scheduleType, dayMask, startMinutes, endMinutes ->
+                viewModel.updateLinkSchedule(
+                    pattern = link.pattern,
+                    scheduleType = scheduleType,
+                    dayMask = dayMask,
+                    startTimeMinutes = startMinutes,
+                    endTimeMinutes = endMinutes
+                )
+                showScheduleDialog = false
             }
         )
     }

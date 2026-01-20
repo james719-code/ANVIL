@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Schedule-Based Blocking**
+  - Block apps/links based on schedule: Everyday, Weekdays, or Custom days
+  - Time range support: Block during specific hours (e.g., 8 AM - 6 PM)
+  - `BlockSchedule.kt` - Schedule types, day-of-week masks, and time ranges
+  - `ScheduleEditDialog.kt` - UI for configuring blocking schedules
+  - Schedule description shown on blocked items (clickable to edit)
+  - Database migration preserves existing blocked items as "Everyday, All day"
 - **Centralized Utilities**
   - `PrefsKeys.kt` - Centralized SharedPreferences key management
   - `DesignTokens.kt` - Consistent spacing, sizing, and animation tokens

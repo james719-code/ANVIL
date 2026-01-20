@@ -12,6 +12,8 @@ import com.james.anvil.data.AppCategory
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
+import com.james.anvil.data.BlockScheduleType
+import com.james.anvil.data.DayOfWeekMask
 import com.james.anvil.data.BonusTask
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
@@ -44,11 +46,18 @@ data class AppInfo(
     val icon: Drawable?
 )
 
+/**
+ * Combined info about an app including its block status and schedule.
+ */
 data class AppInfoWithCategory(
     val appInfo: AppInfo,
     val category: String,
-    val isBlocked: Boolean
-)
+    val isBlocked: Boolean,
+    val blockedApp: BlockedApp? = null // Full blocked app info with schedule
+) {
+    val scheduleDescription: String
+        get() = blockedApp?.getScheduleDescription() ?: "Not blocked"
+}
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -167,17 +176,24 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     private val allCategories: Flow<List<AppCategory>> = appCategoryDao.getAllCategories()
 
+    // Observe full BlockedApp objects for schedule info
+    val blockedAppObjects: Flow<List<BlockedApp>> = blocklistDao.observeEnabledBlockedApps()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
     val appListWithCategories: Flow<List<AppInfoWithCategory>> = combine(
         _installedApps,
-        blockedApps,
+        blockedAppObjects,
         allCategories
-    ) { apps, blocked, categories ->
+    ) { apps, blockedList, categories ->
         val categoryMap = categories.associate { it.packageName to it.category }
+        val blockedMap = blockedList.associateBy { it.packageName }
         apps.map { app ->
+            val blockedApp = blockedMap[app.packageName]
             AppInfoWithCategory(
                 appInfo = app,
                 category = categoryMap[app.packageName] ?: "Uncategorized",
-                isBlocked = blocked.contains(app.packageName)
+                isBlocked = blockedApp != null,
+                blockedApp = blockedApp
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
@@ -217,10 +233,12 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _installedApps.value = withContext(Dispatchers.IO) {
                 val pm = getApplication<Application>().packageManager
+                val myPackageName = getApplication<Application>().packageName
                 val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
                 packages.mapNotNull {
                     val intent = pm.getLaunchIntentForPackage(it.packageName)
-                    if (intent != null) {
+                    // Exclude apps without launcher intent and exclude ANVIL itself
+                    if (intent != null && it.packageName != myPackageName) {
                         AppInfo(
                             name = it.applicationInfo?.loadLabel(pm)?.toString() ?: it.packageName,
                             packageName = it.packageName,
@@ -331,10 +349,47 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun blockApp(packageName: String) {
+    fun blockApp(
+        packageName: String,
+        scheduleType: BlockScheduleType = BlockScheduleType.EVERYDAY,
+        dayMask: Int = DayOfWeekMask.ALL_DAYS,
+        startTimeMinutes: Int = 0,
+        endTimeMinutes: Int = 1439
+    ) {
         viewModelScope.launch {
-            blocklistDao.insertApp(BlockedApp(packageName = packageName, isEnabled = true))
+            blocklistDao.insertApp(
+                BlockedApp(
+                    packageName = packageName,
+                    isEnabled = true,
+                    scheduleType = scheduleType,
+                    dayMask = dayMask,
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes
+                )
+            )
             StatsWidget.refreshAll(getApplication())
+        }
+    }
+
+    fun updateAppSchedule(
+        packageName: String,
+        scheduleType: BlockScheduleType,
+        dayMask: Int,
+        startTimeMinutes: Int,
+        endTimeMinutes: Int
+    ) {
+        viewModelScope.launch {
+            val existing = blocklistDao.getBlockedApp(packageName)
+            if (existing != null) {
+                blocklistDao.updateApp(
+                    existing.copy(
+                        scheduleType = scheduleType,
+                        dayMask = dayMask,
+                        startTimeMinutes = startTimeMinutes,
+                        endTimeMinutes = endTimeMinutes
+                    )
+                )
+            }
         }
     }
 
@@ -351,10 +406,49 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun blockLink(pattern: String, isEncrypted: Boolean = false) {
+    fun blockLink(
+        pattern: String,
+        isEncrypted: Boolean = false,
+        scheduleType: BlockScheduleType = BlockScheduleType.EVERYDAY,
+        dayMask: Int = DayOfWeekMask.ALL_DAYS,
+        startTimeMinutes: Int = 0,
+        endTimeMinutes: Int = 1439
+    ) {
         viewModelScope.launch {
-            blocklistDao.insertLink(BlockedLink(pattern = pattern, isEnabled = true, isEncrypted = isEncrypted))
+            blocklistDao.insertLink(
+                BlockedLink(
+                    pattern = pattern,
+                    isEnabled = true,
+                    isEncrypted = isEncrypted,
+                    scheduleType = scheduleType,
+                    dayMask = dayMask,
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes
+                )
+            )
             StatsWidget.refreshAll(getApplication())
+        }
+    }
+
+    fun updateLinkSchedule(
+        pattern: String,
+        scheduleType: BlockScheduleType,
+        dayMask: Int,
+        startTimeMinutes: Int,
+        endTimeMinutes: Int
+    ) {
+        viewModelScope.launch {
+            val existing = blocklistDao.getBlockedLink(pattern)
+            if (existing != null) {
+                blocklistDao.updateLink(
+                    existing.copy(
+                        scheduleType = scheduleType,
+                        dayMask = dayMask,
+                        startTimeMinutes = startTimeMinutes,
+                        endTimeMinutes = endTimeMinutes
+                    )
+                )
+            }
         }
     }
 

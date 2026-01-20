@@ -9,6 +9,8 @@ import com.james.anvil.core.BonusManager
 import com.james.anvil.core.DecisionEngine
 import com.james.anvil.core.PenaltyManager
 import com.james.anvil.data.AnvilDatabase
+import com.james.anvil.data.BlockedApp
+import com.james.anvil.data.BlockedLink
 import com.james.anvil.data.VisitedLink
 import com.james.anvil.ui.LockActivity
 import kotlinx.coroutines.CoroutineScope
@@ -17,7 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.ConcurrentHashMap
 
 class AnvilAccessibilityService : AccessibilityService() {
 
@@ -28,9 +30,9 @@ class AnvilAccessibilityService : AccessibilityService() {
     @Volatile
     private var isBlocked: Boolean = false
 
-    // Thread-safe sets for caching blocklists
-    private val blockedPackages = CopyOnWriteArraySet<String>()
-    private val blockedLinks = CopyOnWriteArraySet<String>()
+    // Thread-safe maps for caching blocklists with full schedule info
+    private val blockedAppsMap = ConcurrentHashMap<String, BlockedApp>()
+    private val blockedLinksMap = ConcurrentHashMap<String, BlockedLink>()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -57,18 +59,22 @@ class AnvilAccessibilityService : AccessibilityService() {
     }
 
     private fun monitorBlocklists() {
-        // Watch for changes in blocked apps
+        // Watch for changes in blocked apps (with full schedule info)
         scope.launch {
-            db.blocklistDao().observeEnabledBlockedAppPackages().collectLatest { packages ->
-                blockedPackages.clear()
-                blockedPackages.addAll(packages)
+            db.blocklistDao().observeEnabledBlockedApps().collectLatest { apps ->
+                blockedAppsMap.clear()
+                apps.forEach { app ->
+                    blockedAppsMap[app.packageName] = app
+                }
             }
         }
-        // Watch for changes in blocked URL patterns
+        // Watch for changes in blocked URL patterns (with full schedule info)
         scope.launch {
-            db.blocklistDao().observeEnabledBlockedLinkPatterns().collectLatest { patterns ->
-                blockedLinks.clear()
-                blockedLinks.addAll(patterns)
+            db.blocklistDao().observeEnabledBlockedLinksWithSchedule().collectLatest { links ->
+                blockedLinksMap.clear()
+                links.forEach { link ->
+                    blockedLinksMap[link.pattern] = link
+                }
             }
         }
     }
@@ -104,7 +110,7 @@ class AnvilAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // 2. Blocking Logic
+            // 2. Blocking Logic (now schedule-aware)
             if (isBlocked) {
                 if (shouldEnforce(packageName, currentUrl, rootNode)) {
                     enforce()
@@ -132,13 +138,17 @@ class AnvilAccessibilityService : AccessibilityService() {
             if (checkForShortsContent(rootNode)) return true
         }
 
-        // B. Check App Blocklist
-        if (blockedPackages.contains(packageName)) return true
+        // B. Check App Blocklist with Schedule
+        val blockedApp = blockedAppsMap[packageName]
+        if (blockedApp != null && blockedApp.isBlockingActiveNow()) {
+            return true
+        }
 
-        // C. Check URL Blocklist (Keywords/Patterns)
+        // C. Check URL Blocklist with Schedule (Keywords/Patterns)
         if (currentUrl != null) {
-            for (pattern in blockedLinks) {
-                if (currentUrl.contains(pattern, ignoreCase = true)) {
+            for ((pattern, blockedLink) in blockedLinksMap) {
+                if (currentUrl.contains(pattern, ignoreCase = true) && 
+                    blockedLink.isBlockingActiveNow()) {
                     return true
                 }
             }
