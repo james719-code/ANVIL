@@ -5,7 +5,7 @@ All notable changes to the ANVIL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-01-21
 
 ### Added
 - **Schedule-Based Blocking**
@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ScheduleEditDialog.kt` - UI for configuring blocking schedules
   - Schedule description shown on blocked items (clickable to edit)
   - Database migration preserves existing blocked items as "Everyday, All day"
+- **Splash Screen**
+  - New animated splash screen with horizontal progress bar
+  - Smooth preloading of application resources
+  - Material You branding with pulse animations
 - **Centralized Utilities**
   - `PrefsKeys.kt` - Centralized SharedPreferences key management
   - `DesignTokens.kt` - Consistent spacing, sizing, and animation tokens
@@ -47,12 +51,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enabled `buildConfig` in build.gradle.kts for BuildConfig access
 
 ### Improved
+- **UI Enhancements**
+  - Refined input field icons by removing background boxes for a cleaner look
 - Added backoff policies and constraints to background workers
 - Added content descriptions for accessibility
 - Improved code organization with DesignTokens for consistent styling
 
-## [1.0.0] - 2026-01-XX
+## [1.0.3] - 2026-01-16
+### Fixed
+- Maintenance and deployment updates
 
+## [1.0.2] - 2026-01-16
+### Fixed
+- Maintenance and deployment updates
+
+## [1.0.1] - 2026-01-16
+### Fixed
+- Maintenance and deployment updates
+
+## [1.0.0] - 2026-01-16
 ### Added
 - Initial release of ANVIL
 - Task management with daily tasks and hardness levels

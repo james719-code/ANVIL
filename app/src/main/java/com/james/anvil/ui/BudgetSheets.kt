@@ -1,8 +1,19 @@
 package com.james.anvil.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -11,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -18,8 +30,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.*
@@ -27,6 +44,85 @@ import com.james.anvil.ui.theme.*
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
+// Common quick suggestions for descriptions
+private val expenseSuggestions = listOf(
+    "Food & Groceries", "Transportation", "Bills & Utilities", 
+    "Shopping", "Entertainment", "Health", "Education"
+)
+
+private val incomeSuggestions = listOf(
+    "Salary", "Freelance", "Side Hustle", 
+    "Gift", "Refund", "Investment", "Bonus"
+)
+
+/**
+ * Reusable section header with animated indicator
+ */
+@Composable
+private fun SectionHeader(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(accentColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelMedium.copy(
+                letterSpacing = 1.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+    }
+}
+
+/**
+ * Premium quick suggestion chip with subtle animation
+ */
+@Composable
+private fun QuickSuggestionChip(
+    text: String,
+    onClick: () -> Unit,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = accentColor.copy(alpha = 0.08f),
+        border = null,
+        modifier = Modifier.height(32.dp)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                color = accentColor
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +139,17 @@ fun AddBudgetEntrySheet(
     var category by remember { mutableStateOf("General") }
     var amountError by remember { mutableStateOf(false) }
     var descriptionError by remember { mutableStateOf(false) }
+    var isDescriptionFocused by remember { mutableStateOf(false) }
+    
+    val maxDescriptionLength = 50
+    val currentSuggestions = if (type == BudgetType.INCOME) incomeSuggestions else expenseSuggestions
+    
+    // Animated colors based on type
+    val typeAccentColor by animateColorAsState(
+        targetValue = if (type == BudgetType.INCOME) ElectricTeal else ErrorRed,
+        animationSpec = tween(300),
+        label = "typeColor"
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -57,146 +164,464 @@ fun AddBudgetEntrySheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Text(
-                text = "New Transaction",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Type Selector
+            // Header with animated accent
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                FilterChip(
-                    selected = type == BudgetType.EXPENSE,
-                    onClick = { type = BudgetType.EXPENSE },
-                    label = { Text("Expense") },
-                    leadingIcon = if (type == BudgetType.EXPENSE) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
-                        selectedLabelColor = ErrorRed,
-                        selectedLeadingIconColor = ErrorRed
-                    )
-                )
-                FilterChip(
-                    selected = type == BudgetType.INCOME,
-                    onClick = { type = BudgetType.INCOME },
-                    label = { Text("Income") },
-                    leadingIcon = if (type == BudgetType.INCOME) {
-                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
-                        selectedLabelColor = ElectricTeal,
-                        selectedLeadingIconColor = ElectricTeal
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Balance Type Selector
-            Text("Source", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FilterChip(
-                    selected = balanceType == BalanceType.CASH,
-                    onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = balanceType == BalanceType.GCASH,
-                    onClick = { balanceType = BalanceType.GCASH },
-                    label = { Text("GCash") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Transaction Category Type (Necessity/Leisure)
-            if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) {
-                Text("Classification", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    typeAccentColor.copy(alpha = 0.2f),
+                                    typeAccentColor.copy(alpha = 0.05f)
+                                )
+                            ),
+                            RoundedCornerShape(14.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    FilterChip(
-                        selected = categoryType == CategoryType.NECESSITY,
-                        onClick = { categoryType = CategoryType.NECESSITY },
-                        label = { Text("Necessity") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
-                            selectedLabelColor = ElectricTeal
-                        )
-                    )
-                    FilterChip(
-                        selected = categoryType == CategoryType.LEISURE,
-                        onClick = { categoryType = CategoryType.LEISURE },
-                        label = { Text("Leisure") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ForgedGold.copy(alpha = 0.1f),
-                            selectedLabelColor = ForgedGold
-                        )
-                    )
-                    FilterChip(
-                        selected = categoryType == CategoryType.NONE,
-                        onClick = { categoryType = CategoryType.NONE },
-                        label = { Text("None") },
-                        modifier = Modifier.weight(0.8f)
+                    Icon(
+                        imageVector = if (type == BudgetType.INCOME) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
+                        contentDescription = null,
+                        tint = typeAccentColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Column {
+                    Text(
+                        text = "New Transaction",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Record your ${if (type == BudgetType.INCOME) "income" else "expense"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Type Selector - Premium toggle style
+            SectionHeader(
+                title = "Transaction Type",
+                icon = Icons.Outlined.SwapVert,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Expense button
+                Surface(
+                    onClick = { type = BudgetType.EXPENSE },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (type == BudgetType.EXPENSE) ErrorRed.copy(alpha = 0.15f) else Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (type == BudgetType.EXPENSE) {
+                            Icon(
+                                Icons.Outlined.ArrowUpward,
+                                null,
+                                tint = ErrorRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            "Expense",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (type == BudgetType.EXPENSE) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Income button
+                Surface(
+                    onClick = { type = BudgetType.INCOME },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (type == BudgetType.INCOME) ElectricTeal.copy(alpha = 0.15f) else Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (type == BudgetType.INCOME) {
+                            Icon(
+                                Icons.Outlined.ArrowDownward,
+                                null,
+                                tint = ElectricTeal,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            "Income",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (type == BudgetType.INCOME) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Balance Type Selector
+            SectionHeader(
+                title = "Payment Source",
+                icon = Icons.Outlined.Wallet,
+                accentColor = if (balanceType == BalanceType.GCASH) InfoBlue else SteelBlue
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cash option
+                Surface(
+                    onClick = { balanceType = BalanceType.CASH },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (balanceType == BalanceType.CASH) SteelBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = if (balanceType == BalanceType.CASH) 
+                        androidx.compose.foundation.BorderStroke(1.5.dp, SteelBlue.copy(alpha = 0.3f)) 
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Wallet,
+                            null,
+                            tint = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Cash",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // GCash option
+                Surface(
+                    onClick = { balanceType = BalanceType.GCASH },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (balanceType == BalanceType.GCASH) InfoBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = if (balanceType == BalanceType.GCASH) 
+                        androidx.compose.foundation.BorderStroke(1.5.dp, InfoBlue.copy(alpha = 0.3f)) 
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Smartphone,
+                            null,
+                            tint = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "GCash",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Transaction Category Type (Necessity/Leisure) - only for expenses
+            AnimatedVisibility(
+                visible = type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    SectionHeader(
+                        title = "Classification",
+                        icon = Icons.Outlined.Category,
+                        accentColor = when (categoryType) {
+                            CategoryType.NECESSITY -> ElectricTeal
+                            CategoryType.LEISURE -> ForgedGold
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Necessity
+                        Surface(
+                            onClick = { categoryType = CategoryType.NECESSITY },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.NECESSITY) ElectricTeal.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = if (categoryType == CategoryType.NECESSITY)
+                                androidx.compose.foundation.BorderStroke(1.dp, ElectricTeal.copy(alpha = 0.3f))
+                            else null
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.CheckCircle,
+                                    null,
+                                    tint = if (categoryType == CategoryType.NECESSITY) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Necessity",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (categoryType == CategoryType.NECESSITY) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // Leisure
+                        Surface(
+                            onClick = { categoryType = CategoryType.LEISURE },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.LEISURE) ForgedGold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = if (categoryType == CategoryType.LEISURE)
+                                androidx.compose.foundation.BorderStroke(1.dp, ForgedGold.copy(alpha = 0.3f))
+                            else null
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Celebration,
+                                    null,
+                                    tint = if (categoryType == CategoryType.LEISURE) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Leisure",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (categoryType == CategoryType.LEISURE) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // None
+                        Surface(
+                            onClick = { categoryType = CategoryType.NONE },
+                            modifier = Modifier.weight(0.8f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.NONE) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Remove,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "None",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            
+            // Divider with subtle gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Amount Field - Enhanced
+            SectionHeader(
+                title = "Amount",
+                icon = Icons.Outlined.Payments,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = amount,
                 onValueChange = {
                     amount = it.filter { c -> c.isDigit() || c == '.' }
                     amountError = false
                 },
-                label = { Text("Amount") },
-                prefix = { Text("₱") },
+                placeholder = { 
+                    Text(
+                        "0.00",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    ) 
+                },
+                leadingIcon = {
+                    Text(
+                        "₱",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = typeAccentColor
+                    )
+                },
                 isError = amountError,
+                supportingText = if (amountError) {
+                    { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = typeAccentColor,
+                    focusedLabelColor = typeAccentColor,
+                    cursorColor = typeAccentColor
+                ),
+                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            // Description Field - Significantly Enhanced
+            SectionHeader(
+                title = "Description",
+                icon = Icons.Outlined.Description,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = description,
                 onValueChange = {
-                    description = it
-                    descriptionError = false
+                    if (it.length <= maxDescriptionLength) {
+                        description = it
+                        descriptionError = false
+                    }
                 },
-                label = { Text("Description") },
+                placeholder = { 
+                    Text(
+                        "What was this for?",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    ) 
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Outlined.EditNote,
+                        contentDescription = null,
+                        tint = if (isDescriptionFocused) typeAccentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingIcon = {
+                    // Character counter
+                    Text(
+                        "${description.length}/$maxDescriptionLength",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            description.length >= maxDescriptionLength -> MaterialTheme.colorScheme.error
+                            description.length >= maxDescriptionLength * 0.8 -> ForgedGold
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        }
+                    )
+                },
                 isError = descriptionError,
+                supportingText = if (descriptionError) {
+                    { Text("Description is required", color = MaterialTheme.colorScheme.error) }
+                } else {
+                    { Text("Brief note about this transaction", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) }
+                },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isDescriptionFocused = it.isFocused },
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = typeAccentColor,
+                    focusedLabelColor = typeAccentColor,
+                    cursorColor = typeAccentColor
+                )
             )
+            
+            // Quick Suggestions - Animated based on focus
+            AnimatedVisibility(
+                visible = description.isEmpty() || isDescriptionFocused,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Quick Suggestions",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(currentSuggestions) { suggestion ->
+                            QuickSuggestionChip(
+                                text = suggestion,
+                                onClick = { description = suggestion },
+                                accentColor = typeAccentColor
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Save Button - Premium style
             Button(
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
@@ -211,11 +636,20 @@ fun AddBudgetEntrySheet(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp)
+                    .height(58.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = typeAccentColor
+                )
             ) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Save Transaction",
+                    text = "Save ${if (type == BudgetType.INCOME) "Income" else "Expense"}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -551,6 +985,20 @@ fun EditBudgetEntrySheet(
     var amountError by remember { mutableStateOf(false) }
     var descriptionError by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var isDescriptionFocused by remember { mutableStateOf(false) }
+    
+    val maxDescriptionLength = 50
+    val currentSuggestions = if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) incomeSuggestions else expenseSuggestions
+    
+    // Animated colors based on type
+    val typeAccentColor by animateColorAsState(
+        targetValue = when (type) {
+            BudgetType.INCOME, BudgetType.LOAN_REPAYMENT -> ElectricTeal
+            else -> ErrorRed
+        },
+        animationSpec = tween(300),
+        label = "editTypeColor"
+    )
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -583,137 +1031,485 @@ fun EditBudgetEntrySheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
+            // Premium Header with gradient icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "Edit Transaction",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FilterChip(
-                    selected = type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT,
-                    onClick = { type = BudgetType.EXPENSE },
-                    label = { Text("Expense") },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ErrorRed.copy(alpha = 0.1f),
-                        selectedLabelColor = ErrorRed
-                    )
-                )
-                FilterChip(
-                    selected = type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT,
-                    onClick = { type = BudgetType.INCOME },
-                    label = { Text("Income") },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
-                        selectedLabelColor = ElectricTeal
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FilterChip(
-                    selected = balanceType == BalanceType.CASH,
-                    onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = balanceType == BalanceType.GCASH,
-                    onClick = { balanceType = BalanceType.GCASH },
-                    label = { Text("GCash") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Transaction Category Type (Necessity/Leisure)
-            if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) {
-                Text("Classification", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FilterChip(
-                        selected = categoryType == CategoryType.NECESSITY,
-                        onClick = { categoryType = CategoryType.NECESSITY },
-                        label = { Text("Necessity") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ElectricTeal.copy(alpha = 0.1f),
-                            selectedLabelColor = ElectricTeal
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        typeAccentColor.copy(alpha = 0.2f),
+                                        typeAccentColor.copy(alpha = 0.05f)
+                                    )
+                                ),
+                                RoundedCornerShape(14.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = null,
+                            tint = typeAccentColor,
+                            modifier = Modifier.size(24.dp)
                         )
-                    )
-                    FilterChip(
-                        selected = categoryType == CategoryType.LEISURE,
-                        onClick = { categoryType = CategoryType.LEISURE },
-                        label = { Text("Leisure") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ForgedGold.copy(alpha = 0.1f),
-                            selectedLabelColor = ForgedGold
+                    }
+                    Column {
+                        Text(
+                            text = "Edit Transaction",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    )
-                    FilterChip(
-                        selected = categoryType == CategoryType.NONE,
-                        onClick = { categoryType = CategoryType.NONE },
-                        label = { Text("None") },
-                        modifier = Modifier.weight(0.8f)
-                    )
+                        Text(
+                            text = "Modify your ${if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) "income" else "expense"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Delete button with subtle styling
+                Surface(
+                    onClick = { showDeleteConfirm = true },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                ) {
+                    Box(
+                        modifier = Modifier.padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.DeleteOutline,
+                            "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Type Selector - Premium toggle style
+            SectionHeader(
+                title = "Transaction Type",
+                icon = Icons.Outlined.SwapVert,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Expense button
+                Surface(
+                    onClick = { type = BudgetType.EXPENSE },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) ErrorRed.copy(alpha = 0.15f) else Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) {
+                            Icon(
+                                Icons.Outlined.ArrowUpward,
+                                null,
+                                tint = ErrorRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            "Expense",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // Income button
+                Surface(
+                    onClick = { type = BudgetType.INCOME },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) ElectricTeal.copy(alpha = 0.15f) else Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) {
+                            Icon(
+                                Icons.Outlined.ArrowDownward,
+                                null,
+                                tint = ElectricTeal,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            "Income",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Balance Type Selector
+            SectionHeader(
+                title = "Payment Source",
+                icon = Icons.Outlined.Wallet,
+                accentColor = if (balanceType == BalanceType.GCASH) InfoBlue else SteelBlue
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cash option
+                Surface(
+                    onClick = { balanceType = BalanceType.CASH },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (balanceType == BalanceType.CASH) SteelBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = if (balanceType == BalanceType.CASH) 
+                        androidx.compose.foundation.BorderStroke(1.5.dp, SteelBlue.copy(alpha = 0.3f)) 
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Wallet,
+                            null,
+                            tint = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Cash",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // GCash option
+                Surface(
+                    onClick = { balanceType = BalanceType.GCASH },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (balanceType == BalanceType.GCASH) InfoBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = if (balanceType == BalanceType.GCASH) 
+                        androidx.compose.foundation.BorderStroke(1.5.dp, InfoBlue.copy(alpha = 0.3f)) 
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Smartphone,
+                            null,
+                            tint = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "GCash",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Transaction Category Type (Necessity/Leisure) - Animated
+            AnimatedVisibility(
+                visible = type == BudgetType.EXPENSE || type == BudgetType.LOAN_OUT,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    SectionHeader(
+                        title = "Classification",
+                        icon = Icons.Outlined.Category,
+                        accentColor = when (categoryType) {
+                            CategoryType.NECESSITY -> ElectricTeal
+                            CategoryType.LEISURE -> ForgedGold
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Necessity
+                        Surface(
+                            onClick = { categoryType = CategoryType.NECESSITY },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.NECESSITY) ElectricTeal.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = if (categoryType == CategoryType.NECESSITY)
+                                androidx.compose.foundation.BorderStroke(1.dp, ElectricTeal.copy(alpha = 0.3f))
+                            else null
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.CheckCircle,
+                                    null,
+                                    tint = if (categoryType == CategoryType.NECESSITY) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Necessity",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (categoryType == CategoryType.NECESSITY) ElectricTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // Leisure
+                        Surface(
+                            onClick = { categoryType = CategoryType.LEISURE },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.LEISURE) ForgedGold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = if (categoryType == CategoryType.LEISURE)
+                                androidx.compose.foundation.BorderStroke(1.dp, ForgedGold.copy(alpha = 0.3f))
+                            else null
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Celebration,
+                                    null,
+                                    tint = if (categoryType == CategoryType.LEISURE) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Leisure",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (categoryType == CategoryType.LEISURE) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        // None
+                        Surface(
+                            onClick = { categoryType = CategoryType.NONE },
+                            modifier = Modifier.weight(0.8f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (categoryType == CategoryType.NONE) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Remove,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "None",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            
+            // Divider with subtle gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Amount Field - Enhanced
+            SectionHeader(
+                title = "Amount",
+                icon = Icons.Outlined.Payments,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' }; amountError = false },
-                label = { Text("Amount") },
-                prefix = { Text("₱") },
+                placeholder = { 
+                    Text(
+                        "0.00",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    ) 
+                },
+                leadingIcon = {
+                    Text(
+                        "₱",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = typeAccentColor
+                    )
+                },
                 isError = amountError,
+                supportingText = if (amountError) {
+                    { Text("Please enter a valid amount", color = MaterialTheme.colorScheme.error) }
+                } else null,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = typeAccentColor,
+                    focusedLabelColor = typeAccentColor,
+                    cursorColor = typeAccentColor
+                ),
+                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            // Description Field - Enhanced
+            SectionHeader(
+                title = "Description",
+                icon = Icons.Outlined.Description,
+                accentColor = typeAccentColor
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
             OutlinedTextField(
                 value = description,
-                onValueChange = { description = it; descriptionError = false },
-                label = { Text("Description") },
+                onValueChange = {
+                    if (it.length <= maxDescriptionLength) {
+                        description = it
+                        descriptionError = false
+                    }
+                },
+                placeholder = { 
+                    Text(
+                        "What was this for?",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    ) 
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Outlined.EditNote,
+                        contentDescription = null,
+                        tint = if (isDescriptionFocused) typeAccentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                trailingIcon = {
+                    // Character counter
+                    Text(
+                        "${description.length}/$maxDescriptionLength",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            description.length >= maxDescriptionLength -> MaterialTheme.colorScheme.error
+                            description.length >= maxDescriptionLength * 0.8 -> ForgedGold
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        }
+                    )
+                },
                 isError = descriptionError,
+                supportingText = if (descriptionError) {
+                    { Text("Description is required", color = MaterialTheme.colorScheme.error) }
+                } else {
+                    { Text("Brief note about this transaction", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) }
+                },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isDescriptionFocused = it.isFocused },
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = typeAccentColor,
+                    focusedLabelColor = typeAccentColor,
+                    cursorColor = typeAccentColor
+                )
             )
+            
+            // Quick Suggestions - Animated based on focus
+            AnimatedVisibility(
+                visible = isDescriptionFocused,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Quick Suggestions",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(currentSuggestions) { suggestion ->
+                            QuickSuggestionChip(
+                                text = suggestion,
+                                onClick = { description = suggestion },
+                                accentColor = typeAccentColor
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Save Button - Premium style
             Button(
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
@@ -723,10 +1519,25 @@ fun EditBudgetEntrySheet(
                         else -> { onSave(type, balanceType, amountValue, description.trim(), categoryType); onDismiss() }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = typeAccentColor
+                )
             ) {
-                Text("Save Changes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Save Changes",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

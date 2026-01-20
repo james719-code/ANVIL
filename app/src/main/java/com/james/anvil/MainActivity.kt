@@ -35,8 +35,10 @@ import kotlin.math.roundToInt
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,10 +53,12 @@ import com.james.anvil.ui.TasksScreen
 import com.james.anvil.ui.BudgetScreen
 import com.james.anvil.ui.BlocklistScreen
 import com.james.anvil.ui.SettingsScreen
+import com.james.anvil.ui.SplashScreen
 import android.content.Intent
 
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -87,6 +91,10 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
             ANVILTheme(darkTheme = isDarkTheme) {
                 var showSettings by remember { mutableStateOf(false) }
+                var showSplash by remember { mutableStateOf(true) }
+                var loadingProgress by remember { mutableFloatStateOf(0f) }
+                var isLoading by remember { mutableStateOf(true) }
+                val scope = rememberCoroutineScope()
                 
                 // Handle back button when settings is open
                 BackHandler(enabled = showSettings) {
@@ -98,10 +106,26 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Main App Content - Stays alive in the background
+                        // Main App Content - Always composed to enable preloading
+                        // It stays underneath the Splash screen while loading
                         MainScreen(
                             viewModel = viewModel, 
-                            onNavigateToSettings = { showSettings = true }
+                            onNavigateToSettings = { showSettings = true },
+                            onPagesPreloaded = {
+                                if (isLoading) {
+                                    scope.launch {
+                                        // Update progress bar as pages load
+                                        delay(300)
+                                        loadingProgress = 0.4f
+                                        delay(400)
+                                        loadingProgress = 0.7f
+                                        delay(400)
+                                        loadingProgress = 1.0f
+                                        delay(200)
+                                        isLoading = false
+                                    }
+                                }
+                            }
                         )
                         
                         // Settings Overlay - Slides over the main content
@@ -121,11 +145,24 @@ class MainActivity : ComponentActivity() {
                                 onBack = { showSettings = false }
                             )
                         }
+                        
+                        // Splash Screen Overlay
+                        if (showSplash) {
+                            SplashScreen(
+                                progress = loadingProgress,
+                                isLoading = isLoading,
+                                onSplashComplete = {
+                                    showSplash = false
+                                }
+                            )
+                        }
                     }
                 }
 
-                // Consolidated permission check manager
-                PermissionCheckManager()
+                // Consolidated permission check manager (show after splash)
+                if (!showSplash) {
+                    PermissionCheckManager()
+                }
             }
         }
     }
@@ -142,12 +179,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(viewModel: TaskViewModel, onNavigateToSettings: () -> Unit) {
+fun MainScreen(
+    viewModel: TaskViewModel, 
+    onNavigateToSettings: () -> Unit,
+    onPagesPreloaded: () -> Unit = {}
+) {
     val snackbarHostState = remember { SnackbarHostState() }
     val navItems = NavItem.bottomNavItems
     val pagerState = rememberPagerState(pageCount = { 4 }) // Home, Tasks, Budget, Blocklist
     val scope = rememberCoroutineScope()
-
+    
+    // Notify parent when this composable is first composed (pages are being preloaded)
+    LaunchedEffect(Unit) {
+        // Small delay to ensure Compose has started laying out pages
+        delay(50)
+        onPagesPreloaded()
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
