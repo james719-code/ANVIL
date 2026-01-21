@@ -33,8 +33,13 @@ import com.james.anvil.ui.theme.ANVILTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import com.james.anvil.service.BlockType
 
 class LockActivity : ComponentActivity() {
+
+    companion object {
+        const val EXTRA_BLOCK_TYPE = "extra_block_type"
+    }
 
     private lateinit var penaltyManager: PenaltyManager
 
@@ -51,10 +56,18 @@ class LockActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE
         )
         
+        // Get block type from intent
+        val blockTypeName = intent.getStringExtra(EXTRA_BLOCK_TYPE)
+        val blockType = try {
+            BlockType.valueOf(blockTypeName ?: BlockType.PENALTY.name)
+        } catch (e: Exception) {
+            BlockType.PENALTY
+        }
+        
         enableEdgeToEdge()
         setContent {
             ANVILTheme {
-                LockScreen(penaltyManager, taskDao)
+                LockScreen(penaltyManager, taskDao, blockType)
             }
         }
     }
@@ -76,7 +89,11 @@ private val WarningRed = Color(0xFFCC0000)
 private val CautionAmber = Color(0xFFCC8800)
 
 @Composable
-fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.TaskDao? = null) {
+fun LockScreen(
+    penaltyManager: PenaltyManager, 
+    taskDao: com.james.anvil.data.TaskDao? = null,
+    blockType: BlockType = BlockType.PENALTY
+) {
     var hoursLeft by remember { mutableStateOf("00") }
     var minutesLeft by remember { mutableStateOf("00") }
     var secondsLeft by remember { mutableStateOf("00") }
@@ -84,6 +101,9 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
     val penaltyEndTime = remember { penaltyManager.getPenaltyEndTime() }
     var blockingTaskNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var blockingReason by remember { mutableStateOf("") }
+    
+    // Determine if this is a schedule-based block (separate from penalty mode)
+    val isScheduleBlock = blockType == BlockType.SCHEDULE
 
     // Fetch blocking tasks
     LaunchedEffect(taskDao) {
@@ -135,7 +155,12 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
     // Block back button
     BackHandler(enabled = true) { }
 
-    val accentColor = if (isPenaltyActive) WarningRed else CautionAmber
+    // Color depends on block type: schedule blocks use amber, penalty uses red
+    val accentColor = when {
+        isPenaltyActive -> WarningRed
+        isScheduleBlock -> CautionAmber
+        else -> CautionAmber
+    }
 
     Box(
         modifier = Modifier
@@ -180,7 +205,11 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isPenaltyActive) "LOCKED" else "BLOCKED",
+                            text = when {
+                                isPenaltyActive -> "LOCKED"
+                                isScheduleBlock -> "SCHEDULED"
+                                else -> "BLOCKED"
+                            },
                             color = accentColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -214,7 +243,11 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
             
             // Title
             Text(
-                text = if (isPenaltyActive) "ACCESS DENIED" else "ACCESS RESTRICTED",
+                text = when {
+                    isPenaltyActive -> "ACCESS DENIED"
+                    isScheduleBlock -> "ACCESS RESTRICTED"
+                    else -> "ACCESS RESTRICTED"
+                },
                 color = TextWhite,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
@@ -227,7 +260,11 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
             
             // Reason
             Text(
-                text = if (isPenaltyActive) "Penalty enforcement active" else "Task completion required",
+                text = when {
+                    isPenaltyActive -> "Penalty enforcement active"
+                    isScheduleBlock -> "Scheduled block active"
+                    else -> "Task completion required"
+                },
                 color = TextGray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
@@ -235,8 +272,8 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
                 textAlign = TextAlign.Center
             )
             
-            // Blocking reason card
-            if (!isPenaltyActive && blockingTaskNames.isNotEmpty()) {
+            // Blocking reason card - only show for penalty/task-based blocks, not schedule blocks
+            if (!isPenaltyActive && !isScheduleBlock && blockingTaskNames.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(32.dp))
                 
                 Box(
@@ -358,10 +395,11 @@ fun LockScreen(penaltyManager: PenaltyManager, taskDao: com.james.anvil.data.Tas
             
             // Message
             Text(
-                text = if (isPenaltyActive) 
-                    "Complete outstanding tasks to restore access."
-                else 
-                    "Complete pending tasks to unlock this device.",
+                text = when {
+                    isPenaltyActive -> "Complete outstanding tasks to restore access."
+                    isScheduleBlock -> "This app/site is blocked during scheduled hours."
+                    else -> "Complete pending tasks to unlock this device."
+                },
                 color = TextDimGray,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
