@@ -21,6 +21,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Enum to distinguish between different types of blocks
+ */
+enum class BlockType {
+    SCHEDULE,  // Block due to app/link schedule settings
+    PENALTY    // Block due to overdue tasks or penalty mode
+}
+
 class AnvilAccessibilityService : AccessibilityService() {
 
     private lateinit var decisionEngine: DecisionEngine
@@ -33,6 +41,14 @@ class AnvilAccessibilityService : AccessibilityService() {
     // Thread-safe maps for caching blocklists with full schedule info
     private val blockedAppsMap = ConcurrentHashMap<String, BlockedApp>()
     private val blockedLinksMap = ConcurrentHashMap<String, BlockedLink>()
+
+    // Track last confirmed URL to detect actual navigation (not typing)
+    @Volatile
+    private var lastConfirmedUrl: String? = null
+    
+    // Track when URL bar is focused (user is typing)
+    @Volatile
+    private var isUrlBarFocused: Boolean = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -82,6 +98,7 @@ class AnvilAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return
         val packageName = event.packageName?.toString() ?: return
+        val eventType = event.eventType
 
         // rootInActiveWindow can be null; if so, we can't inspect the screen
         val rootNode = rootInActiveWindow ?: return
@@ -91,9 +108,42 @@ class AnvilAccessibilityService : AccessibilityService() {
 
             // 1. URL Tracking Logic (Only runs if app is a known browser)
             if (isBrowserPackage(packageName)) {
+                // Track URL bar focus state to know when user is typing
+                if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+                    val sourceClassName = event.className?.toString() ?: ""
+                    val sourceId = event.source?.viewIdResourceName ?: ""
+                    // Check if URL bar got focus (user started typing)
+                    if (sourceId.contains("url_bar") || sourceId.contains("search") || 
+                        sourceId.contains("omnibox") || sourceClassName.contains("EditText")) {
+                        isUrlBarFocused = true
+                        event.source?.recycle()
+                    }
+                }
+                
+                // Detect when user finishes typing and navigates
+                // WINDOW_CONTENT_CHANGED with subtree change usually indicates page load
+                // WINDOW_STATE_CHANGED indicates window/page transition
+                val isNavigationEvent = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                        (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && 
+                         event.contentChangeTypes == AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE)
+                
                 currentUrl = findUrl(rootNode)
-
-                if (currentUrl != null && currentUrl.length > 3) {
+                
+                // Only process URL if:
+                // 1. It's a navigation event (page load, not typing)
+                // 2. OR the URL bar is not focused (user is not typing)
+                // 3. AND the URL is different from last confirmed (actual navigation)
+                val shouldCheckUrl = currentUrl != null && 
+                        currentUrl.length > 3 &&
+                        looksLikeCompleteUrl(currentUrl) &&
+                        (isNavigationEvent || !isUrlBarFocused) &&
+                        currentUrl != lastConfirmedUrl
+                
+                if (shouldCheckUrl && currentUrl != null) {
+                    // URL bar loses focus on navigation
+                    isUrlBarFocused = false
+                    lastConfirmedUrl = currentUrl
+                    
                     val browserPkg = packageName
                     val urlToSave = currentUrl
 
@@ -107,14 +157,23 @@ class AnvilAccessibilityService : AccessibilityService() {
                         // Insert blindly; let Room handle conflicts/optimization
                         db.historyDao().insert(visitedLink)
                     }
+                } else if (!shouldCheckUrl) {
+                    // Don't block while typing - set currentUrl to null for blocking checks
+                    currentUrl = null
                 }
             }
 
-            // 2. Blocking Logic (now schedule-aware)
-            if (isBlocked) {
-                if (shouldEnforce(packageName, currentUrl, rootNode)) {
-                    enforce()
-                }
+            // 2. Blocking Logic - prioritize penalty UI when tasks are pending
+            // Penalty-based blocking: Only triggered when user has overdue tasks (isBlocked = true)
+            // This handles YouTube Shorts and other penalty-specific enforcement
+            if (isBlocked && shouldEnforcePenaltyBlocking(packageName, currentUrl, rootNode)) {
+                enforce(BlockType.PENALTY)
+            }
+            
+            // Schedule-based blocking: Apps/Links are blocked based on their individual schedules
+            // Only used when there are no pending task blocks
+            else if (shouldEnforceScheduleBlocking(packageName, currentUrl)) {
+                enforce(BlockType.SCHEDULE)
             }
 
         } catch (e: Exception) {
@@ -125,12 +184,51 @@ class AnvilAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun shouldEnforce(
+    /**
+     * Check if schedule-based blocking should be enforced.
+     * This checks apps and links against their individual blocklist schedules.
+     * Works INDEPENDENTLY of the task-based penalty system.
+     */
+    private fun shouldEnforceScheduleBlocking(
+        packageName: String,
+        currentUrl: String?
+    ): Boolean {
+        // A. Check App Blocklist with Schedule
+        val blockedApp = blockedAppsMap[packageName]
+        if (blockedApp != null && blockedApp.isBlockingActiveNow()) {
+            return true
+        }
+
+        // B. Check URL Blocklist with Schedule (Keywords/Patterns)
+        // Uses enhanced matching to catch subdomain variants (m., www., mobile., etc.)
+        if (currentUrl != null) {
+            for ((pattern, blockedLink) in blockedLinksMap) {
+                if (isUrlBlocked(currentUrl, pattern) && blockedLink.isBlockingActiveNow()) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * Check if penalty-based blocking should be enforced.
+     * This is triggered when the user has overdue tasks (isBlocked = true).
+     * When tasks are pending, ANY app/link in the blocklist is blocked regardless of schedule.
+     * Handles YouTube Shorts and other penalty-specific enforcement.
+     */
+    private fun shouldEnforcePenaltyBlocking(
         packageName: String,
         currentUrl: String?,
         rootNode: AccessibilityNodeInfo
     ): Boolean {
-        // A. Specific Check for YouTube Shorts (Addiction control)
+        // A. Block known bypass apps (VPNs, Tor browsers, private browsers) during penalty
+        if (isBypassApp(packageName)) {
+            return true
+        }
+
+        // B. Specific Check for YouTube Shorts (Addiction control during penalty)
         if (packageName == "com.google.android.youtube") {
             // Check URL pattern if available (rare in native app)
             if (currentUrl != null && currentUrl.contains("/shorts/")) return true
@@ -138,17 +236,18 @@ class AnvilAccessibilityService : AccessibilityService() {
             if (checkForShortsContent(rootNode)) return true
         }
 
-        // B. Check App Blocklist with Schedule
+        // C. During penalty mode, block ANY app in blocklist REGARDLESS of schedule
+        // If the app is in the blocklist at all, block it when tasks are pending
         val blockedApp = blockedAppsMap[packageName]
-        if (blockedApp != null && blockedApp.isBlockingActiveNow()) {
+        if (blockedApp != null) {
             return true
         }
 
-        // C. Check URL Blocklist with Schedule (Keywords/Patterns)
+        // D. During penalty mode, block ANY URL pattern in blocklist REGARDLESS of schedule
+        // Uses enhanced matching to catch subdomain variants (m., www., mobile., etc.)
         if (currentUrl != null) {
-            for ((pattern, blockedLink) in blockedLinksMap) {
-                if (currentUrl.contains(pattern, ignoreCase = true) && 
-                    blockedLink.isBlockingActiveNow()) {
+            for ((pattern, _) in blockedLinksMap) {
+                if (isUrlBlocked(currentUrl, pattern)) {
                     return true
                 }
             }
@@ -185,13 +284,14 @@ class AnvilAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun enforce() {
+    private fun enforce(blockType: BlockType) {
         // 1. Try to go back
         performGlobalAction(GLOBAL_ACTION_BACK)
 
-        // 2. Immediately launch the Lock Screen Activity
+        // 2. Immediately launch the Lock Screen Activity with block type
         val intent = Intent(this, LockActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        intent.putExtra(LockActivity.EXTRA_BLOCK_TYPE, blockType.name)
         startActivity(intent)
     }
 
@@ -204,7 +304,30 @@ class AnvilAccessibilityService : AccessibilityService() {
                 packageName == "com.brave.browser" ||
                 packageName == "com.microsoft.emmx" ||
                 packageName == "org.mozilla.firefox" ||
-                packageName == "com.opera.browser"
+                packageName == "com.opera.browser" ||
+                // Additional browsers for anti-bypass
+                packageName == "com.opera.mini.native" ||
+                packageName == "com.opera.gx" ||
+                packageName == "com.UCMobile.intl" ||
+                packageName == "com.uc.browser.en" ||
+                packageName == "com.kiwibrowser.browser" ||
+                packageName == "org.bromite.bromite" ||
+                packageName == "com.vivaldi.browser" ||
+                packageName == "com.duckduckgo.mobile.android" ||
+                packageName == "org.torproject.torbrowser" ||
+                packageName == "com.phlox.tvwebbrowser" ||
+                packageName == "acr.browser.lightning" ||
+                packageName == "acr.browser.barebones" ||
+                packageName == "com.sec.android.app.sbrowser" || // Samsung Internet
+                packageName == "com.mi.globalbrowser" || // Mi Browser
+                packageName == "com.huawei.browser" ||
+                packageName == "org.lineageos.jelly" ||
+                packageName == "mark.via" || // Via Browser
+                packageName == "mark.via.gp" ||
+                packageName == "com.mycompany.app.soulbrowser" ||
+                packageName == "org.nicogram.nicogram" || // Some Nicogram contains in-app browser
+                packageName == "com.yandex.browser" ||
+                packageName == "jp.nicovideo.nicoderoid" // May have browser
     }
 
     /**
@@ -213,7 +336,12 @@ class AnvilAccessibilityService : AccessibilityService() {
     private fun findUrl(node: AccessibilityNodeInfo): String? {
         // 1. Check by ID (Common Chrome ID)
         if (node.viewIdResourceName?.contains("url_bar") == true) {
-            return node.text?.toString()
+            val text = node.text?.toString()
+            // Only return if it looks like a complete URL, not partial typing
+            if (text != null && looksLikeCompleteUrl(text)) {
+                return text
+            }
+            return null
         }
 
         // 2. Check by Text content (Heuristic)
@@ -221,7 +349,7 @@ class AnvilAccessibilityService : AccessibilityService() {
             val text = node.text.toString()
             // It must look like a URL and not contain spaces
             if ((text.startsWith("http") || text.startsWith("www.") || text.contains(".com"))
-                && !text.contains(" ")) {
+                && !text.contains(" ") && looksLikeCompleteUrl(text)) {
                 return text
             }
         }
@@ -234,6 +362,57 @@ class AnvilAccessibilityService : AccessibilityService() {
             if (found != null) return found
         }
         return null
+    }
+
+    /**
+     * Check if text looks like a complete URL vs partial typing or a search query.
+     * This prevents blocking while user is still typing in the URL bar.
+     */
+    private fun looksLikeCompleteUrl(text: String): Boolean {
+        val trimmed = text.trim().lowercase()
+        
+        // Too short to be a real URL - likely still typing
+        if (trimmed.length < 4) return false
+        
+        // Contains spaces - it's a search query, not a URL
+        if (trimmed.contains(" ")) return false
+        
+        // Has a protocol - definitely a URL
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return true
+        }
+        
+        // Check for valid TLD patterns - must have at least one dot and a TLD
+        val commonTlds = listOf(
+            ".com", ".org", ".net", ".edu", ".gov", ".io", ".co", 
+            ".me", ".tv", ".info", ".biz", ".xyz", ".app", ".dev",
+            ".ph", ".uk", ".us", ".ca", ".au", ".de", ".fr", ".jp",
+            ".in", ".br", ".ru", ".cn", ".kr", ".nl", ".be", ".it",
+            ".es", ".mx", ".ar", ".cl", ".se", ".no", ".fi", ".dk",
+            ".pl", ".cz", ".at", ".ch", ".ie", ".nz", ".sg", ".hk",
+            ".tw", ".th", ".my", ".id", ".vn", ".za"
+        )
+        
+        // Check if it ends with a known TLD or has one followed by a path
+        for (tld in commonTlds) {
+            if (trimmed.endsWith(tld) || trimmed.contains("$tld/") || trimmed.contains("$tld?")) {
+                return true
+            }
+        }
+        
+        // Check for IP address pattern
+        val ipPattern = Regex("""^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$""")
+        if (ipPattern.matches(trimmed)) {
+            return true
+        }
+        
+        // Has "www." prefix - likely a URL
+        if (trimmed.startsWith("www.") && trimmed.length > 6) {
+            return true
+        }
+        
+        // If none of the above, it's probably not a complete URL yet
+        return false
     }
 
     private fun extractDomain(url: String): String {
@@ -249,5 +428,241 @@ class AnvilAccessibilityService : AccessibilityService() {
         } catch (e: Exception) {
             url
         }
+    }
+
+    /**
+     * Normalize a domain by stripping common prefixes (www., m., mobile., etc.)
+     * and extracting the core domain for comparison.
+     */
+    private fun normalizeDomain(domain: String): String {
+        var normalized = domain.lowercase()
+        // Strip common subdomains that are just variants of the same site
+        val prefixesToStrip = listOf("www.", "m.", "mobile.", "amp.", "web.", "touch.")
+        for (prefix in prefixesToStrip) {
+            if (normalized.startsWith(prefix)) {
+                normalized = normalized.removePrefix(prefix)
+                break
+            }
+        }
+        return normalized
+    }
+
+    /**
+     * Extract the root domain from a full domain (e.g., "video.google.com" -> "google.com")
+     * This handles cases where subdomains are used to bypass blocks.
+     */
+    private fun extractRootDomain(domain: String): String {
+        val parts = domain.split(".")
+        return if (parts.size >= 2) {
+            // Return last two parts (e.g., "google.com")
+            "${parts[parts.size - 2]}.${parts[parts.size - 1]}"
+        } else {
+            domain
+        }
+    }
+
+    /**
+     * Check if the current URL matches a blocked pattern.
+     * Handles subdomain variants like m.youtube.com, www.youtube.com, mobile.twitter.com, etc.
+     */
+    private fun isUrlBlocked(currentUrl: String, pattern: String): Boolean {
+        val urlLower = currentUrl.lowercase()
+        val patternLower = pattern.lowercase()
+        
+        // 1. Direct contains check (original behavior)
+        if (urlLower.contains(patternLower)) {
+            return true
+        }
+        
+        // 2. Check for proxy/bypass services in URL
+        if (isProxyBypassAttempt(urlLower, patternLower)) {
+            return true
+        }
+        
+        // 3. Domain-based matching for subdomain bypass prevention
+        try {
+            val parseUrl = if (!currentUrl.startsWith("http")) "https://$currentUrl" else currentUrl
+            val uri = Uri.parse(parseUrl)
+            val urlHost = uri.host?.lowercase() ?: return false
+            
+            // Normalize both the URL host and the pattern
+            val normalizedUrlHost = normalizeDomain(urlHost)
+            val normalizedPattern = normalizeDomain(patternLower)
+            
+            // Check if normalized domains match
+            if (normalizedUrlHost.contains(normalizedPattern) || normalizedPattern.contains(normalizedUrlHost)) {
+                return true
+            }
+            
+            // Check root domain match (e.g., blocking "youtube.com" should block "music.youtube.com")
+            val urlRootDomain = extractRootDomain(normalizedUrlHost)
+            val patternRootDomain = extractRootDomain(normalizedPattern)
+            
+            if (urlRootDomain == patternRootDomain) {
+                return true
+            }
+            
+            // Check if pattern is a root domain that matches URL's root domain
+            if (normalizedPattern == urlRootDomain || patternRootDomain == normalizedUrlHost) {
+                return true
+            }
+            
+        } catch (e: Exception) {
+            // Fall back to simple contains if parsing fails
+        }
+        
+        return false
+    }
+
+    /**
+     * Known proxy/bypass services that users might use to access blocked content.
+     * Block these when ANY blocklist pattern is being accessed through them.
+     */
+    private val proxyBypassDomains = listOf(
+        // Web proxies
+        "proxysite.com",
+        "hide.me/proxy",
+        "hidemy.name",
+        "kproxy.com",
+        "croxyproxy.com",
+        "proxysite.cloud",
+        "blockaway.net",
+        "unblockit",
+        "unblocked",
+        "freeproxy",
+        "webproxy",
+        "anonymouse.org",
+        "4everproxy.com",
+        "filterbypass.me",
+        
+        // Google services used for bypass
+        "translate.google",
+        "translate.goog",
+        "webcache.googleusercontent.com",
+        "cached", // Google cache indicator
+        
+        // Archive/cached content
+        "web.archive.org",
+        "archive.today",
+        "archive.is",
+        "archive.ph",
+        "archive.fo",
+        "archive.li",
+        "archive.vn",
+        "archive.md",
+        "cachedview.com",
+        "cachedpages.com",
+        
+        // URL shorteners (can hide blocked URLs)
+        "bit.ly",
+        "tinyurl.com",
+        "t.co",
+        "goo.gl",
+        "ow.ly",
+        "is.gd",
+        "buff.ly",
+        "short.link",
+        "cutt.ly",
+        "rebrand.ly",
+        "tiny.cc",
+        "shorturl.at",
+        "v.gd",
+        "rb.gy",
+        
+        // AMP pages (can show blocked content)
+        "amp.dev",
+        "ampproject.org",
+        "/amp/",
+        "amp-",
+        ".amp.",
+        
+        // Social media that can embed blocked content
+        "reddit.com/media",
+        "i.redd.it", // Reddit image/video hosting
+        "v.redd.it",
+        "preview.redd.it"
+    )
+
+    /**
+     * Check if the URL is attempting to bypass blocking through proxy services,
+     * Google Translate, archive sites, URL shorteners, etc.
+     */
+    private fun isProxyBypassAttempt(urlLower: String, blockedPattern: String): Boolean {
+        // Check if URL uses a known proxy/bypass service
+        for (proxyDomain in proxyBypassDomains) {
+            if (urlLower.contains(proxyDomain)) {
+                // If using a proxy service, check if the blocked pattern appears in the URL
+                // (e.g., translate.google.com/translate?u=youtube.com)
+                if (urlLower.contains(blockedPattern)) {
+                    return true
+                }
+                
+                // Also block proxy services outright if ANY blocklist item is being checked
+                // This is aggressive but prevents sophisticated bypass attempts
+                // The proxy itself becomes suspicious when checking for blocked content
+                return true
+            }
+        }
+        
+        // Check for encoded URLs (users might URL-encode blocked domains)
+        try {
+            val decoded = java.net.URLDecoder.decode(urlLower, "UTF-8")
+            if (decoded != urlLower && decoded.contains(blockedPattern)) {
+                return true
+            }
+        } catch (e: Exception) {
+            // Ignore decoding errors
+        }
+        
+        // Check for base64 encoded content in URL (some proxies use this)
+        if (urlLower.contains("base64") || urlLower.contains("b64")) {
+            // Suspicious - likely trying to hide content
+            // You could decode and check, but safer to just block
+        }
+        
+        return false
+    }
+
+    /**
+     * Check if the app is a known incognito/private browser or VPN app
+     * that might be used to bypass blocking.
+     */
+    private fun isBypassApp(packageName: String): Boolean {
+        val bypassApps = listOf(
+            // Dedicated private/incognito browsers
+            "com.nicedeveloper.privateinternetbrowser",
+            "com.nicedeveloper.privatebrowser",
+            "com.nicedeveloper.incognitobrowser",
+            "com.nicedeveloper.privatebrowser",
+            "org.nicogram.nicogram",
+            "net.nicgram.nicgram",
+            "nicgram", // Partial match
+            "nicogram",
+            "privateglass",
+            "incognito",
+            "privatebrowse",
+            
+            // VPN apps (can't fully block but flag them)
+            "com.nordvpn.android",
+            "com.expressvpn.vpn",
+            "com.surfshark.vpnclient.android",
+            "com.pia.vpn.android",
+            "com.protonvpn.android",
+            "com.windscribe.vpn",
+            "com.tunnelbear.android",
+            "com.hotspot.vpn.android.free",
+            "com.speedvpn.free",
+            
+            // Tor browsers
+            "org.torproject.torbrowser",
+            "info.guardianproject.orfox",
+            "org.nicogram.nicogram",
+            
+            // DNS changers (can bypass some blocks)
+            "com.cloudflare.onedotonedotonedotone",
+            "com.nextdns.app"
+        )
+        
+        return bypassApps.any { packageName.contains(it, ignoreCase = true) }
     }
 }
