@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,7 +43,8 @@ import com.james.anvil.util.PermissionUtils
 fun SettingsScreen(
     viewModel: TaskViewModel,
     navController: androidx.navigation.NavController? = null,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    onNavigateToAbout: (() -> Unit)? = null
 ) {
 
 
@@ -189,70 +191,21 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             SettingsCard {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // App Icon
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(
-                                color = ElectricTeal.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(20.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+                SettingsRow(
+                    icon = Icons.Outlined.Info,
+                    iconTint = ElectricTeal,
+                    title = "About ANVIL",
+                    subtitle = "Version, features & developer info",
+                    onClick = { onNavigateToAbout?.invoke() },
+                    trailing = {
                         Icon(
-                            imageVector = Icons.Outlined.Shield,
-                            contentDescription = null,
-                            tint = ElectricTeal,
-                            modifier = Modifier.size(36.dp)
+                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = "View",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "ANVIL",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Text(
-                        text = "Version 1.0.0",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Forge your will. Master your time.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                    
-                    Spacer(modifier = Modifier.height(20.dp))
-                    
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Developed by James Ryan Gallego",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                )
             }
             
             Spacer(modifier = Modifier.height(32.dp))

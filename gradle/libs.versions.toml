@@ -21,6 +21,8 @@ kotlinxSerialization = "1.7.3"
 glance = "1.1.1"
 lottie = "6.4.0"
 material3Adaptive = "1.0.0"
+foundationLayout = "1.10.1"
+foundation = "1.10.1"
 
 [libraries]
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
@@ -67,6 +69,8 @@ material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "ad
 material3-adaptive-layout = { group = "androidx.compose.material3.adaptive", name = "adaptive-layout", version.ref = "material3Adaptive" }
 material3-adaptive-navigation = { group = "androidx.compose.material3.adaptive", name = "adaptive-navigation", version.ref = "material3Adaptive" }
 material3-window-size = { group = "androidx.compose.material3", name = "material3-window-size-class" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
