@@ -8,7 +8,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.activity.compose.BackHandler
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +20,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -29,7 +27,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.scale
 import kotlin.math.roundToInt
 
 
@@ -54,6 +51,7 @@ import com.james.anvil.ui.BudgetScreen
 import com.james.anvil.ui.BlocklistScreen
 import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.SplashScreen
+import com.james.anvil.ui.AboutScreen
 import android.content.Intent
 
 import com.james.anvil.ui.theme.ANVILTheme
@@ -65,6 +63,7 @@ import java.util.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
@@ -91,13 +90,18 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
             ANVILTheme(darkTheme = isDarkTheme) {
                 var showSettings by remember { mutableStateOf(false) }
+                var showAbout by remember { mutableStateOf(false) }
                 var showSplash by remember { mutableStateOf(true) }
                 var loadingProgress by remember { mutableFloatStateOf(0f) }
                 var isLoading by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
                 
-                // Handle back button when settings is open
-                BackHandler(enabled = showSettings) {
+                
+                // Handle back button when settings or about is open
+                BackHandler(enabled = showAbout) {
+                    showAbout = false
+                }
+                BackHandler(enabled = showSettings && !showAbout) {
                     showSettings = false
                 }
 
@@ -142,7 +146,25 @@ class MainActivity : ComponentActivity() {
                         ) {
                             SettingsScreen(
                                 viewModel = viewModel,
-                                onBack = { showSettings = false }
+                                onBack = { showSettings = false },
+                                onNavigateToAbout = { showAbout = true }
+                            )
+                        }
+                        
+                        // About Overlay - Slides over settings
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showAbout,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            AboutScreen(
+                                onBack = { showAbout = false }
                             )
                         }
                         
@@ -261,49 +283,47 @@ fun SlidingNavigationBar(
     val density = LocalDensity.current
     var itemWidth by remember { mutableStateOf(0.dp) }
     var barWidth by remember { mutableStateOf(0.dp) }
+    val primaryColor = MaterialTheme.colorScheme.primary
     
     Box(
         modifier = Modifier
-            .padding(horizontal = DesignTokens.SpacingLg, vertical = DesignTokens.SpacingMd)
+            .fillMaxWidth()
+            .padding(horizontal = DesignTokens.SpacingMd, vertical = DesignTokens.SpacingMd)
             .navigationBarsPadding()
     ) {
+        // Main navigation surface
         Surface(
             modifier = Modifier
-                .shadow(
-                    elevation = DesignTokens.ElevationHigh,
-                    shape = RoundedCornerShape(DesignTokens.RadiusRound),
-                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = DesignTokens.AlphaHighlight)
-                )
-                .clip(RoundedCornerShape(DesignTokens.RadiusRound))
+                .clip(RoundedCornerShape(DesignTokens.RadiusLarge))
                 .onGloballyPositioned { coordinates ->
                     barWidth = with(density) { coordinates.size.width.toDp() }
                     itemWidth = barWidth / navItems.size
                 },
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = DesignTokens.ElevationNone
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = DesignTokens.ElevationMedium,
+            shadowElevation = DesignTokens.ElevationMedium
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(DesignTokens.BottomNavHeight)
+                    .height(68.dp)
             ) {
-                // Sliding indicator
+                // Direct offset calculation for smooth 1:1 gesture tracking
                 val indicatorOffset = with(density) {
                     val currentPage = pagerState.currentPage
                     val offset = pagerState.currentPageOffsetFraction
                     ((currentPage + offset) * itemWidth.toPx()).roundToInt()
                 }
                 
-                // Sleek Pill Highlight
+                // Full-height pill background for selected item
                 Box(
                     modifier = Modifier
                         .offset { IntOffset(indicatorOffset, 0) }
                         .width(itemWidth)
-                        .height(DesignTokens.BottomNavHeight)
-                        .padding(horizontal = 10.dp, vertical = 14.dp)
+                        .fillMaxHeight()
                         .background(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = DesignTokens.AlphaSelected),
-                            shape = RoundedCornerShape(DesignTokens.RadiusXLarge)
+                            color = primaryColor,
+                            shape = RoundedCornerShape(DesignTokens.RadiusMedium)
                         )
                 )
                 
@@ -321,41 +341,34 @@ fun SlidingNavigationBar(
                                 .fillMaxSize()
                                 .clickable(
                                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null // Remove default ripple to prevent double highlight
+                                    indication = null
                                 ) { onItemClick(index) },
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
+                            // Animate icon/text color
                             val tint by androidx.compose.animation.animateColorAsState(
-                                targetValue = if (isSelected) MaterialTheme.colorScheme.primary 
-                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = DesignTokens.AlphaMuted),
-                                animationSpec = tween(DesignTokens.AnimDurationSlow),
+                                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                animationSpec = tween(DesignTokens.AnimDurationMedium),
                                 label = "navTint"
-                            )
-                            
-                            val scale by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = if (isSelected) 1.1f else 1f,
-                                animationSpec = tween(DesignTokens.AnimDurationSlow),
-                                label = "navScale"
                             )
 
                             Column(
                                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.scale(scale)
+                                verticalArrangement = Arrangement.Center
                             ) {
-
                                 Icon(
                                     imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
                                     contentDescription = item.title,
                                     tint = tint,
-                                    modifier = Modifier.size(DesignTokens.IconSizeMedium)
+                                    modifier = Modifier.size(22.dp)
                                 )
-                                Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
+                                Spacer(modifier = Modifier.height(DesignTokens.SpacingXxs))
                                 Text(
                                     text = item.title,
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        letterSpacing = 0.5.sp
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        fontSize = 11.sp
                                     ),
                                     color = tint
                                 )
@@ -364,7 +377,6 @@ fun SlidingNavigationBar(
                     }
                 }
             }
-
         }
     }
 }
