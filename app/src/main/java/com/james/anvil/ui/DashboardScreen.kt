@@ -37,6 +37,7 @@ import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.components.ContributionGraph
 import com.james.anvil.ui.components.MotivationCard
+import com.james.anvil.data.HabitContribution
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.InfoBlue
@@ -63,6 +64,7 @@ fun DashboardScreen(
     val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
     val totalActiveLoanedAmount by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
+    val habitContributions by viewModel.habitContributions.collectAsState(initial = emptyList())
     
     val graceDays = viewModel.getGraceDaysCount() // Note: This is a function, not a flow in ViewModel. Consider making it reactive if needed, but for now we'll trust the viewmodel update flow.
     // Actually, viewModel.bonusTasks triggers updates, but grace days calculation depends on bonusManager which uses SharedPreferences.
@@ -390,7 +392,8 @@ fun DashboardScreen(
                        Box(modifier = Modifier.padding(16.dp)) {
                            ContributionGraph(
                                 completedTasks = allCompletedTasks,
-                                bonusTasks = bonusTasks
+                                bonusTasks = bonusTasks,
+                                habitContributions = habitContributions
                             )
                        }
                    }

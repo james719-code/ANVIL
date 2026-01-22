@@ -8,8 +8,10 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
 import com.james.anvil.worker.WidgetRefreshWorker
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 /**
@@ -40,6 +42,7 @@ object WorkerScheduler {
         scheduleReminderWorker(workManager)
         scheduleDailyResetWorker(workManager)
         scheduleWidgetRefreshWorker(workManager)
+        scheduleMidnightContributionWorker(workManager)
     }
     
     /**
@@ -122,6 +125,51 @@ object WorkerScheduler {
     }
     
     /**
+     * Schedules the midnight contribution worker.
+     * Runs daily around midnight to check if no tasks were pending,
+     * and records a "green" contribution for the habit graph.
+     */
+    private fun scheduleMidnightContributionWorker(workManager: WorkManager) {
+        // Calculate initial delay to run at midnight
+        val currentTime = Calendar.getInstance()
+        val targetTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 5) // 12:05 AM to give some buffer
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            // If we're past midnight, schedule for tomorrow
+            if (before(currentTime)) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+        
+        val initialDelayMs = targetTime.timeInMillis - currentTime.timeInMillis
+        
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .build()
+        
+        val request = PeriodicWorkRequestBuilder<MidnightContributionWorker>(
+            24, TimeUnit.HOURS
+        )
+            .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+            .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                BACKOFF_DELAY_SECONDS,
+                TimeUnit.SECONDS
+            )
+            .addTag(TAG_MIDNIGHT_CONTRIBUTION)
+            .build()
+        
+        workManager.enqueueUniquePeriodicWork(
+            MidnightContributionWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+    
+    /**
      * Cancels all scheduled work.
      * Useful for cleanup or when user disables features.
      */
@@ -130,6 +178,7 @@ object WorkerScheduler {
         workManager.cancelUniqueWork(WORK_NAME_REMINDER)
         workManager.cancelUniqueWork(WORK_NAME_DAILY_RESET)
         workManager.cancelUniqueWork(WidgetRefreshWorker.WORK_NAME)
+        workManager.cancelUniqueWork(MidnightContributionWorker.WORK_NAME)
     }
     
     /**
@@ -143,4 +192,5 @@ object WorkerScheduler {
     const val TAG_REMINDER = "reminder_worker"
     const val TAG_DAILY_RESET = "daily_reset_worker"
     const val TAG_WIDGET_REFRESH = "widget_refresh_worker"
+    const val TAG_MIDNIGHT_CONTRIBUTION = "midnight_contribution_worker"
 }

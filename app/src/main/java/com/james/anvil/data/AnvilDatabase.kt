@@ -16,9 +16,10 @@ import androidx.room.TypeConverters
         BonusTask::class,
         BudgetEntry::class,
         Loan::class,
-        LoanRepayment::class
+        LoanRepayment::class,
+        HabitContribution::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -30,6 +31,7 @@ abstract class AnvilDatabase : RoomDatabase() {
     abstract fun bonusTaskDao(): BonusTaskDao
     abstract fun budgetDao(): BudgetDao
     abstract fun loanDao(): LoanDao
+    abstract fun habitContributionDao(): HabitContributionDao
 
     companion object {
         @Volatile
@@ -77,6 +79,25 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration to add habit contribution tracking.
+         * Creates the habit_contributions table for tracking days
+         * where no tasks were pending (green days on contribution graph).
+         */
+        private val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `habit_contributions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `contributionValue` INTEGER NOT NULL DEFAULT 1,
+                        `reason` TEXT NOT NULL DEFAULT 'no_pending_tasks',
+                        `recordedAt` INTEGER NOT NULL
+                    )
+                """)
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -84,7 +105,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .build()
                 INSTANCE = instance
                 instance

@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.BonusTask
+import com.james.anvil.data.HabitContribution
 import com.james.anvil.data.Task
 import com.james.anvil.ui.theme.DeepTeal
 import java.text.SimpleDateFormat
@@ -33,12 +34,13 @@ data class ContributionDay(
 fun ContributionGraph(
     completedTasks: List<Task>,
     bonusTasks: List<BonusTask>,
+    habitContributions: List<HabitContribution> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     
-    val contributionData = remember(completedTasks, bonusTasks, currentYear) {
-        calculateYearContributionData(completedTasks, bonusTasks, currentYear)
+    val contributionData = remember(completedTasks, bonusTasks, habitContributions, currentYear) {
+        calculateYearContributionData(completedTasks, bonusTasks, habitContributions, currentYear)
     }
     
     val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -262,14 +264,22 @@ data class MonthContributionData(
 /**
  * Calculates contribution data for an entire year, organized by months.
  * Each month contains weeks, and each week contains days.
+ * Contributions come from:
+ * - Completed tasks (1 per task)
+ * - Bonus tasks (1 per 3 bonus tasks)
+ * - Habit contributions (days with no pending tasks = 1 contribution)
  */
 private fun calculateYearContributionData(
     completedTasks: List<Task>,
     bonusTasks: List<BonusTask>,
+    habitContributions: List<HabitContribution>,
     year: Int
 ): YearContributionData {
     val calendar = Calendar.getInstance()
     val today = Calendar.getInstance()
+    
+    // Create a set of dates that have habit contributions for quick lookup
+    val habitContributionDates = habitContributions.map { it.date }.toSet()
     
     val months = mutableListOf<MonthContributionData>()
     
@@ -311,8 +321,13 @@ private fun calculateYearContributionData(
                 bonus.completedAt >= startOfDay && bonus.completedAt < endOfDay
             }
             
-            // Every 3 bonus tasks adds 1 to the contribution "green"
-            val totalCount = standardCount + (bonusCount / 3)
+            // Check if this day has a habit contribution (no pending tasks at end of day)
+            val habitContributionCount = if (isFuture) 0 else {
+                if (habitContributionDates.contains(startOfDay)) 1 else 0
+            }
+            
+            // Total count: completed tasks + bonus tasks (1 per 3) + habit contribution
+            val totalCount = standardCount + (bonusCount / 3) + habitContributionCount
             
             currentWeek.add(ContributionDay(
                 date = startOfDay,
@@ -333,3 +348,4 @@ private fun calculateYearContributionData(
     
     return YearContributionData(year, months)
 }
+

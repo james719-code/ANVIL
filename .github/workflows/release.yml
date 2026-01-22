@@ -3,7 +3,11 @@ name: Android CI/CD Release
 on:
   push:
     tags:
-      - 'v*' # Trigger only when you push a tag like v1.0, v2.1.4, etc.
+      - 'v*'
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+  JAVA_VERSION: '17'
 
 jobs:
   build:
@@ -13,12 +17,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Decode Keystore
         id: decode_keystore
@@ -32,23 +39,47 @@ jobs:
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: current
+          cache-read-only: false
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --console=plain --build-cache
         env:
-          # These env variables must match your build.gradle signingConfig
           RELEASE_STORE_FILE: ${{ steps.decode_keystore.outputs.filePath }}
           RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"- %s" -10)
+          fi
+          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: "app/build/outputs/apk/release/*.apk"
           name: Release ${{ github.ref_name }}
-          body: "Automated Build for version ${{ github.ref_name }}"
+          body: |
+            ## What's Changed
+            ${{ steps.release_notes.outputs.COMMITS }}
+            
+            ---
+            *Automated build for version ${{ github.ref_name }}*
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in, no need to create
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

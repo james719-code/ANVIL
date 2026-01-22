@@ -39,6 +39,7 @@ class LockActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_BLOCK_TYPE = "extra_block_type"
+        const val EXTRA_BLOCKED_TARGET = "extra_blocked_target"
     }
 
     private lateinit var penaltyManager: PenaltyManager
@@ -64,10 +65,13 @@ class LockActivity : ComponentActivity() {
             BlockType.PENALTY
         }
         
+        // Get blocked target from intent
+        val blockedTarget = intent.getStringExtra(EXTRA_BLOCKED_TARGET) ?: "Unknown"
+        
         enableEdgeToEdge()
         setContent {
             ANVILTheme {
-                LockScreen(penaltyManager, taskDao, blockType)
+                LockScreen(penaltyManager, taskDao, blockType, blockedTarget)
             }
         }
     }
@@ -92,7 +96,8 @@ private val CautionAmber = Color(0xFFCC8800)
 fun LockScreen(
     penaltyManager: PenaltyManager, 
     taskDao: com.james.anvil.data.TaskDao? = null,
-    blockType: BlockType = BlockType.PENALTY
+    blockType: BlockType = BlockType.PENALTY,
+    blockedTarget: String = "Unknown"
 ) {
     var hoursLeft by remember { mutableStateOf("00") }
     var minutesLeft by remember { mutableStateOf("00") }
@@ -271,6 +276,44 @@ fun LockScreen(
                 fontFamily = FontFamily.Monospace,
                 textAlign = TextAlign.Center
             )
+            
+            // Blocked Target Card - shows what was blocked
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MediumGray, RoundedCornerShape(4.dp))
+                    .border(1.dp, BorderGray, RoundedCornerShape(4.dp))
+                    .padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "BLOCKED TARGET",
+                        color = TextDimGray,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 2.sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = blockedTarget,
+                        color = accentColor,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             
             // Blocking reason card - only show for penalty/task-based blocks, not schedule blocks
             if (!isPenaltyActive && !isScheduleBlock && blockingTaskNames.isNotEmpty()) {
