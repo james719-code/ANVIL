@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+  JAVA_VERSION: '17'
+
 jobs:
   lint:
     name: Lint Check
@@ -13,12 +22,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Make gradlew executable
         run: |
@@ -29,9 +41,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: current
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+          dependency-graph: generate-and-submit
 
       - name: Run Lint
-        run: ./gradlew lintDebug --console=plain
+        run: ./gradlew lintDebug --console=plain --build-cache
 
       - name: Upload Lint Results
         uses: actions/upload-artifact@v4
@@ -39,6 +54,7 @@ jobs:
         with:
           name: lint-results
           path: app/build/reports/lint-results-debug.html
+          retention-days: 14
 
   build:
     name: Build Debug APK
@@ -47,12 +63,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Make gradlew executable
         run: |
@@ -63,15 +82,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: current
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --console=plain
+        run: ./gradlew assembleDebug --console=plain --build-cache
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
 
   test:
     name: Run Unit Tests
@@ -80,12 +102,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Make gradlew executable
         run: |
@@ -96,9 +121,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: current
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --console=plain
+        run: ./gradlew testDebugUnitTest --console=plain --build-cache
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
@@ -106,6 +133,7 @@ jobs:
         with:
           name: test-results
           path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 14
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
@@ -113,3 +141,4 @@ jobs:
         with:
           name: test-report
           path: app/build/test-results/testDebugUnitTest/
+          retention-days: 14

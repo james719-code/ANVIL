@@ -8,7 +8,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.AnvilWorker
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 class BootReceiver : BroadcastReceiver() {
@@ -42,6 +44,28 @@ class BootReceiver : BroadcastReceiver() {
                 ExistingPeriodicWorkPolicy.KEEP,
                 dailyResetRequest
             )
+            
+            // Schedule MidnightContributionWorker to check habit contributions at midnight
+            val currentTime = Calendar.getInstance()
+            val targetTime = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 5)
+                set(Calendar.SECOND, 0)
+                if (before(currentTime)) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }
+            val initialDelayMs = targetTime.timeInMillis - currentTime.timeInMillis
+            
+            val midnightRequest = PeriodicWorkRequestBuilder<MidnightContributionWorker>(24, TimeUnit.HOURS)
+                .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+                .build()
+            workManager.enqueueUniquePeriodicWork(
+                MidnightContributionWorker.WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                midnightRequest
+            )
         }
     }
 }
+

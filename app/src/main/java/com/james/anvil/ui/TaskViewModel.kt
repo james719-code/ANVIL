@@ -22,6 +22,7 @@ import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
+import com.james.anvil.data.HabitContribution
 import com.james.anvil.core.BonusManager
 import com.james.anvil.data.CategoryType
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val bonusTaskDao = db.bonusTaskDao()
     private val budgetDao = db.budgetDao()
     private val loanDao = db.loanDao()
+    private val habitContributionDao = db.habitContributionDao()
     private val prefs: SharedPreferences = application.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
     private val bonusManager = BonusManager(application)
 
@@ -128,6 +130,10 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     val bonusTaskCount: Flow<Int> = bonusTaskDao.countBonusTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
+
+    // Habit Contributions (days with no pending tasks)
+    val habitContributions: Flow<List<HabitContribution>> = habitContributionDao.observeAllContributions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     // Budget
     val budgetEntries: Flow<List<BudgetEntry>> = budgetDao.observeAllEntries()
