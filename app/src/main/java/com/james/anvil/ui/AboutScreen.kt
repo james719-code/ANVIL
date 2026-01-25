@@ -108,7 +108,7 @@ fun AboutScreen(
                             // Background layer
                             Image(
                                 painter = painterResource(id = R.drawable.ic_launcher_background),
-                                contentDescription = null,
+                                contentDescription = "App icon background",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
@@ -159,7 +159,7 @@ fun AboutScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Verified,
-                                contentDescription = null,
+                                contentDescription = "Verified",
                                 tint = SuccessGreen,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -199,7 +199,7 @@ fun AboutScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Lightbulb,
-                                    contentDescription = null,
+                                    contentDescription = "Our Mission",
                                     tint = ElectricTeal,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -508,7 +508,7 @@ private fun FeatureCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = title,
                     tint = iconTint,
                     modifier = Modifier.size(24.dp)
                 )
@@ -559,7 +559,7 @@ private fun PrincipleItem(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = iconTint,
                 modifier = Modifier.size(22.dp)
             )
@@ -599,7 +599,7 @@ private fun TechBadge(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 tint = ElectricTeal,
                 modifier = Modifier.size(16.dp)
             )

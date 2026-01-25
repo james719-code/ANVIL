@@ -217,7 +217,7 @@ fun BudgetScreen(
                                         }
                                         Icon(
                                             imageVector = Icons.Default.Contactless,
-                                            contentDescription = null,
+                                            contentDescription = "Contactless payment",
                                             tint = Color.White.copy(alpha = 0.6f),
                                             modifier = Modifier.size(28.dp).rotate(90f)
                                         )
@@ -358,7 +358,7 @@ fun BudgetScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     placeholder = { Text("Search transactions...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (searchQuery.isNotEmpty()) {
@@ -612,7 +612,7 @@ private fun EmptyStateContent(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = message,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                 modifier = Modifier.size(64.dp)
             )
@@ -660,7 +660,7 @@ private fun BalanceCard(
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
+                        contentDescription = title,
                         tint = color,
                         modifier = Modifier.size(20.dp)
                     )
@@ -753,7 +753,7 @@ private fun BudgetEntryItem(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = if (entry.type == BudgetType.INCOME || entry.type == BudgetType.LOAN_REPAYMENT) "Income" else "Expense",
                     tint = iconColor,
                     modifier = Modifier.size(20.dp)
                 )
@@ -893,7 +893,7 @@ private fun LoanItem(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
+                            contentDescription = "Borrower",
                             tint = ForgedGold
                         )
                     }

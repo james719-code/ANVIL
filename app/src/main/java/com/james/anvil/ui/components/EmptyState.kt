@@ -77,7 +77,7 @@ fun EmptyState(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = message,
                 modifier = Modifier
                     .size(48.dp)
                     .alpha(alpha),
@@ -113,7 +113,7 @@ fun EmptyState(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = null,
+                    contentDescription = "Add",
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(Dimens.spacing8))

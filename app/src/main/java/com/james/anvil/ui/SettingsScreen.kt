@@ -269,7 +269,7 @@ private fun SettingsRow(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = iconTint,
                 modifier = Modifier.size(22.dp)
             )

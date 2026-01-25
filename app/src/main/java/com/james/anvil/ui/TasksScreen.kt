@@ -31,7 +31,8 @@ import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
 import com.james.anvil.data.BonusTask
 import com.james.anvil.ui.components.BonusTaskBottomSheet
-import com.james.anvil.ui.components.CollapsibleScreenScaffold
+import com.james.anvil.ui.components.ScreenScaffold
+import com.james.anvil.ui.components.ScreenHeader
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.TaskItem
 import com.james.anvil.ui.components.AnvilCard
@@ -100,9 +101,7 @@ fun TasksScreen(
         else completedTasks.filter { it.category == selectedCategory }
     }
 
-    CollapsibleScreenScaffold(
-        title = "Tasks",
-        subtitle = "Manage your work",
+    ScreenScaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -122,6 +121,11 @@ fun TasksScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
+            ScreenHeader(
+                title = "Tasks",
+                subtitle = "Manage your work"
+            )
+            
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent,
@@ -485,7 +489,7 @@ fun CategoryFilterRow(
                 onClick = { onCategorySelected(category) },
                 label = { Text(category) },
                 leadingIcon = if (category == selectedCategory) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    { Icon(Icons.Default.Check, contentDescription = "Selected", modifier = Modifier.size(18.dp)) }
                 } else null
             )
         }
@@ -1045,7 +1049,7 @@ fun TaskOptionsDialog(
                     onClick = onEdit,
                     modifier = Modifier.fillMaxWidth().align(Alignment.Start)
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(Icons.Default.Edit, contentDescription = "Edit task", modifier = Modifier.padding(end = 8.dp))
                     Text("Edit")
                 }
 
@@ -1054,7 +1058,7 @@ fun TaskOptionsDialog(
                     modifier = Modifier.fillMaxWidth().align(Alignment.Start),
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(Icons.Default.Delete, contentDescription = "Delete task", modifier = Modifier.padding(end = 8.dp))
                     Text("Delete")
                 }
             }
@@ -1097,7 +1101,7 @@ fun BonusTaskItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Star,
-                        contentDescription = null,
+                        contentDescription = "Bonus task",
                         tint = ForgedGold,
                         modifier = Modifier.size(14.dp)
                     )

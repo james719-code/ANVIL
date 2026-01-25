@@ -30,7 +30,7 @@ import com.james.anvil.data.BalanceType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
-import com.james.anvil.ui.components.CollapsibleScreenScaffold
+import com.james.anvil.ui.components.SecondaryScreenScaffold
 import com.james.anvil.ui.theme.DeepTeal
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -56,14 +56,10 @@ fun LoansScreen(
     val tabs = listOf("Active (${activeLoans.size})", "Repaid (${repaidLoans.size})")
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH"))
 
-    CollapsibleScreenScaffold(
+    SecondaryScreenScaffold(
         title = "Loans",
         subtitle = "Track what you owe",
-        navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-        },
+        onNavigateBack = onNavigateBack,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddLoanSheet = true },
@@ -144,7 +140,7 @@ fun LoansScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = Icons.Outlined.Person,
-                                contentDescription = null,
+                                contentDescription = "No loans",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(64.dp)
                             )
@@ -268,7 +264,7 @@ private fun LoanItem(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
+                            contentDescription = "Borrower",
                             tint = if (isGcash) Color(0xFF007DFE) else DeepTeal
                         )
                     }

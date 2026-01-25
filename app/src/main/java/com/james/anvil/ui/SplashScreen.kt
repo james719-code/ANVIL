@@ -141,7 +141,7 @@ private fun SplashContent(progress: Float) {
                     // Layered Adaptive Icon
                     Image(
                         painter = painterResource(id = R.drawable.ic_launcher_background),
-                        contentDescription = null,
+                        contentDescription = "App icon background",
                         modifier = Modifier.fillMaxSize()
                     )
                     Image(
