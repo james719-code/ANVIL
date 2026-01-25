@@ -58,7 +58,7 @@ fun ScheduleEditDialog(
             ) {
                 Icon(
                     imageVector = Icons.Default.Schedule,
-                    contentDescription = null,
+                    contentDescription = "Schedule",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(

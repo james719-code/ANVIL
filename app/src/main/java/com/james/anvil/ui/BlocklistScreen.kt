@@ -17,7 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.james.anvil.ui.components.BlocklistItem
-import com.james.anvil.ui.components.CollapsibleScreenScaffold
+import com.james.anvil.ui.components.ScreenScaffold
+import com.james.anvil.ui.components.ScreenHeader
 import com.james.anvil.ui.components.EmptyState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.filled.Search
@@ -29,11 +30,16 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Apps", "Links")
 
-    CollapsibleScreenScaffold(
-        title = "Blocklist",
-        subtitle = "Shield yourself from distractions"
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
+    ScreenScaffold { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+        ) {
+            ScreenHeader(
+                title = "Blocklist",
+                subtitle = "Shield yourself from distractions"
+            )
+            
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent,
@@ -80,7 +86,7 @@ fun BlockedAppsTab(viewModel: TaskViewModel) {
             value = searchQuery,
             onValueChange = { searchQuery = it },
             placeholder = { Text("Search apps...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search apps") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),

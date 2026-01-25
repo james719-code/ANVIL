@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ANVIL</string>
+    <string name="widget_description">Tingnan ang iyong ANVIL productivity stats sa isang sulyap</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_tasks">Gawain</string>
+    <string name="nav_budget">Badyet</string>
+    <string name="nav_blocked">Naka-block</string>
+    <string name="nav_bonus">Bonus</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Permission Dialogs -->
+    <string name="permission_notification_title">I-enable ang Notifications</string>
+    <string name="permission_notification_message">Kailangan ng Anvil ang notification permission para ipaalala sa iyo ang mga deadline ng task.</string>
+    <string name="permission_usage_title">Payagan ang Usage Access</string>
+    <string name="permission_usage_message">Kailangan ng Anvil ang usage access permission para sa tracking ng app usage at pagpapabuti ng blocking accuracy.</string>
+    <string name="permission_battery_title">I-disable ang Battery Optimization</string>
+    <string name="permission_battery_message">Para masiguradong gumagana nang maayos ang Anvil (lalo na ang Accessibility Services pagkatapos mag-restart), i-tap ang \'Battery\' at piliin ang \'Unrestricted\' (o \'Don\'t optimize\').</string>
+    <string name="permission_enable">I-enable</string>
+    <string name="permission_fix">Ayusin</string>
+    <string name="permission_later">Mamaya</string>
+    <string name="permission_cancel">Kanselahin</string>
+    <string name="permission_dont_show_again">Huwag na ipakita</string>
+    <string name="permission_cant_enable_accessibility">Hindi ma-enable ang Accessibility?</string>
+    
+    <!-- Restricted Settings Guide -->
+    <string name="restricted_settings_guide_title">Gabay sa Restricted Settings</string>
+    <string name="restricted_settings_guide_intro">Simula sa Android 13, nagpakilala ang Google ng \'Restricted Settings\' para sa mga sideloaded apps. Kung hindi mo ma-enable ang Accessibility para sa Anvil, sundin ang mga hakbang na ito:</string>
+    <string name="guide_step1_title">Mag-trigger ng error</string>
+    <string name="guide_step1_desc">Subukang i-enable ang Accessibility setting para sa Anvil. Makakakuha ka ng \'Restricted Setting\' popup. I-tap ang OK. (Kinakailangan ito).</string>
+    <string name="guide_step2_title">Pumunta sa App Info</string>
+    <string name="guide_step2_desc">Buksan ang Settings → Apps → Anvil.</string>
+    <string name="guide_step3_title">I-unlock ang setting</string>
+    <string name="guide_step3_desc">I-tap ang tatlong tuldok (⋮) sa kanang itaas na sulok. I-tap ang \'Allow restricted settings\'. Kumpirmahin gamit ang iyong PIN/Password.</string>
+    <string name="guide_step4_title">I-enable ang Accessibility</string>
+    <string name="guide_step4_desc">Bumalik sa Settings → Accessibility → Anvil. Pwede mo na itong i-enable.</string>
+    <string name="got_it">Sige</string>
+    
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_greeting_morning">Magandang Umaga</string>
+    <string name="dashboard_greeting_afternoon">Magandang Hapon</string>
+    <string name="dashboard_greeting_evening">Magandang Gabi</string>
+    <string name="dashboard_tasks_pending">Mga Nakabinbing Gawain</string>
+    <string name="dashboard_tasks_completed">Mga Natapos na Gawain</string>
+    <string name="dashboard_progress">Progreso</string>
+    <string name="dashboard_quick_actions">Mabilisang Aksyon</string>
+    
+    <!-- Tasks -->
+    <string name="tasks_title">Mga Gawain</string>
+    <string name="tasks_add">Magdagdag ng Gawain</string>
+    <string name="tasks_edit">I-edit ang Gawain</string>
+    <string name="tasks_delete">Burahin ang Gawain</string>
+    <string name="tasks_complete">Tapusin</string>
+    <string name="tasks_undo">I-undo</string>
+    <string name="tasks_deleted">Nabura ang gawain</string>
+    <string name="tasks_empty_title">Walang gawain pa</string>
+    <string name="tasks_empty_message">Magdagdag ng iyong unang gawain para magsimula</string>
+    <string name="tasks_daily">Araw-araw na Gawain</string>
+    <string name="tasks_all">Lahat ng Gawain</string>
+    <string name="tasks_completed">Natapos</string>
+    
+    <!-- Budget -->
+    <string name="budget_title">Badyet</string>
+    <string name="budget_add_expense">Magdagdag ng Gastos</string>
+    <string name="budget_add_income">Magdagdag ng Kita</string>
+    <string name="budget_cash">Cash</string>
+    <string name="budget_gcash">GCash</string>
+    <string name="budget_total_balance">Kabuuang Balanse</string>
+    <string name="budget_recent_transactions">Kamakailang Transaksyon</string>
+    <string name="budget_no_transactions">Walang transaksyon pa</string>
+    
+    <!-- Loans -->
+    <string name="loans_title">Mga Utang</string>
+    <string name="loans_add">Magdagdag ng Utang</string>
+    <string name="loans_active">Aktibong Utang</string>
+    <string name="loans_repaid">Naibayad na Utang</string>
+    <string name="loans_total_loaned">Kabuuang Inutang</string>
+    <string name="loans_remaining">Natitira</string>
+    <string name="loans_add_repayment">Magdagdag ng Bayad</string>
+    
+    <!-- Blocklist -->
+    <string name="blocklist_title">Blocklist</string>
+    <string name="blocklist_apps">Mga App</string>
+    <string name="blocklist_links">Mga Link</string>
+    <string name="blocklist_add_app">I-block ang App</string>
+    <string name="blocklist_add_link">I-block ang Link</string>
+    <string name="blocklist_empty_apps">Walang naka-block na app</string>
+    <string name="blocklist_empty_links">Walang naka-block na link</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Hitsura</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dark_mode_desc">Palitan ang tema sa light o dark</string>
+    <string name="settings_permissions">Mga Permiso</string>
+    <string name="settings_accessibility">Accessibility Service</string>
+    <string name="settings_accessibility_desc">Kinakailangan para sa app blocking</string>
+    <string name="settings_notification">Mga Notification</string>
+    <string name="settings_notification_desc">Mga paalala at alerto para sa gawain</string>
+    <string name="settings_usage_access">Usage Access</string>
+    <string name="settings_usage_access_desc">I-track ang statistics ng app usage</string>
+    <string name="settings_battery">Battery Optimization</string>
+    <string name="settings_battery_desc">Tiyakin ang maaasahang background operation</string>
+    <string name="settings_about">Tungkol</string>
+    <string name="settings_version">Bersyon</string>
+    <string name="settings_developer">Developer</string>
+    <string name="settings_rate">I-rate ang App</string>
+    <string name="settings_feedback">Magpadala ng Feedback</string>
+    
+    <!-- Common Actions -->
+    <string name="action_save">I-save</string>
+    <string name="action_cancel">Kanselahin</string>
+    <string name="action_delete">Burahin</string>
+    <string name="action_edit">I-edit</string>
+    <string name="action_add">Idagdag</string>
+    <string name="action_confirm">Kumpirmahin</string>
+    <string name="action_back">Bumalik</string>
+    <string name="action_close">Isara</string>
+    <string name="action_retry">Subukan Ulit</string>
+    <string name="action_search">Maghanap</string>
+    <string name="action_filter">I-filter</string>
+    <string name="action_sort">I-sort</string>
+    
+    <!-- Form Labels -->
+    <string name="label_title">Pamagat</string>
+    <string name="label_description">Deskripsyon</string>
+    <string name="label_category">Kategorya</string>
+    <string name="label_amount">Halaga</string>
+    <string name="label_date">Petsa</string>
+    <string name="label_time">Oras</string>
+    <string name="label_deadline">Deadline</string>
+    <string name="label_name">Pangalan</string>
+    <string name="label_note">Tala</string>
+    
+    <!-- Shortcuts -->
+    <string name="shortcut_add_expense">Magdagdag ng Gastos</string>
+    <string name="shortcut_add_expense_long">Mag-record ng bagong gastos</string>
+    <string name="shortcut_add_income">Magdagdag ng Kita</string>
+    <string name="shortcut_add_income_long">Mag-record ng bagong kita</string>
+    <string name="shortcut_add_loan">Magdagdag ng Utang</string>
+    <string name="shortcut_add_loan_long">Mag-record ng bagong utang</string>
+    
+    <!-- Accessibility -->
+    <string name="cd_navigation_icon">Navigation icon</string>
+    <string name="cd_add_button">Button na pang-dagdag</string>
+    <string name="cd_delete_button">Button na pang-bura</string>
+    <string name="cd_edit_button">Button na pang-edit</string>
+    <string name="cd_back_button">Bumalik</string>
+    <string name="cd_settings_button">Buksan ang settings</string>
+    <string name="cd_close_button">Isara</string>
+    <string name="cd_app_icon">Icon ng app</string>
+    <string name="cd_task_checkbox">Checkbox para sa pagkumpleto ng gawain</string>
+    <string name="cd_theme_toggle">Toggle ng tema</string>
+    
+    <!-- Error Messages -->
+    <string name="error_empty_title">Hindi pwedeng blangko ang pamagat</string>
+    <string name="error_invalid_amount">Maglagay ng tamang halaga</string>
+    <string name="error_network">Network error. Subukan ulit.</string>
+    <string name="error_unknown">May problema</string>
+    
+    <!-- Success Messages -->
+    <string name="success_task_added">Matagumpay na naidagdag ang gawain</string>
+    <string name="success_task_completed">Natapos ang gawain!</string>
+    <string name="success_entry_added">Matagumpay na naidagdag ang entry</string>
+    <string name="success_saved">Matagumpay na na-save</string>
+</resources>

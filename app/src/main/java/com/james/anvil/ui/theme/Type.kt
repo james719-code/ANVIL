@@ -2,33 +2,44 @@ package com.james.anvil.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.james.anvil.R
 
 /**
  * ANVIL Typography System
  * 
- * Uses system default font (San Francisco on iOS, Roboto on Android) for maximum
- * readability and platform consistency. The type scale follows Material 3 guidelines
- * with refined letter spacing for improved legibility.
+ * Uses Space Grotesk, a proportional sans-serif typeface designed for headlines
+ * and large text. It features a geometric style with quirky letterforms that
+ * give it a distinctive, modern character perfect for a productivity app.
  * 
- * To use a custom font like Inter or Manrope:
- * 1. Add font files to res/font/
- * 2. Create FontFamily with font variations
- * 3. Replace AnvilFontFamily reference below
+ * Space Grotesk works well for:
+ * - Headlines and titles
+ * - Numbers and statistics
+ * - UI elements and buttons
  * 
- * Example:
- * ```
- * val InterFont = FontFamily(
- *     Font(R.font.inter_regular, FontWeight.Normal),
- *     Font(R.font.inter_medium, FontWeight.Medium),
- *     Font(R.font.inter_semibold, FontWeight.SemiBold),
- *     Font(R.font.inter_bold, FontWeight.Bold)
- * )
- * ```
+ * The type scale follows Material 3 guidelines with refined letter spacing
+ * optimized for Space Grotesk's geometric characteristics.
+ * 
+ * Font weights available:
+ * - Light (300): For subtle secondary text
+ * - Regular (400): For body text
+ * - Medium (500): For buttons and labels
+ * - SemiBold (600): For subheadings
+ * - Bold (700): For headlines and emphasis
  */
-val AnvilFontFamily = FontFamily.Default
+val SpaceGroteskFontFamily = FontFamily(
+    Font(R.font.space_grotesk_light, FontWeight.Light),
+    Font(R.font.space_grotesk_regular, FontWeight.Normal),
+    Font(R.font.space_grotesk_medium, FontWeight.Medium),
+    Font(R.font.space_grotesk_semibold, FontWeight.SemiBold),
+    Font(R.font.space_grotesk_bold, FontWeight.Bold)
+)
+
+// Use Space Grotesk as the primary font family
+val AnvilFontFamily = SpaceGroteskFontFamily
 
 val Typography = Typography(
     // Display styles - For hero sections and large promotional text

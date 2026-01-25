@@ -78,7 +78,7 @@ fun GlassFinanceCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = title,
                     tint = accentColor,
                     modifier = Modifier.size(24.dp)
                 )

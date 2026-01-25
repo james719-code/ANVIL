@@ -30,6 +30,8 @@ import androidx.compose.animation.core.tween
 import kotlin.math.roundToInt
 
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,9 +56,10 @@ import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.SplashScreen
 import com.james.anvil.ui.AboutScreen
 import android.content.Intent
-
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.LocalWindowInfo
+import com.james.anvil.ui.theme.ProvideWindowInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -69,6 +73,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dagger.hilt.android.AndroidEntryPoint
+import com.james.anvil.ui.components.AnvilOnboardingSteps
+import com.james.anvil.ui.components.OnboardingOverlay
 import com.james.anvil.ui.components.PermissionCheckManager
 import com.james.anvil.util.ShortcutProvider
 import com.james.anvil.util.WorkerScheduler
@@ -87,17 +93,22 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         
         setContent {
-            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-            ANVILTheme(darkTheme = isDarkTheme) {
-                var showSettings by remember { mutableStateOf(false) }
-                var showAbout by remember { mutableStateOf(false) }
-                var showSplash by remember { mutableStateOf(true) }
-                var loadingProgress by remember { mutableFloatStateOf(0f) }
-                var isLoading by remember { mutableStateOf(true) }
-                val scope = rememberCoroutineScope()
+            ProvideWindowInfo(activity = this) {
+                val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+                val showOnboarding by viewModel.showOnboarding.collectAsState()
+                val onboardingStep by viewModel.onboardingStep.collectAsState()
                 
-                
-                // Handle back button when settings or about is open
+                ANVILTheme(darkTheme = isDarkTheme) {
+                    var showSettings by remember { mutableStateOf(false) }
+                    var showAbout by remember { mutableStateOf(false) }
+                    var showSplash by remember { mutableStateOf(true) }
+                    var loadingProgress by remember { mutableFloatStateOf(0f) }
+                    var isLoading by remember { mutableStateOf(true) }
+                    val scope = rememberCoroutineScope()
+                    val windowInfo = LocalWindowInfo.current
+                    
+                    
+                    // Handle back button when settings or about is open
                 BackHandler(enabled = showAbout) {
                     showAbout = false
                 }
@@ -178,12 +189,25 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                        
+                        // Onboarding Overlay - Show after splash is complete
+                        if (!showSplash && showOnboarding) {
+                            OnboardingOverlay(
+                                isVisible = true,
+                                steps = AnvilOnboardingSteps.getFullOnboarding(),
+                                currentStep = onboardingStep,
+                                onStepComplete = { viewModel.nextOnboardingStep() },
+                                onSkip = { viewModel.skipOnboarding() },
+                                onComplete = { viewModel.completeOnboarding() }
+                            )
+                        }
                     }
                 }
 
-                // Consolidated permission check manager (show after splash)
-                if (!showSplash) {
-                    PermissionCheckManager()
+                    // Consolidated permission check manager (show after splash and onboarding)
+                    if (!showSplash && !showOnboarding) {
+                        PermissionCheckManager()
+                    }
                 }
             }
         }
@@ -210,6 +234,7 @@ fun MainScreen(
     val navItems = NavItem.bottomNavItems
     val pagerState = rememberPagerState(pageCount = { 4 }) // Home, Tasks, Budget, Blocklist
     val scope = rememberCoroutineScope()
+    val windowInfo = LocalWindowInfo.current
     
     // Notify parent when this composable is first composed (pages are being preloaded)
     LaunchedEffect(Unit) {
@@ -217,60 +242,118 @@ fun MainScreen(
         delay(50)
         onPagesPreloaded()
     }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            bottomBar = {
-                SlidingNavigationBar(
-                    pagerState = pagerState,
-                    navItems = navItems,
-                    onItemClick = { index ->
-                        scope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
+    
+    // Use NavigationRail for expanded screens (tablets in landscape, desktop)
+    if (windowInfo.shouldShowNavRail) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            AdaptiveNavigationRail(
+                pagerState = pagerState,
+                navItems = navItems,
+                onItemClick = { index ->
+                    scope.launch {
+                        pagerState.animateScrollToPage(index)
                     }
+                },
+                onSettingsClick = onNavigateToSettings
+            )
+            
+            Box(modifier = Modifier.weight(1f)) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 3,
+                    userScrollEnabled = false // Disable swipe on larger screens - use rail
+                ) { page ->
+                    ScreenContent(
+                        page = page,
+                        viewModel = viewModel,
+                        snackbarHostState = snackbarHostState,
+                        onNavigateToPage = { targetPage ->
+                            handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
+                        }
+                    )
+                }
+                
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.BottomCenter)
+                        .padding(bottom = DesignTokens.SpacingMd)
                 )
             }
-        ) { innerPadding ->
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding()),
-                beyondViewportPageCount = 3
-            ) { page ->
-                when (page) {
-                    0 -> DashboardScreen(
-                        viewModel = viewModel,
-                        onNavigateToPage = { targetPage ->
-                            // Map existing indices if needed, or handle special cases
-                            if (targetPage == 5) {
-                                onNavigateToSettings()
-                            } else if (targetPage == 4) {
-                                // Bonus tasks is now a tab in Tasks (index 1)
-                                scope.launch { 
-                                    pagerState.animateScrollToPage(1)
-                                }
-                            } else {
-                                scope.launch { pagerState.animateScrollToPage(targetPage) }
+        }
+    } else {
+        // Compact/Medium screens - use bottom navigation
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                bottomBar = {
+                    SlidingNavigationBar(
+                        pagerState = pagerState,
+                        navItems = navItems,
+                        onItemClick = { index ->
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
                             }
                         }
                     )
-
-                    1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
-                    2 -> BudgetScreen(viewModel = viewModel)
-                    3 -> BlocklistScreen(viewModel = viewModel)
+                }
+            ) { innerPadding ->
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding()),
+                    beyondViewportPageCount = 3
+                ) { page ->
+                    ScreenContent(
+                        page = page,
+                        viewModel = viewModel,
+                        snackbarHostState = snackbarHostState,
+                        onNavigateToPage = { targetPage ->
+                            handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
+                        }
+                    )
                 }
             }
-        }
 
-        
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomCenter)
-                .padding(bottom = 100.dp)
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.BottomCenter)
+                    .padding(bottom = 100.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScreenContent(
+    page: Int,
+    viewModel: TaskViewModel,
+    snackbarHostState: SnackbarHostState,
+    onNavigateToPage: (Int) -> Unit
+) {
+    when (page) {
+        0 -> DashboardScreen(
+            viewModel = viewModel,
+            onNavigateToPage = onNavigateToPage
         )
+        1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
+        2 -> BudgetScreen(viewModel = viewModel)
+        3 -> BlocklistScreen(viewModel = viewModel)
+    }
+}
+
+private fun handleNavigation(
+    targetPage: Int,
+    onNavigateToSettings: () -> Unit,
+    scope: kotlinx.coroutines.CoroutineScope,
+    pagerState: PagerState
+) {
+    when (targetPage) {
+        5 -> onNavigateToSettings()
+        4 -> scope.launch { pagerState.animateScrollToPage(1) } // Bonus tasks tab
+        else -> scope.launch { pagerState.animateScrollToPage(targetPage) }
     }
 }
 
@@ -378,6 +461,84 @@ fun SlidingNavigationBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * Navigation Rail for expanded screens (tablets in landscape, desktop)
+ * Provides a vertical navigation pattern with icons and labels
+ */
+@Composable
+fun AdaptiveNavigationRail(
+    pagerState: PagerState,
+    navItems: List<NavItem<*>>,
+    onItemClick: (Int) -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    NavigationRail(
+        modifier = Modifier.fillMaxHeight(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        Spacer(Modifier.height(DesignTokens.SpacingLg))
+        
+        // Main navigation items
+        navItems.forEachIndexed { index, item ->
+            val isSelected = pagerState.currentPage == index
+            
+            NavigationRailItem(
+                selected = isSelected,
+                onClick = { onItemClick(index) },
+                icon = {
+                    Icon(
+                        imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.title,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                },
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        }
+        
+        Spacer(Modifier.weight(1f))
+        
+        // Settings at bottom
+        NavigationRailItem(
+            selected = false,
+            onClick = onSettingsClick,
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            label = {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            },
+            colors = NavigationRailItemDefaults.colors(
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+        
+        Spacer(Modifier.height(DesignTokens.SpacingLg))
     }
 }
 

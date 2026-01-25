@@ -332,7 +332,7 @@ fun LockScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = null,
+                                contentDescription = "Warning",
                                 tint = CautionAmber,
                                 modifier = Modifier.size(16.dp)
                             )

@@ -46,7 +46,7 @@ fun BlocklistItem(
             if (app.appInfo.icon != null) {
                 Image(
                     painter = rememberAsyncImagePainter(app.appInfo.icon),
-                    contentDescription = null,
+                    contentDescription = "${app.appInfo.name} icon",
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)

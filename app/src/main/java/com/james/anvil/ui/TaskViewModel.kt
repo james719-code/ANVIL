@@ -282,6 +282,33 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         _isDarkTheme.value = isDark
         prefs.edit().putBoolean(PrefsKeys.DARK_THEME, isDark).apply()
     }
+    
+    // Onboarding state
+    private val _showOnboarding = MutableStateFlow(!prefs.getBoolean(PrefsKeys.ONBOARDING_COMPLETED, false))
+    val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
+    
+    private val _onboardingStep = MutableStateFlow(0)
+    val onboardingStep: StateFlow<Int> = _onboardingStep.asStateFlow()
+    
+    fun nextOnboardingStep() {
+        _onboardingStep.value++
+    }
+    
+    fun completeOnboarding() {
+        _showOnboarding.value = false
+        prefs.edit().putBoolean(PrefsKeys.ONBOARDING_COMPLETED, true).apply()
+    }
+    
+    fun skipOnboarding() {
+        completeOnboarding()
+    }
+    
+    fun resetOnboarding() {
+        // For testing - reset onboarding state
+        _onboardingStep.value = 0
+        _showOnboarding.value = true
+        prefs.edit().putBoolean(PrefsKeys.ONBOARDING_COMPLETED, false).apply()
+    }
 
     fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1) {
         viewModelScope.launch {

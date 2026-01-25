@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,10 +41,13 @@ import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.components.ContributionGraph
 import com.james.anvil.ui.components.MotivationCard
 import com.james.anvil.data.HabitContribution
+import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.InfoBlue
+import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.WarningOrange
+import com.james.anvil.ui.theme.WindowInfo
 import java.text.NumberFormat
 import java.util.*
 
@@ -101,16 +107,28 @@ fun DashboardScreen(
         else -> stringResource(R.string.dashboard_greeting_evening)
     }
 
+    // Responsive layout support
+    val windowInfo = LocalWindowInfo.current
+    val horizontalPadding = windowInfo.contentPadding
+    val maxWidth = windowInfo.maxContentWidth
+    
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                .padding(innerPadding)
+                .then(
+                    if (maxWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = maxWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = horizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLg),
+            contentPadding = PaddingValues(top = DesignTokens.SpacingMd, bottom = DesignTokens.SpacingMd)
         ) {
 
 
@@ -152,11 +170,11 @@ fun DashboardScreen(
                 )
             }
 
-            // Quick Stats Row
+            // Quick Stats Row - Adaptive for larger screens
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
                 ) {
                     // Pending
                     StatChip(
@@ -447,7 +465,7 @@ fun StatChip(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 tint = color,
                 modifier = Modifier.size(24.dp)
             )

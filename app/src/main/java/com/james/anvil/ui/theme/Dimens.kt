@@ -3,56 +3,58 @@ package com.james.anvil.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Design system spacing tokens for consistent layout.
- * Based on 4dp grid system.
+ * Legacy spacing aliases for backward compatibility.
+ * 
+ * @deprecated Use DesignTokens directly for new code.
+ * This object provides aliases that map to DesignTokens values.
  */
 object Dimens {
-    // Base spacing scale
-    val spacing2 = 2.dp
-    val spacing4 = 4.dp
-    val spacing8 = 8.dp
-    val spacing12 = 12.dp
-    val spacing16 = 16.dp
-    val spacing20 = 20.dp
-    val spacing24 = 24.dp
-    val spacing32 = 32.dp
-    val spacing40 = 40.dp
-    val spacing48 = 48.dp
-    val spacing56 = 56.dp
-    val spacing64 = 64.dp
+    // Base spacing scale - aliases to DesignTokens
+    val spacing2 = DesignTokens.SpacingXxs
+    val spacing4 = DesignTokens.SpacingXs
+    val spacing8 = DesignTokens.SpacingSm
+    val spacing12 = DesignTokens.SpacingMd
+    val spacing16 = DesignTokens.SpacingLg
+    val spacing20 = DesignTokens.SpacingXl
+    val spacing24 = DesignTokens.SpacingXxl
+    val spacing32 = DesignTokens.SpacingXxxl
+    val spacing40 = DesignTokens.Spacing40
+    val spacing48 = DesignTokens.Spacing48
+    val spacing56 = DesignTokens.Spacing56
+    val spacing64 = DesignTokens.Spacing64
     
     // Semantic spacing
-    val screenPadding = spacing20
-    val cardPadding = spacing16
-    val listItemPadding = spacing12
-    val sectionSpacing = spacing24
-    val itemSpacing = spacing12
-    val iconTextSpacing = spacing8
-    val buttonPadding = spacing16
+    val screenPadding = DesignTokens.PaddingScreen
+    val cardPadding = DesignTokens.PaddingCard
+    val listItemPadding = DesignTokens.PaddingList
+    val sectionSpacing = DesignTokens.SectionSpacing
+    val itemSpacing = DesignTokens.ItemSpacing
+    val iconTextSpacing = DesignTokens.IconTextSpacing
+    val buttonPadding = DesignTokens.PaddingButton
     
     // Component sizes
-    val iconSizeSmall = 16.dp
-    val iconSizeMedium = 24.dp
-    val iconSizeLarge = 32.dp
-    val iconSizeXLarge = 48.dp
+    val iconSizeSmall = DesignTokens.IconSizeSmall
+    val iconSizeMedium = DesignTokens.IconSizeMedium
+    val iconSizeLarge = DesignTokens.IconSizeLarge
+    val iconSizeXLarge = DesignTokens.IconSizeXLarge
     
-    val avatarSizeSmall = 32.dp
-    val avatarSizeMedium = 40.dp
-    val avatarSizeLarge = 56.dp
+    val avatarSizeSmall = DesignTokens.AvatarSizeSmall
+    val avatarSizeMedium = DesignTokens.AvatarSizeMedium
+    val avatarSizeLarge = DesignTokens.AvatarSizeLarge
     
-    val buttonHeight = 48.dp
-    val buttonHeightSmall = 36.dp
+    val buttonHeight = DesignTokens.ButtonHeightLarge
+    val buttonHeightSmall = DesignTokens.ButtonHeightSmall
     
-    val cardMinHeight = 80.dp
-    val listItemMinHeight = 56.dp
+    val cardMinHeight = DesignTokens.CardMinHeight
+    val listItemMinHeight = DesignTokens.ListItemMinHeight
     
     // Border & stroke
-    val borderWidth = 1.dp
-    val borderWidthThick = 2.dp
+    val borderWidth = DesignTokens.BorderWidth
+    val borderWidthThick = DesignTokens.BorderWidthThick
     
     // Elevation
-    val elevationNone = 0.dp
-    val elevationLow = 1.dp
-    val elevationMedium = 4.dp
-    val elevationHigh = 8.dp
+    val elevationNone = DesignTokens.ElevationNone
+    val elevationLow = DesignTokens.ElevationLow
+    val elevationMedium = DesignTokens.ElevationMedium
+    val elevationHigh = DesignTokens.ElevationHigh
 }

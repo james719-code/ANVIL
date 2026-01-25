@@ -79,7 +79,7 @@ private fun SectionHeader(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = accentColor,
                 modifier = Modifier.size(16.dp)
             )
@@ -186,7 +186,7 @@ fun AddBudgetEntrySheet(
                 ) {
                     Icon(
                         imageVector = if (type == BudgetType.INCOME) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                        contentDescription = null,
+                        contentDescription = if (type == BudgetType.INCOME) "Income" else "Expense",
                         tint = typeAccentColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -556,7 +556,7 @@ fun AddBudgetEntrySheet(
                 leadingIcon = {
                     Icon(
                         Icons.Outlined.EditNote,
-                        contentDescription = null,
+                        contentDescription = "Description",
                         tint = if (isDescriptionFocused) typeAccentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -644,7 +644,7 @@ fun AddBudgetEntrySheet(
             ) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = null,
+                    contentDescription = "Save",
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1057,7 +1057,7 @@ fun EditBudgetEntrySheet(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Edit,
-                            contentDescription = null,
+                            contentDescription = "Edit transaction",
                             tint = typeAccentColor,
                             modifier = Modifier.size(24.dp)
                         )
@@ -1444,7 +1444,7 @@ fun EditBudgetEntrySheet(
                 leadingIcon = {
                     Icon(
                         Icons.Outlined.EditNote,
-                        contentDescription = null,
+                        contentDescription = "Description",
                         tint = if (isDescriptionFocused) typeAccentColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -1529,7 +1529,7 @@ fun EditBudgetEntrySheet(
             ) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = null,
+                    contentDescription = "Save changes",
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1630,7 +1630,7 @@ fun RepaymentHistorySheet(
                             
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = null,
+                                contentDescription = "Payment complete",
                                 tint = ElectricTeal.copy(alpha = 0.6f),
                                 modifier = Modifier.size(16.dp)
                             )
