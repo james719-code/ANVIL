@@ -36,9 +36,18 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE isCompleted = 1 ORDER BY completedAt DESC")
     fun observeAllCompletedTasks(): Flow<List<Task>>
     
+    @Query("SELECT * FROM tasks ORDER BY deadline ASC")
+    fun observeAllTasks(): Flow<List<Task>>
+    
     // Daily task queries
     @Query("SELECT * FROM tasks WHERE isDaily = 1")
     suspend fun getAllDailyTasks(): List<Task>
+
+    @Query("SELECT COUNT(*) FROM tasks WHERE isDaily = 1")
+    suspend fun countDailyTasks(): Int
+
+    @Query("SELECT COUNT(*) FROM tasks WHERE isDaily = 1 AND isCompleted = 0")
+    suspend fun countIncompleteDailyTasks(): Int
     
     @Query("SELECT * FROM tasks WHERE isDaily = 1 AND (lastCompletedDate IS NULL OR lastCompletedDate < :startOfToday)")
     suspend fun getDailyTasksNeedingReset(startOfToday: Long): List<Task>

@@ -6,6 +6,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.HabitContribution
+import com.james.anvil.data.Task
+import com.james.anvil.core.BonusManager
 import java.util.Calendar
 
 /**
@@ -42,32 +44,70 @@ class MidnightContributionWorker(
             // Get the end of yesterday
             val endOfYesterday = yesterday + 24 * 60 * 60 * 1000
             
-            // Count incomplete non-daily tasks that had deadlines for yesterday
-            // We check if there were no pending tasks with deadlines for that day
-            val pendingTasksCount = taskDao.countActiveNonDailyTasks(yesterday, endOfYesterday)
+            // NEW LOGIC: Habit Contribution is based ONLY on Daily Tasks.
+            // "Separate one time to do and daily" -> One-time backlog doesn't break streak.
+            // "Only shown if there's a daily to do" -> Must have at least 1 daily task.
             
-            // Also check for any overdue tasks (tasks with deadlines before yesterday that weren't completed)
-            val overdueTasksAtEndOfDay = taskDao.getOverdueIncomplete(endOfYesterday).size
+            // 1. Get all Daily tasks that existed yesterday (ignore ones created today)
+            val startOfToday = getStartOfToday()
+            val allDailyTasks = taskDao.getAllDailyTasks()
+            val validDailyTasks = allDailyTasks.filter { it.createdAt < startOfToday }
             
-            // Count all incomplete non-daily tasks at the end of yesterday
-            // This represents the total backlog of tasks
-            val allIncompleteTasks = taskDao.countAllIncompleteNonDailyTasks()
+            // 2. Check strict completion
+            // Since we haven't reset them yet (see below), 'isCompleted' reflects yesterday's status.
+            val totalDailyCount = validDailyTasks.size
+            val completedDailyCount = validDailyTasks.count { it.isCompleted }
             
-            Log.d(TAG, "Pending tasks for yesterday: $pendingTasksCount, Overdue: $overdueTasksAtEndOfDay, Total incomplete: $allIncompleteTasks")
-            
-            // If there were no pending tasks and no overdue tasks for that day, record a contribution
-            // This means the user had a "clean" day with no task backlog
-            if (pendingTasksCount == 0 && overdueTasksAtEndOfDay == 0) {
-                val contribution = HabitContribution(
+            Log.d(TAG, "Daily Check: Total=$totalDailyCount, Completed=$completedDailyCount")
+
+            if (totalDailyCount > 0 && completedDailyCount == totalDailyCount) {
+                 val contribution = HabitContribution(
                     date = yesterday,
                     contributionValue = 1,
-                    reason = "no_pending_tasks",
+                    reason = "all_dailies_completed", // Reason updated
                     recordedAt = System.currentTimeMillis()
                 )
                 habitContributionDao.insert(contribution)
-                Log.d(TAG, "Recorded habit contribution for ${formatDate(yesterday)}")
+                Log.d(TAG, "Recorded habit contribution for ${formatDate(yesterday)} (Clean Sweep of Dailies)")
             } else {
-                Log.d(TAG, "Tasks were pending on ${formatDate(yesterday)}, no contribution recorded")
+                 Log.d(TAG, "No contribution: Dailies not all done. Checking for Ice (Grace Days)...")
+                 
+                 // Check for Streak Freeze (Ice)
+                 val bonusManager = BonusManager(applicationContext)
+                 if (bonusManager.consumeGraceDay()) {
+                     val contribution = HabitContribution(
+                        date = yesterday,
+                        contributionValue = 1,
+                        reason = "streak_freeze", // Streak saved by Ice
+                        recordedAt = System.currentTimeMillis()
+                    )
+                    habitContributionDao.insert(contribution)
+                    Log.d(TAG, "Streak saved by Ice (Grace Day) for ${formatDate(yesterday)}")
+                 } else {
+                     Log.d(TAG, "No Ice available. Streak broken.")
+                 }
+            }
+
+            // =========================================================================
+            // Daily Task Reset Logic
+            // =========================================================================
+            // Reset daily tasks that were completed prior to today so they appear as pending for the new day.
+            // "Today" is the current execution time (since this runs ~midnight)
+            val tasksToReset = taskDao.getDailyTasksNeedingReset(startOfToday)
+            
+            if (tasksToReset.isNotEmpty()) {
+                Log.d(TAG, "Resetting ${tasksToReset.size} daily tasks for today")
+                tasksToReset.forEach { task ->
+                    // We explicitly set completedAt to null and isCompleted to false
+                    // We leave lastCompletedDate as is (it preserves history of last completion)
+                    val resetTask = task.copy(
+                        isCompleted = false,
+                        completedAt = null
+                    )
+                    taskDao.update(resetTask)
+                }
+            } else {
+                Log.d(TAG, "No daily tasks need resetting")
             }
             
             Result.success()
@@ -82,6 +122,16 @@ class MidnightContributionWorker(
         // Go to yesterday
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         // Set to start of day
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+    
+    private fun getStartOfToday(): Long {
+        val calendar = Calendar.getInstance()
+        // Start of today
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)

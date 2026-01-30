@@ -40,6 +40,7 @@ import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.components.ContributionGraph
 import com.james.anvil.ui.components.MotivationCard
+import com.james.anvil.ui.components.StreakCard
 import com.james.anvil.data.HabitContribution
 import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ElectricTeal
@@ -62,6 +63,7 @@ fun DashboardScreen(
     val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
     val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
     val allCompletedTasks by viewModel.allCompletedTasks.collectAsState(initial = emptyList())
+    val allTasks by viewModel.allTasks.collectAsState(initial = emptyList())
     val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
     val blockedApps by viewModel.blockedApps.collectAsState(initial = emptyList())
     val blockedLinks by viewModel.blockedLinks.collectAsState(initial = emptyList())
@@ -71,6 +73,8 @@ fun DashboardScreen(
     val totalActiveLoanedAmount by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
     val habitContributions by viewModel.habitContributions.collectAsState(initial = emptyList())
+    val currentStreak by viewModel.currentStreak.collectAsState(initial = 0)
+    val hasDailyTasks by viewModel.hasDailyTasks.collectAsState(initial = false)
     
     val graceDays = viewModel.getGraceDaysCount() // Note: This is a function, not a flow in ViewModel. Consider making it reactive if needed, but for now we'll trust the viewmodel update flow.
     // Actually, viewModel.bonusTasks triggers updates, but grace days calculation depends on bonusManager which uses SharedPreferences.
@@ -166,8 +170,16 @@ fun DashboardScreen(
                 MotivationCard(
                     dailyProgress = dailyProgress,
                     pendingCount = totalPendingCount,
-                    quote = dailyQuote
+                    quote = dailyQuote,
+                    streak = currentStreak
                 )
+            }
+            
+            // Streak Section
+            if (hasDailyTasks) {
+                item {
+                    StreakCard(streak = currentStreak)
+                }
             }
 
             // Quick Stats Row - Adaptive for larger screens
@@ -208,11 +220,11 @@ fun DashboardScreen(
             }
             
             // Grace Period & Exchange
-            if (graceDays > 0 || bonusTaskCount >= 3) {
+            if (graceDays > 0 || bonusTaskCount >= 5) {
                   item {
                     AnvilCard(
                         onClick = {
-                            if (bonusTaskCount >= 3) {
+                            if (bonusTaskCount >= 5) {
                                 showGraceExchangeDialog = true
                             }
                         }
@@ -242,19 +254,19 @@ fun DashboardScreen(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Grace Days: $graceDays",
+                                    "Ice Available: $graceDays 🧊",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    if (bonusTaskCount >= 3) "Can exchange bonus tasks now" 
-                                    else "Need ${3 - bonusTaskCount} more bonus tasks for a grace day",
+                                    if (bonusTaskCount >= 5) "Can exchange bonus tasks now" 
+                                    else "Need ${5 - bonusTaskCount} more bonus tasks for an Ice",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            if (bonusTaskCount >= 3) {
+                            if (bonusTaskCount >= 5) {
                                 Box(
                                     modifier = Modifier
                                         .size(44.dp)
@@ -409,7 +421,7 @@ fun DashboardScreen(
                    AnvilCard {
                        Box(modifier = Modifier.padding(16.dp)) {
                            ContributionGraph(
-                                completedTasks = allCompletedTasks,
+                                allTasks = allTasks,
                                 bonusTasks = bonusTasks,
                                 habitContributions = habitContributions
                             )
@@ -424,8 +436,8 @@ fun DashboardScreen(
 
         AlertDialog(
             onDismissRequest = { showGraceExchangeDialog = false },
-            title = { Text("Redeem Grace Day?") },
-            text = { Text("Exchange 3 bonus tasks for 1 grace day? This will protect you from blocking penalties for one day.") },
+            title = { Text("Redeem Ice?") },
+            text = { Text("Exchange 5 bonus tasks for 1 Ice (Streak Freeze)? This will protect your streak if you miss a day.") },
             confirmButton = {
                 Button(
                     onClick = {
