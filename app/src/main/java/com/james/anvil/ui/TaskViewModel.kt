@@ -113,7 +113,13 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     val allCompletedTasks: Flow<List<Task>> = taskDao.observeAllCompletedTasks()
+    
+    val allTasks: Flow<List<Task>> = taskDao.observeAllTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    val hasDailyTasks: Flow<Boolean> = allTasks.map { list ->
+        list.any { it.isDaily }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
     val blockedApps: Flow<List<String>> = blocklistDao.observeEnabledBlockedAppPackages()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
@@ -162,6 +168,82 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
     private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
+
+    // Streak System
+    private val _currentStreak = MutableStateFlow(0)
+    val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
+
+    init {
+        // Calculate Streak whenever contributions change
+        viewModelScope.launch {
+            habitContributions.collect { contributions ->
+                _currentStreak.value = calculateCurrentStreak(contributions)
+            }
+        }
+    }
+
+    private fun calculateCurrentStreak(contributions: List<HabitContribution>): Int {
+        if (contributions.isEmpty()) return 0
+        
+        val sorted = contributions.sortedByDescending { it.date }
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val yesterday = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+        
+        val todayMs = today.timeInMillis
+        val yesterdayMs = yesterday.timeInMillis
+        
+        // precise check for day boundaries
+        fun isSameDay(date1: Long, date2: Long): Boolean {
+             val c1 = Calendar.getInstance().apply { timeInMillis = date1 }
+             val c2 = Calendar.getInstance().apply { timeInMillis = date2 }
+             return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
+                    c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+        }
+
+        // Check if streak is active (has contribution for Today OR Yesterday)
+        // If the most recent contribution is older than yesterday, streak is broken -> 0
+        val latestDate = sorted.first().date
+        if (!isSameDay(latestDate, todayMs) && !isSameDay(latestDate, yesterdayMs)) {
+            return 0
+        }
+
+        var streak = 0
+        var expectedDate = if (isSameDay(latestDate, todayMs)) today else yesterday
+        
+        // We iterate through sorted contributions
+        // Note: sorted contains dates. We need to check continuity.
+        // If logic finds today, streak=1. Next expected is yesterday.
+        // If logic finds yesterday (and not today), streak=1. Next expected is day before yesterday.
+        
+        for (contribution in sorted) {
+            val contributionCal = Calendar.getInstance().apply { timeInMillis = contribution.date }
+            
+            // Normalize contribution date to start of day for comparison
+            contributionCal.set(Calendar.HOUR_OF_DAY, 0)
+            contributionCal.set(Calendar.MINUTE, 0)
+            contributionCal.set(Calendar.SECOND, 0)
+            contributionCal.set(Calendar.MILLISECOND, 0)
+
+            if (contributionCal.get(Calendar.YEAR) == expectedDate.get(Calendar.YEAR) &&
+                contributionCal.get(Calendar.DAY_OF_YEAR) == expectedDate.get(Calendar.DAY_OF_YEAR)) {
+                streak++
+                expectedDate.add(Calendar.DAY_OF_YEAR, -1) // Expect previous day next
+            } else {
+                 // Check if we skipped a day (broken streak) or if this is just a duplicate/older entry
+                 // If this contribution is NEWER than expected (shouldn't happen in sorted list unless duplicates), ignore
+                 // If OLDER than expected, break.
+                 if (contributionCal.timeInMillis < expectedDate.timeInMillis) {
+                     break
+                 }
+            }
+        }
+        return streak
+    }
 
 
 

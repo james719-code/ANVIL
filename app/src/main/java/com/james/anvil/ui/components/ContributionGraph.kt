@@ -32,15 +32,15 @@ data class ContributionDay(
 
 @Composable
 fun ContributionGraph(
-    completedTasks: List<Task>,
+    allTasks: List<Task>,
     bonusTasks: List<BonusTask>,
     habitContributions: List<HabitContribution> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     
-    val contributionData = remember(completedTasks, bonusTasks, habitContributions, currentYear) {
-        calculateYearContributionData(completedTasks, bonusTasks, habitContributions, currentYear)
+    val contributionData = remember(allTasks, bonusTasks, habitContributions, currentYear) {
+        calculateYearContributionData(allTasks, bonusTasks, habitContributions, currentYear)
     }
     
     val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -183,13 +183,18 @@ fun ContributionGraph(
             if (!day.isFuture) {
                 Spacer(modifier = Modifier.height(12.dp))
                 val dateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+                val message = if (day.count > 0) {
+                    "Clean day on ${dateFormat.format(Date(day.date))}"
+                } else {
+                    "Overdue task on ${dateFormat.format(Date(day.date))}"
+                }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.inverseSurface,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text(
-                        text = "${day.count} task${if (day.count != 1) "s" else ""} completed on ${dateFormat.format(Date(day.date))}",
+                        text = message,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.inverseOnSurface,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -264,23 +269,36 @@ data class MonthContributionData(
 /**
  * Calculates contribution data for an entire year, organized by months.
  * Each month contains weeks, and each week contains days.
- * Contributions come from:
- * - Completed tasks (1 per task)
- * - Bonus tasks (1 per 3 bonus tasks)
- * - Habit contributions (days with no pending tasks = 1 contribution)
+ * A day is green (count = 1) by default UNLESS there was an overdue task on that day.
+ * An overdue task is a task with a deadline on or before that day that wasn't completed by end of that day.
+ * Bonus tasks add extra contribution (1 per 3 bonus tasks).
  */
 private fun calculateYearContributionData(
-    completedTasks: List<Task>,
+    allTasks: List<Task>,
     bonusTasks: List<BonusTask>,
     habitContributions: List<HabitContribution>,
     year: Int
 ): YearContributionData {
     val calendar = Calendar.getInstance()
     val today = Calendar.getInstance()
+    // Normalize today to start of day for accurate comparison
+    today.set(Calendar.HOUR_OF_DAY, 0)
+    today.set(Calendar.MINUTE, 0)
+    today.set(Calendar.SECOND, 0)
+    today.set(Calendar.MILLISECOND, 0)
     
-    // Create a set of dates that have habit contributions for quick lookup
-    val habitContributionDates = habitContributions.map { it.date }.toSet()
-    
+    // Create lookup map for contributions
+    // Ensure keys are start of day timestamps
+    val contributionMap = habitContributions.associateBy { 
+        val c = Calendar.getInstance()
+        c.timeInMillis = it.date
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        c.timeInMillis
+    }
+
     val months = mutableListOf<MonthContributionData>()
     
     for (month in 0..11) {
@@ -311,23 +329,38 @@ private fun calculateYearContributionData(
             val endOfDay = calendar.timeInMillis
             calendar.add(Calendar.DAY_OF_YEAR, -1) // Reset
             
-            val isFuture = calendar.after(today)
+            val isFuture = calendar.timeInMillis > today.timeInMillis
             
-            val standardCount = if (isFuture) 0 else completedTasks.count { task ->
-                task.completedAt != null && task.completedAt >= startOfDay && task.completedAt < endOfDay
+            // LOGIC FIX: Use persisted contribution if available, else dynamic calculation
+            val persistedContribution = contributionMap[startOfDay]
+            
+            val baseCount = if (isFuture) {
+                0
+            } else if (persistedContribution != null) {
+                // We have a record! It's a verified Green Day.
+                persistedContribution.contributionValue
+            } else {
+                // Fallback: Dynamic Calculation
+                // Check if there were any overdue tasks at the end of this day
+                // An overdue task is one with deadline <= endOfDay that wasn't completed by endOfDay
+                val hadOverdueTask = allTasks.any { task ->
+                    // Task deadline was on or before end of this day
+                    task.deadline < endOfDay &&
+                    // AND the task was either:
+                    // - never completed, OR
+                    // - completed AFTER the end of this day
+                    (task.completedAt == null || task.completedAt >= endOfDay)
+                }
+                
+                if (hadOverdueTask) 0 else 1
             }
             
             val bonusCount = if (isFuture) 0 else bonusTasks.count { bonus ->
                 bonus.completedAt >= startOfDay && bonus.completedAt < endOfDay
             }
             
-            // Check if this day has a habit contribution (no pending tasks at end of day)
-            val habitContributionCount = if (isFuture) 0 else {
-                if (habitContributionDates.contains(startOfDay)) 1 else 0
-            }
-            
-            // Total count: completed tasks + bonus tasks (1 per 3) + habit contribution
-            val totalCount = standardCount + (bonusCount / 3) + habitContributionCount
+            // Total count: base (clean day) + bonus tasks (1 per 3)
+            val totalCount = baseCount + (bonusCount / 3)
             
             currentWeek.add(ContributionDay(
                 date = startOfDay,

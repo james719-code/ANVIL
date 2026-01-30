@@ -65,11 +65,11 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 * **Budget Summary**: Quick view of Cash and GCash balances from the dashboard
 * **Loan Summary**: Outstanding loan amounts displayed prominently
 
-### Bonus & Grace System
+### Bonus & Ice System
 
 * **Bonus Task Tracking**: Record extra tasks completed outside your planned list
-* **Grace Days**: Exchange completed bonus tasks for grace days that protect you from blocking
-* **Productivity Rewards**: Complete 3 bonus tasks to earn 1 grace day (up to 3 max)
+* **Ice (Streak Freeze)**: Exchange completed bonus tasks for Ice that protects your streak
+* **Productivity Rewards**: Complete 5 bonus tasks to earn 1 Ice
 
 
 ---

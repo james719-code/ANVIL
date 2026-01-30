@@ -26,6 +26,7 @@ fun MotivationCard(
     dailyProgress: Float,
     pendingCount: Int,
     quote: String,
+    streak: Int = 0,
     modifier: Modifier = Modifier
 ) {
     // Modern Date Format
@@ -49,31 +50,65 @@ fun MotivationCard(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Header Section
-            Column {
-                Text(
-                    text = dateString.uppercase(),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = Color.White.copy(alpha = 0.7f),
-                        letterSpacing = 1.sp
-                    )
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                // Progress Summary
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
                     Text(
-                        text = "${(dailyProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            color = Color.White,
-                            fontSize = 32.sp
+                        text = dateString.uppercase(),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = Color.White.copy(alpha = 0.7f),
+                            letterSpacing = 1.sp
                         )
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Complete",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            color = Color.White.copy(alpha = 0.9f)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Progress Summary
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${(dailyProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                color = Color.White,
+                                fontSize = 32.sp
+                            )
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Complete",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        )
+                    }
+                }
+                
+                // Streak Badge
+                if (streak > 0) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                             // Simple Fire/Flame Icon using built-in icons or just text/emoji if custom icon unavailable
+                             // Using standard icons for safety, or emoji if consistent with design
+                             Text(
+                                 text = "🔥", 
+                                 fontSize = 14.sp
+                             )
+                             Text(
+                                 text = "$streak",
+                                 style = MaterialTheme.typography.titleMedium.copy(
+                                     color = Color.White,
+                                     fontWeight = FontWeight.Bold
+                                 )
+                             )
+                        }
+                    }
                 }
             }
 
@@ -132,7 +167,8 @@ private fun MotivationCardPreview() {
         MotivationCard(
             dailyProgress = 0.65f,
             pendingCount = 5,
-            quote = "Obsession is going to beat talent every time."
+            quote = "Obsession is going to beat talent every time.",
+            streak = 15
         )
     }
 }

@@ -8,7 +8,7 @@ class BonusManager(context: Context) {
     companion object {
         const val MAX_GRACE_DAYS = 3
         const val GRACE_EXPIRY_MILLIS = 7 * 24 * 60 * 60 * 1000L
-        const val BONUS_TASKS_FOR_GRACE = 3 // Number of bonus tasks needed to earn 1 grace day
+        const val BONUS_TASKS_FOR_GRACE = 5 // Number of bonus tasks needed to earn 1 grace day
     }
 
     fun getGraceDays(): Int {
