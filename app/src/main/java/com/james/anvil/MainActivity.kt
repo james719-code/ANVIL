@@ -101,9 +101,9 @@ class MainActivity : ComponentActivity() {
                 ANVILTheme(darkTheme = isDarkTheme) {
                     var showSettings by remember { mutableStateOf(false) }
                     var showAbout by remember { mutableStateOf(false) }
-                    var showSplash by remember { mutableStateOf(true) }
-                    var loadingProgress by remember { mutableFloatStateOf(0f) }
-                    var isLoading by remember { mutableStateOf(true) }
+                    var showSplash by remember { mutableStateOf(false) }
+                    var loadingProgress by remember { mutableFloatStateOf(100f) }
+                    var isLoading by remember { mutableStateOf(false) }
                     val scope = rememberCoroutineScope()
                     val windowInfo = LocalWindowInfo.current
                     
@@ -129,14 +129,6 @@ class MainActivity : ComponentActivity() {
                             onPagesPreloaded = {
                                 if (isLoading) {
                                     scope.launch {
-                                        // Update progress bar as pages load
-                                        delay(300)
-                                        loadingProgress = 0.4f
-                                        delay(400)
-                                        loadingProgress = 0.7f
-                                        delay(400)
-                                        loadingProgress = 1.0f
-                                        delay(200)
                                         isLoading = false
                                     }
                                 }
@@ -239,7 +231,7 @@ fun MainScreen(
     // Notify parent when this composable is first composed (pages are being preloaded)
     LaunchedEffect(Unit) {
         // Small delay to ensure Compose has started laying out pages
-        delay(50)
+
         onPagesPreloaded()
     }
     
@@ -339,8 +331,8 @@ private fun ScreenContent(
             onNavigateToPage = onNavigateToPage
         )
         1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
-        2 -> BudgetScreen(viewModel = viewModel)
-        3 -> BlocklistScreen(viewModel = viewModel)
+        2 -> BudgetScreen()
+        3 -> BlocklistScreen()
     }
 }
 

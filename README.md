@@ -49,8 +49,9 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 * **App Shield**: Toggle-based blocking for any installed application
 * **Smart Categorization**: Organize blocked apps by custom categories
 * **Link Warden**: Block specific URLs or domain patterns globally
+* **VPN-Based Blocking**: Network-level DNS blocking that works in incognito mode and all apps
 * **Schedule-Based Blocking**: Block apps and links based on time ranges and specific days (Everyday, Weekdays, or Custom)
-* **Privacy Mode**: Encrypt sensitive blocked URLs (hidden from display)
+* **Privacy Mode**: Encrypt sensitive blocked URLs (hidden from display, triggers incognito blocking)
 * **YouTube Shorts Blocking**: Intelligent detection and blocking of YouTube Shorts content
 * **Hardness-Based Blocking**: Apps are blocked when tasks approach their hardness-adjusted deadlines
 * **Real-time Enforcement**: Uses Android Accessibility Services to detect and intercept distracting habits

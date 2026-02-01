@@ -40,7 +40,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoansScreen(
-    viewModel: TaskViewModel,
+    viewModel: BudgetViewModel,
     onNavigateBack: () -> Unit = {}
 ) {
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())

@@ -23,10 +23,11 @@ import com.james.anvil.ui.components.EmptyState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.Color
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BlocklistScreen(viewModel: TaskViewModel) {
+fun BlocklistScreen(viewModel: BlocklistViewModel = hiltViewModel()) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Apps", "Links")
 
@@ -66,7 +67,7 @@ fun BlocklistScreen(viewModel: TaskViewModel) {
 }
 
 @Composable
-fun BlockedAppsTab(viewModel: TaskViewModel) {
+fun BlockedAppsTab(viewModel: BlocklistViewModel) {
     val appListWithCategories by viewModel.appListWithCategories.collectAsState(initial = emptyList())
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showScheduleDialog by remember { mutableStateOf(false) }
@@ -200,7 +201,7 @@ fun CategoryEditDialog(
 }
 
 @Composable
-fun BlockedLinksTab(viewModel: TaskViewModel) {
+fun BlockedLinksTab(viewModel: BlocklistViewModel) {
     val blockedLinks by viewModel.blockedLinkObjects.collectAsState(initial = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
     var showScheduleDialog by remember { mutableStateOf(false) }

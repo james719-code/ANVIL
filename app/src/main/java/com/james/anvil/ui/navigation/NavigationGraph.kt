@@ -68,11 +68,11 @@ fun NavigationGraph(
         }
         
         composable<BudgetRoute> {
-            BudgetScreen(viewModel = viewModel)
+            BudgetScreen()
         }
         
         composable<BlocklistRoute> {
-            BlocklistScreen(viewModel)
+            BlocklistScreen()
         }
         
         composable<SettingsRoute> {

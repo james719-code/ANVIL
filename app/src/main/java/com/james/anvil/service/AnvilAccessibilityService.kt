@@ -189,12 +189,15 @@ class AnvilAccessibilityService : AccessibilityService() {
             return true
         }
         
-        // B. Check if any link schedule is currently active
-        val hasActiveLinkSchedule = blockedLinksMap.values.any { it.isBlockingActiveNow() }
+        // B. Check if any ENCRYPTED link schedule is currently active
+        // Only encrypted links should trigger incognito blocking (user request)
+        val hasActiveEncryptedLinkSchedule = blockedLinksMap.values.any { 
+            it.isEncrypted && it.isBlockingActiveNow() 
+        }
         
-        // C. Block incognito mode if there are active link schedules
-        // Incognito hides URLs from accessibility, so we block it when link blocking is active
-        if (hasActiveLinkSchedule && isBrowserPackage(packageName) && isIncognitoMode(rootNode)) {
+        // C. Block incognito mode ONLY if there are active ENCRYPTED link schedules
+        // This prevents false positives from regular link blocking
+        if (hasActiveEncryptedLinkSchedule && isBrowserPackage(packageName) && isIncognitoMode(rootNode)) {
             return true
         }
 
