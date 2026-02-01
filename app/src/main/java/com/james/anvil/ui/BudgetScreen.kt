@@ -41,6 +41,7 @@ import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.AnvilHeader
 import com.james.anvil.ui.theme.*
+import androidx.hilt.navigation.compose.hiltViewModel
 import java.text.NumberFormat
 
 import java.text.SimpleDateFormat
@@ -54,7 +55,7 @@ private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third:
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetScreen(
-    viewModel: TaskViewModel
+    viewModel: BudgetViewModel = hiltViewModel()
 ) {
     val budgetEntries by viewModel.budgetEntries.collectAsState(initial = emptyList())
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())

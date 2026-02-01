@@ -5,13 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import com.james.anvil.ui.AddLoanSheet
-import com.james.anvil.ui.TaskViewModel
+import com.james.anvil.ui.BudgetViewModel
 import com.james.anvil.ui.theme.ANVILTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class QuickAddLoanActivity : ComponentActivity() {
-    private val viewModel: TaskViewModel by viewModels()
+    private val viewModel: BudgetViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

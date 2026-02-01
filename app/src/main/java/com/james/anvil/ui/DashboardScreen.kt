@@ -51,11 +51,14 @@ import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.ui.theme.WindowInfo
 import java.text.NumberFormat
 import java.util.*
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: TaskViewModel,
+    budgetViewModel: BudgetViewModel = hiltViewModel(),
+    blocklistViewModel: BlocklistViewModel = hiltViewModel(),
     onNavigateToPage: ((Int) -> Unit)? = null
 ) {
     val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
@@ -65,13 +68,13 @@ fun DashboardScreen(
     val allCompletedTasks by viewModel.allCompletedTasks.collectAsState(initial = emptyList())
     val allTasks by viewModel.allTasks.collectAsState(initial = emptyList())
     val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
-    val blockedApps by viewModel.blockedApps.collectAsState(initial = emptyList())
-    val blockedLinks by viewModel.blockedLinks.collectAsState(initial = emptyList())
+    val blockedApps by blocklistViewModel.blockedApps.collectAsState(initial = emptyList())
+    val blockedLinks by blocklistViewModel.blockedLinks.collectAsState(initial = emptyList())
     val bonusTaskCount by viewModel.bonusTaskCount.collectAsState(initial = 0)
-    val cashBalance by viewModel.cashBalance.collectAsState(initial = 0.0)
-    val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
-    val totalActiveLoanedAmount by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
-    val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
+    val cashBalance by budgetViewModel.cashBalance.collectAsState(initial = 0.0)
+    val gcashBalance by budgetViewModel.gcashBalance.collectAsState(initial = 0.0)
+    val totalActiveLoanedAmount by budgetViewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
+    val activeLoans by budgetViewModel.activeLoans.collectAsState(initial = emptyList())
     val habitContributions by viewModel.habitContributions.collectAsState(initial = emptyList())
     val currentStreak by viewModel.currentStreak.collectAsState(initial = 0)
     val hasDailyTasks by viewModel.hasDailyTasks.collectAsState(initial = false)

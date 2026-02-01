@@ -15,3 +15,10 @@
 local.properties
 *.jks
 /.idea/
+/anvil_jks
+*.log
+/build_log.txt
+/build_out.txt
+/build_output.txt
+/keystore_base64.txt
+/.kotlin/sessions/kotlin-compiler-491532689527502300.salive

@@ -1,8 +1,11 @@
 package com.james.anvil.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,11 +22,13 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -32,11 +37,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.james.anvil.service.AnvilAccessibilityService
+import com.james.anvil.service.AnvilVpnService
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.SuccessGreen
 import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.util.PermissionUtils
+import com.james.anvil.vpn.VpnHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,12 +61,24 @@ fun SettingsScreen(
     
     var hasOverlayPermission by remember { mutableStateOf(false) }
     var hasAccessibilityPermission by remember { mutableStateOf(false) }
+    var isVpnRunning by remember { mutableStateOf(AnvilVpnService.isRunning) }
+
+    // VPN permission launcher
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            VpnHelper.startVpn(context)
+            isVpnRunning = true
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasOverlayPermission = PermissionUtils.hasOverlayPermission(context)
                 hasAccessibilityPermission = PermissionUtils.hasAccessibilityPermission(context, AnvilAccessibilityService::class.java)
+                isVpnRunning = AnvilVpnService.isRunning
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -182,6 +201,93 @@ fun SettingsScreen(
                         PermissionIndicator(isGranted = hasAccessibilityPermission)
                     }
                 )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Blocking Section
+            SettingsSectionHeader(title = "BLOCKING")
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (!isVpnRunning) {
+                                val vpnIntent = VpnHelper.prepareVpn(context)
+                                if (vpnIntent != null) {
+                                    vpnPermissionLauncher.launch(vpnIntent)
+                                } else {
+                                    VpnHelper.startVpn(context)
+                                    isVpnRunning = true
+                                }
+                            } else {
+                                VpnHelper.stopVpn(context)
+                                isVpnRunning = false
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = (if (isVpnRunning) SuccessGreen else InfoBlue).copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.VpnKey,
+                            contentDescription = "VPN",
+                            tint = if (isVpnRunning) SuccessGreen else InfoBlue,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "VPN Link Blocking",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isVpnRunning) "Active" else "Off",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Switch(
+                        checked = isVpnRunning,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                val vpnIntent = VpnHelper.prepareVpn(context)
+                                if (vpnIntent != null) {
+                                    vpnPermissionLauncher.launch(vpnIntent)
+                                } else {
+                                    VpnHelper.startVpn(context)
+                                    isVpnRunning = true
+                                }
+                            } else {
+                                VpnHelper.stopVpn(context)
+                                isVpnRunning = false
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = if (isDarkTheme) Color.LightGray else MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = if (isDarkTheme) Color.Gray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant,
+                            uncheckedBorderColor = if (isDarkTheme) Color.Gray else MaterialTheme.colorScheme.outline
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

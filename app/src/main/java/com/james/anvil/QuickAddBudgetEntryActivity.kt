@@ -9,13 +9,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.james.anvil.data.BudgetType
 import com.james.anvil.ui.AddBudgetEntrySheet
-import com.james.anvil.ui.TaskViewModel
+import com.james.anvil.ui.BudgetViewModel
 import com.james.anvil.ui.theme.ANVILTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class QuickAddBudgetEntryActivity : ComponentActivity() {
-    private val viewModel: TaskViewModel by viewModels()
+    private val viewModel: BudgetViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

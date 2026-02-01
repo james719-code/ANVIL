@@ -3,28 +3,17 @@ package com.james.anvil.ui
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.james.anvil.data.AnvilDatabase
-import com.james.anvil.data.AppCategory
-import com.james.anvil.data.BalanceType
-import com.james.anvil.data.BlockedApp
-import com.james.anvil.data.BlockedLink
-import com.james.anvil.data.BlockScheduleType
-import com.james.anvil.data.DayOfWeekMask
 import com.james.anvil.data.BonusTask
-import com.james.anvil.data.BudgetEntry
-import com.james.anvil.data.BudgetType
-import com.james.anvil.data.Loan
-import com.james.anvil.data.LoanRepayment
-import com.james.anvil.data.LoanStatus
+import com.james.anvil.data.HabitContribution
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
-import com.james.anvil.data.HabitContribution
 import com.james.anvil.core.BonusManager
-import com.james.anvil.data.CategoryType
+import com.james.anvil.util.PrefsKeys
+import com.james.anvil.widget.StatsWidget
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,37 +27,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
-import com.james.anvil.widget.StatsWidget
-import com.james.anvil.util.PrefsKeys
+import javax.inject.Inject
 
-data class AppInfo(
-    val name: String,
-    val packageName: String,
-    val icon: Drawable?
-)
-
-/**
- * Combined info about an app including its block status and schedule.
- */
-data class AppInfoWithCategory(
-    val appInfo: AppInfo,
-    val category: String,
-    val isBlocked: Boolean,
-    val blockedApp: BlockedApp? = null // Full blocked app info with schedule
-) {
-    val scheduleDescription: String
-        get() = blockedApp?.getScheduleDescription() ?: "Not blocked"
-}
-
-class TaskViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class TaskViewModel @Inject constructor(
+    application: Application
+) : AndroidViewModel(application) {
 
     private val db = AnvilDatabase.getDatabase(application)
     private val taskDao = db.taskDao()
-    private val blocklistDao = db.blocklistDao()
-    private val appCategoryDao = db.appCategoryDao()
     private val bonusTaskDao = db.bonusTaskDao()
-    private val budgetDao = db.budgetDao()
-    private val loanDao = db.loanDao()
     private val habitContributionDao = db.habitContributionDao()
     private val prefs: SharedPreferences = application.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
     private val bonusManager = BonusManager(application)
@@ -121,15 +89,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         list.any { it.isDaily }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), false)
 
-    val blockedApps: Flow<List<String>> = blocklistDao.observeEnabledBlockedAppPackages()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val blockedLinks: Flow<List<String>> = blocklistDao.observeEnabledBlockedLinkPatterns()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val blockedLinkObjects: Flow<List<BlockedLink>> = blocklistDao.observeEnabledBlockedLinks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
     // Bonus Tasks
     val bonusTasks: Flow<List<BonusTask>> = bonusTaskDao.observeAllBonusTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
@@ -140,34 +99,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     // Habit Contributions (days with no pending tasks)
     val habitContributions: Flow<List<HabitContribution>> = habitContributionDao.observeAllContributions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    // Budget
-    val budgetEntries: Flow<List<BudgetEntry>> = budgetDao.observeAllEntries()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val cashBalance: Flow<Double> = budgetDao.getCurrentBalance(BalanceType.CASH)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
-
-    val gcashBalance: Flow<Double> = budgetDao.getCurrentBalance(BalanceType.GCASH)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
-
-    // Loans
-    val activeLoans: Flow<List<Loan>> = loanDao.observeActiveLoans()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val repaidLoans: Flow<List<Loan>> = loanDao.observeRepaidLoans()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val totalCashLoaned: Flow<Double> = loanDao.getTotalLoanedAmount(BalanceType.CASH)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
-
-    val totalGcashLoaned: Flow<Double> = loanDao.getTotalLoanedAmount(BalanceType.GCASH)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
-
-    val totalActiveLoanedAmount: Flow<Double> = loanDao.getTotalActiveLoanedAmount()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
-
-    private val _installedApps = MutableStateFlow<List<AppInfo>>(emptyList())
 
     // Streak System
     private val _currentStreak = MutableStateFlow(0)
@@ -216,10 +147,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         var expectedDate = if (isSameDay(latestDate, todayMs)) today else yesterday
         
         // We iterate through sorted contributions
-        // Note: sorted contains dates. We need to check continuity.
-        // If logic finds today, streak=1. Next expected is yesterday.
-        // If logic finds yesterday (and not today), streak=1. Next expected is day before yesterday.
-        
         for (contribution in sorted) {
             val contributionCal = Calendar.getInstance().apply { timeInMillis = contribution.date }
             
@@ -234,9 +161,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 streak++
                 expectedDate.add(Calendar.DAY_OF_YEAR, -1) // Expect previous day next
             } else {
-                 // Check if we skipped a day (broken streak) or if this is just a duplicate/older entry
-                 // If this contribution is NEWER than expected (shouldn't happen in sorted list unless duplicates), ignore
-                 // If OLDER than expected, break.
                  if (contributionCal.timeInMillis < expectedDate.timeInMillis) {
                      break
                  }
@@ -244,8 +168,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
         return streak
     }
-
-
 
     private val _dailyQuote = MutableStateFlow("")
     val dailyQuote: StateFlow<String> = _dailyQuote.asStateFlow()
@@ -262,32 +184,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         list.size
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
-    private val allCategories: Flow<List<AppCategory>> = appCategoryDao.getAllCategories()
-
-    // Observe full BlockedApp objects for schedule info
-    val blockedAppObjects: Flow<List<BlockedApp>> = blocklistDao.observeEnabledBlockedApps()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    val appListWithCategories: Flow<List<AppInfoWithCategory>> = combine(
-        _installedApps,
-        blockedAppObjects,
-        allCategories
-    ) { apps, blockedList, categories ->
-        val categoryMap = categories.associate { it.packageName to it.category }
-        val blockedMap = blockedList.associateBy { it.packageName }
-        apps.map { app ->
-            val blockedApp = blockedMap[app.packageName]
-            AppInfoWithCategory(
-                appInfo = app,
-                category = categoryMap[app.packageName] ?: "Uncategorized",
-                isBlocked = blockedApp != null,
-                blockedApp = blockedApp
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
     init {
-        fetchInstalledApps()
         updateDailyQuote()
     }
 
@@ -301,43 +198,11 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 calendar.get(Calendar.DAY_OF_YEAR) == todayDay
     }
 
-    private fun calculateDailyProgress(pending: List<Task>, completed: List<Task>): Float {
-        val todayPending = pending.count { isDueToday(it.deadline) }
-        val todayCompleted = completed.count {
-            it.completedAt != null && isDueToday(it.completedAt)
-        }
-        val total = todayPending + todayCompleted
-        return if (total == 0) 0f else todayCompleted.toFloat() / total
-    }
-
     private fun calculateTotalProgress(pending: List<Task>, completed: List<Task>): Float {
         val totalPending = pending.size
         val totalCompleted = completed.size
         val total = totalPending + totalCompleted
         return if (total == 0) 0f else totalCompleted.toFloat() / total
-    }
-
-    private fun fetchInstalledApps() {
-        viewModelScope.launch {
-            _installedApps.value = withContext(Dispatchers.IO) {
-                val pm = getApplication<Application>().packageManager
-                val myPackageName = getApplication<Application>().packageName
-                val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-                packages.mapNotNull {
-                    val intent = pm.getLaunchIntentForPackage(it.packageName)
-                    // Exclude apps without launcher intent and exclude ANVIL itself
-                    if (intent != null && it.packageName != myPackageName) {
-                        AppInfo(
-                            name = it.applicationInfo?.loadLabel(pm)?.toString() ?: it.packageName,
-                            packageName = it.packageName,
-                            icon = it.applicationInfo?.loadIcon(pm)
-                        )
-                    } else {
-                        null
-                    }
-                }.sortedBy { it.name.lowercase() }
-            }
-        }
     }
 
     private fun updateDailyQuote() {
@@ -464,116 +329,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun blockApp(
-        packageName: String,
-        scheduleType: BlockScheduleType = BlockScheduleType.EVERYDAY,
-        dayMask: Int = DayOfWeekMask.ALL_DAYS,
-        startTimeMinutes: Int = 0,
-        endTimeMinutes: Int = 1439
-    ) {
-        viewModelScope.launch {
-            blocklistDao.insertApp(
-                BlockedApp(
-                    packageName = packageName,
-                    isEnabled = true,
-                    scheduleType = scheduleType,
-                    dayMask = dayMask,
-                    startTimeMinutes = startTimeMinutes,
-                    endTimeMinutes = endTimeMinutes
-                )
-            )
-            StatsWidget.refreshAll(getApplication())
-        }
-    }
-
-    fun updateAppSchedule(
-        packageName: String,
-        scheduleType: BlockScheduleType,
-        dayMask: Int,
-        startTimeMinutes: Int,
-        endTimeMinutes: Int
-    ) {
-        viewModelScope.launch {
-            val existing = blocklistDao.getBlockedApp(packageName)
-            if (existing != null) {
-                blocklistDao.updateApp(
-                    existing.copy(
-                        scheduleType = scheduleType,
-                        dayMask = dayMask,
-                        startTimeMinutes = startTimeMinutes,
-                        endTimeMinutes = endTimeMinutes
-                    )
-                )
-            }
-        }
-    }
-
-    fun unblockApp(packageName: String) {
-        viewModelScope.launch {
-            blocklistDao.removeApp(packageName)
-            StatsWidget.refreshAll(getApplication())
-        }
-    }
-
-    fun setAppCategory(packageName: String, category: String) {
-        viewModelScope.launch {
-            appCategoryDao.insertOrReplace(AppCategory(packageName, category))
-        }
-    }
-
-    fun blockLink(
-        pattern: String,
-        isEncrypted: Boolean = false,
-        scheduleType: BlockScheduleType = BlockScheduleType.EVERYDAY,
-        dayMask: Int = DayOfWeekMask.ALL_DAYS,
-        startTimeMinutes: Int = 0,
-        endTimeMinutes: Int = 1439
-    ) {
-        viewModelScope.launch {
-            blocklistDao.insertLink(
-                BlockedLink(
-                    pattern = pattern,
-                    isEnabled = true,
-                    isEncrypted = isEncrypted,
-                    scheduleType = scheduleType,
-                    dayMask = dayMask,
-                    startTimeMinutes = startTimeMinutes,
-                    endTimeMinutes = endTimeMinutes
-                )
-            )
-            StatsWidget.refreshAll(getApplication())
-        }
-    }
-
-    fun updateLinkSchedule(
-        pattern: String,
-        scheduleType: BlockScheduleType,
-        dayMask: Int,
-        startTimeMinutes: Int,
-        endTimeMinutes: Int
-    ) {
-        viewModelScope.launch {
-            val existing = blocklistDao.getBlockedLink(pattern)
-            if (existing != null) {
-                blocklistDao.updateLink(
-                    existing.copy(
-                        scheduleType = scheduleType,
-                        dayMask = dayMask,
-                        startTimeMinutes = startTimeMinutes,
-                        endTimeMinutes = endTimeMinutes
-                    )
-                )
-            }
-        }
-    }
-
-    fun unblockLink(pattern: String) {
-        viewModelScope.launch {
-            blocklistDao.removeLink(pattern)
-            StatsWidget.refreshAll(getApplication())
-        }
-    }
-
     // Bonus Task Functions
     fun addBonusTask(title: String, description: String? = null, category: String = "Bonus") {
         viewModelScope.launch {
@@ -608,156 +363,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun getGraceDaysCount(): Int = bonusManager.getGraceDays()
 
     fun getBonusTasksForGrace(): Int = bonusManager.getRequiredBonusForGrace()
-
-    // Budget Functions
-    fun addBudgetEntry(
-        type: BudgetType,
-        balanceType: BalanceType,
-        amount: Double,
-        description: String,
-        category: String = "General",
-        categoryType: CategoryType = CategoryType.NONE,
-        borrowerName: String? = null,
-        loanId: Long? = null,
-        dueDate: Long? = null,
-        loanStatus: LoanStatus? = null
-    ) {
-        viewModelScope.launch {
-            val entry = BudgetEntry(
-                type = type,
-                balanceType = balanceType,
-                amount = amount,
-                description = description,
-                category = category,
-                categoryType = categoryType,
-                borrowerName = borrowerName,
-                loanId = loanId,
-                dueDate = dueDate,
-                loanStatus = loanStatus,
-                timestamp = System.currentTimeMillis()
-            )
-            budgetDao.insert(entry)
-        }
-    }
-
-    fun updateBudgetEntry(entry: BudgetEntry) {
-        viewModelScope.launch {
-            budgetDao.update(entry)
-        }
-    }
-
-    fun deleteBudgetEntry(entry: BudgetEntry) {
-        viewModelScope.launch {
-            if (entry.loanId != null) {
-                if (entry.type == BudgetType.LOAN_OUT) {
-                    // 1. If we delete the original loan disbursement, delete the loan record entirely
-                    loanDao.getLoanById(entry.loanId)?.let { loan ->
-                        loanDao.delete(loan)
-                    }
-                    // 2. Also delete all other historical entries for this loan (repayments)
-                    budgetDao.deleteByLoanId(entry.loanId)
-                } else if (entry.type == BudgetType.LOAN_REPAYMENT) {
-                    // 1. If we delete a repayment record, update the loan status/amount back
-                    loanDao.getLoanById(entry.loanId)?.let { loan ->
-                        val newAmount = loan.remainingAmount + entry.amount
-                        val newStatus = when {
-                            newAmount >= loan.originalAmount -> LoanStatus.ACTIVE
-                            else -> LoanStatus.PARTIALLY_REPAID
-                        }
-                        loanDao.update(loan.copy(remainingAmount = newAmount, status = newStatus))
-                    }
-                }
-            }
-            budgetDao.delete(entry)
-        }
-    }
-
-    // Loan Functions
-    fun createLoan(
-        borrowerName: String, 
-        amount: Double, 
-        balanceType: BalanceType, 
-        interestRate: Double = 0.0,
-        totalExpectedAmount: Double = amount,
-        description: String? = null, 
-        dueDate: Long? = null
-    ) {
-        viewModelScope.launch {
-            val loan = Loan(
-                borrowerName = borrowerName,
-                originalAmount = amount,
-                remainingAmount = totalExpectedAmount,
-                balanceType = balanceType,
-                interestRate = interestRate,
-                totalExpectedAmount = totalExpectedAmount,
-                description = description,
-                dueDate = dueDate
-            )
-            val id = loanDao.insert(loan)
-            
-            // Record in history (Now unified in budget_entries)
-            addBudgetEntry(
-                type = BudgetType.LOAN_OUT,
-                balanceType = balanceType,
-                amount = amount,
-                description = "Loan to $borrowerName",
-                category = "Loan",
-                categoryType = CategoryType.NONE,
-                borrowerName = borrowerName,
-                loanId = id,
-                dueDate = dueDate,
-                loanStatus = LoanStatus.ACTIVE
-            )
-        }
-    }
-
-    fun addLoanRepayment(loan: Loan, repaymentAmount: Double, balanceType: BalanceType, note: String? = null) {
-        viewModelScope.launch {
-            val repayment = LoanRepayment(
-                loanId = loan.id,
-                amount = repaymentAmount,
-                note = note
-            )
-            loanDao.insertRepayment(repayment)
-
-            // Update loan remaining amount and status
-            val newRemainingAmount = (loan.remainingAmount - repaymentAmount).coerceAtLeast(0.0)
-            val newStatus = when {
-                newRemainingAmount <= 0 -> LoanStatus.FULLY_REPAID
-                newRemainingAmount < loan.originalAmount -> LoanStatus.PARTIALLY_REPAID
-                else -> LoanStatus.ACTIVE
-            }
-            
-            val updatedLoan = loan.copy(
-                remainingAmount = newRemainingAmount,
-                status = newStatus
-            )
-            loanDao.update(updatedLoan)
-            
-            // Record in history (Now unified)
-            addBudgetEntry(
-                type = BudgetType.LOAN_REPAYMENT,
-                balanceType = balanceType,
-                amount = repaymentAmount,
-                description = "Repayment from ${loan.borrowerName}",
-                category = "Loan Repayment",
-                categoryType = CategoryType.NONE,
-                borrowerName = loan.borrowerName,
-                loanId = loan.id,
-                loanStatus = newStatus
-            )
-        }
-    }
-
-    fun deleteLoan(loan: Loan) {
-        viewModelScope.launch {
-            loanDao.delete(loan)
-        }
-    }
-
-    fun getLoanRepayments(loanId: Long): Flow<List<LoanRepayment>> {
-        return loanDao.getRepaymentsForLoan(loanId)
-    }
 
     // Contribution data for graph
     suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> {
