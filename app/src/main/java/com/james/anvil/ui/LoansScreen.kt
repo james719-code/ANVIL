@@ -31,7 +31,9 @@ import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.SecondaryScreenScaffold
-import com.james.anvil.ui.theme.DeepTeal
+import com.james.anvil.ui.theme.GcashBlue
+import com.james.anvil.ui.theme.CashTeal
+import com.james.anvil.ui.theme.ErrorRed
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -256,8 +258,8 @@ private fun LoanItem(
                         modifier = Modifier
                             .size(44.dp)
                             .background(
-                                if (isGcash) Color(0xFF007DFE).copy(alpha = 0.1f) 
-                                else DeepTeal.copy(alpha = 0.1f),
+                                if (isGcash) GcashBlue.copy(alpha = 0.1f) 
+                                else CashTeal.copy(alpha = 0.1f),
                                 RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -265,7 +267,7 @@ private fun LoanItem(
                         Icon(
                             imageVector = Icons.Outlined.Person,
                             contentDescription = "Borrower",
-                            tint = if (isGcash) Color(0xFF007DFE) else DeepTeal
+                            tint = if (isGcash) GcashBlue else CashTeal
                         )
                     }
                     Column {
@@ -292,7 +294,7 @@ private fun LoanItem(
                             text = currencyFormat.format(loan.remainingAmount),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (isActive) MaterialTheme.colorScheme.onSurface else DeepTeal
+                            color = if (isActive) MaterialTheme.colorScheme.onSurface else CashTeal
                         )
                         if (loan.remainingAmount != loan.totalExpectedAmount) {
                             Text(
@@ -350,7 +352,7 @@ private fun LoanItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp),
-                color = if (isGcash) Color(0xFF007DFE) else DeepTeal,
+                color = if (isGcash) GcashBlue else CashTeal,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
@@ -373,7 +375,7 @@ private fun LoanItem(
                            else if (daysRemaining == 0) "Due today" 
                            else "Overdue by ${-daysRemaining} days",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (daysRemaining < 0) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (daysRemaining < 0) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

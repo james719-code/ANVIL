@@ -202,10 +202,20 @@ class AnvilAccessibilityService : AccessibilityService() {
         }
 
         // D. Check URL Blocklist with Schedule (Keywords/Patterns)
-        // Uses enhanced matching to catch subdomain variants (m., www., mobile., etc.)
+        // OPTIMIZATION: Skip domain-level blocking if VPN is running (VPN handles DNS blocking)
+        // Only check path-specific patterns that VPN cannot block (e.g., /shorts/)
         if (currentUrl != null) {
+            val vpnRunning = AnvilVpnService.isRunning
             for ((pattern, blockedLink) in blockedLinksMap) {
-                if (isUrlBlocked(currentUrl, pattern) && blockedLink.isBlockingActiveNow()) {
+                if (!blockedLink.isBlockingActiveNow()) continue
+                
+                // If VPN is running, only check path-specific patterns (contains "/")
+                // Domain-only patterns are already handled by VPN's DNS blocking
+                if (vpnRunning && !pattern.contains("/")) {
+                    continue
+                }
+                
+                if (isUrlBlocked(currentUrl, pattern)) {
                     return true
                 }
             }
@@ -236,7 +246,7 @@ class AnvilAccessibilityService : AccessibilityService() {
             return true
         }
 
-        // B. Specific Check for YouTube Shorts (Addiction control during penalty)
+        // C. Specific Check for YouTube Shorts (Addiction control during penalty)
         if (packageName == "com.google.android.youtube") {
             // Check URL pattern if available (rare in native app)
             if (currentUrl != null && currentUrl.contains("/shorts/")) return true
@@ -244,17 +254,25 @@ class AnvilAccessibilityService : AccessibilityService() {
             if (checkForShortsContent(rootNode)) return true
         }
 
-        // C. During penalty mode, block ANY app in blocklist REGARDLESS of schedule
+        // D. During penalty mode, block ANY app in blocklist REGARDLESS of schedule
         // If the app is in the blocklist at all, block it when tasks are pending
         val blockedApp = blockedAppsMap[packageName]
         if (blockedApp != null) {
             return true
         }
 
-        // D. During penalty mode, block ANY URL pattern in blocklist REGARDLESS of schedule
-        // Uses enhanced matching to catch subdomain variants (m., www., mobile., etc.)
+        // E. During penalty mode, block URL patterns in blocklist REGARDLESS of schedule
+        // OPTIMIZATION: Skip domain-level blocking if VPN is running (VPN handles DNS blocking)
+        // Only check path-specific patterns that VPN cannot block
         if (currentUrl != null) {
+            val vpnRunning = AnvilVpnService.isRunning
             for ((pattern, _) in blockedLinksMap) {
+                // If VPN is running, only check path-specific patterns (contains "/")
+                // Domain-only patterns are already handled by VPN's DNS blocking
+                if (vpnRunning && !pattern.contains("/")) {
+                    continue
+                }
+                
                 if (isUrlBlocked(currentUrl, pattern)) {
                     return true
                 }

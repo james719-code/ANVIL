@@ -19,7 +19,7 @@ import androidx.room.TypeConverters
         LoanRepayment::class,
         HabitContribution::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -98,6 +98,23 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration to add cross-day blocking range support.
+         * Adds startDayOfWeek and endDayOfWeek columns for CUSTOM_RANGE schedule type.
+         * These fields are nullable for backward compatibility.
+         */
+        private val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Add day of week columns to blocked_apps table
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `startDayOfWeek` INTEGER")
+                database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `endDayOfWeek` INTEGER")
+
+                // Add day of week columns to blocked_links table
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `startDayOfWeek` INTEGER")
+                database.execSQL("ALTER TABLE `blocked_links` ADD COLUMN `endDayOfWeek` INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -105,7 +122,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                 .build()
                 INSTANCE = instance
                 instance

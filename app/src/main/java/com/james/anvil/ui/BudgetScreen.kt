@@ -169,9 +169,9 @@ fun BudgetScreen(
                                     .fillMaxSize()
                                     .background(
                                         Brush.linearGradient(
-                                            0.0f to Color(0xFF1E3A8A),
-                                            0.4f to Color(0xFF0F172A),
-                                            1.0f to Color(0xFF000000)
+                                            0.0f to ElectricBlue.copy(alpha = 0.8f),
+                                            0.4f to BackgroundDark,
+                                            1.0f to Color.Black
                                         )
                                     )
                             ) {
@@ -181,7 +181,7 @@ fun BudgetScreen(
                                         .offset(x = 100.dp, y = (-120).dp)
                                         .background(
                                             Brush.radialGradient(
-                                                colors = listOf(Color(0xFF3B82F6).copy(alpha = 0.15f), Color.Transparent)
+                                                colors = listOf(ElectricBlue.copy(alpha = 0.15f), Color.Transparent)
                                             )
                                         )
                                 )
@@ -235,7 +235,7 @@ fun BudgetScreen(
                                                 .size(width = 45.dp, height = 35.dp)
                                                 .background(
                                                     Brush.linearGradient(
-                                                        colors = listOf(Color(0xFFFFD700), Color(0xFFB8860B))
+                                                        colors = listOf(ForgedGoldLight, ForgedGoldDark)
                                                     ),
                                                     RoundedCornerShape(6.dp)
                                                 )
@@ -287,7 +287,7 @@ fun BudgetScreen(
                                             Text(
                                                 text = currencyFormat.format(totalCashLoaned + totalGcashLoaned),
                                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = if (totalCashLoaned + totalGcashLoaned > 0) Color(0xFFFFB3B3) else ForgedGold
+                                                color = if (totalCashLoaned + totalGcashLoaned > 0) LiabilityRed else ForgedGold
                                             )
                                         }
                                     }
@@ -317,7 +317,7 @@ fun BudgetScreen(
                                 loaned = totalGcashLoaned,
                                 currencyFormat = currencyFormat,
                                 modifier = Modifier.weight(1f),
-                                color = InfoBlue,
+                                color = GcashBlue,
                                 icon = Icons.Default.Smartphone
                             )
                         }
@@ -784,7 +784,7 @@ private fun BudgetEntryItem(
                     Text(
                         text = entry.balanceType.name,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
-                        color = if (entry.balanceType == BalanceType.GCASH) InfoBlue else SteelBlueLight
+                        color = if (entry.balanceType == BalanceType.GCASH) GcashBlue else CashTeal
                     )
 
                     if (entry.categoryType != CategoryType.NONE) {

@@ -42,6 +42,15 @@ val WarningOrange = Color(0xFFF59E0B)     // Warnings, attention needed
 val InfoBlue = Color(0xFF3B82F6)          // Information, tips (same as primary)
 
 // ============================================
+// FINANCIAL SEMANTIC COLORS
+// Standardized colors for financial UI elements
+// ============================================
+val GcashBlue = Color(0xFF007DFE)         // GCash wallet indicator
+val CashTeal = ElectricTeal               // Cash wallet indicator (alias)
+val LiabilityRed = Color(0xFFFFB3B3)      // Outstanding debts, negative balance
+val HighPriority = Color(0xFFE53935)      // High priority tasks/items
+
+// ============================================
 // DARK THEME SURFACE COLORS
 // Slate-based palette for dark mode
 // ============================================

@@ -53,9 +53,9 @@ fun GlassFinanceCard(
             .height(120.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = IndustrialGrey.copy(alpha = 0.85f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, IndustrialBorder)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Box(
             modifier = Modifier
@@ -174,7 +174,7 @@ fun PriorityBadge(
     modifier: Modifier = Modifier
 ) {
     val (backgroundColor, text) = when (priority) {
-        TaskPriority.HIGH -> Pair(Color(0xFFE53935), "HIGH")
+        TaskPriority.HIGH -> Pair(HighPriority, "HIGH")
         TaskPriority.MEDIUM -> Pair(ForgedGold, "MED")
         TaskPriority.LOW -> Pair(SteelBlue, "LOW")
     }
@@ -222,7 +222,7 @@ fun CircularCheckbox(
             )
             .border(
                 width = 2.dp,
-                color = if (checked) checkedColor else IndustrialBorder,
+                color = if (checked) checkedColor else MaterialTheme.colorScheme.outline,
                 shape = CircleShape
             )
             .clickable { onCheckedChange(!checked) },
@@ -254,9 +254,9 @@ fun IndustrialTaskItem(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = IndustrialGrey
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, IndustrialBorder)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -276,9 +276,9 @@ fun IndustrialTaskItem(
                     fontWeight = FontWeight.Medium
                 ),
                 color = if (isCompleted) {
-                    Color.White.copy(alpha = 0.5f)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 } else {
-                    Color.White
+                    MaterialTheme.colorScheme.onSurface
                 },
                 modifier = Modifier.weight(1f),
                 maxLines = 2,
@@ -355,7 +355,7 @@ fun IndustrialDashboardHeader(
                 letterSpacing = 2.sp,
                 fontWeight = FontWeight.Medium
             ),
-            color = Color.White.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         )
         
         Spacer(modifier = Modifier.height(4.dp))
@@ -366,7 +366,7 @@ fun IndustrialDashboardHeader(
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold
             ),
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -376,9 +376,9 @@ fun IndustrialDashboardHeader(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = IndustrialGrey
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = BorderStroke(1.dp, IndustrialBorder)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
             Column(
                 modifier = Modifier.padding(20.dp)
@@ -398,7 +398,7 @@ fun IndustrialDashboardHeader(
                         Text(
                             text = "${(budgetProgress * 100).toInt()}% remaining",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -412,7 +412,7 @@ fun IndustrialDashboardHeader(
                         Text(
                             text = "$tasksCompleted/$totalTasks completed",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -425,7 +425,7 @@ fun IndustrialDashboardHeader(
                         .fillMaxWidth()
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(IndustrialGreyLight)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     // Budget progress (left half)
                     Box(
