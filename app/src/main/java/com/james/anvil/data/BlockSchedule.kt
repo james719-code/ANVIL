@@ -5,11 +5,13 @@ package com.james.anvil.data
  * - EVERYDAY: Block every day of the week
  * - WEEKDAYS: Block only on weekdays (Monday to Friday)
  * - CUSTOM: Block on specific days of the week
+ * - CUSTOM_RANGE: Block from specific day+time to day+time (cross-day range)
  */
 enum class BlockScheduleType {
     EVERYDAY,
     WEEKDAYS,
-    CUSTOM
+    CUSTOM,
+    CUSTOM_RANGE
 }
 
 /**
@@ -78,10 +80,13 @@ object DayOfWeekMask {
 /**
  * Represents a time range for blocking (e.g., 8:00 AM to 6:00 PM)
  * Times are stored as minutes from midnight (0-1439)
+ * For cross-day ranges, also includes day of week (1=Sunday, 7=Saturday)
  */
 data class TimeRange(
     val startMinutes: Int,  // Minutes from midnight (0-1439)
-    val endMinutes: Int     // Minutes from midnight (0-1439)
+    val endMinutes: Int,    // Minutes from midnight (0-1439)
+    val startDayOfWeek: Int? = null,  // 1=Sunday, 7=Saturday (null for same-day ranges)
+    val endDayOfWeek: Int? = null     // 1=Sunday, 7=Saturday (null for same-day ranges)
 ) {
     companion object {
         val ALL_DAY = TimeRange(0, 1439)
@@ -94,6 +99,9 @@ data class TimeRange(
         }
     }
 
+    /**
+     * Check if current time is within range (for same-day ranges)
+     */
     fun isWithinRange(currentMinutes: Int): Boolean {
         return if (startMinutes <= endMinutes) {
             // Normal range (e.g., 8:00 to 18:00)
@@ -104,7 +112,56 @@ data class TimeRange(
         }
     }
 
+    /**
+     * Check if current day+time is within range (for cross-day ranges)
+     * @param currentDayOfWeek Calendar.DAY_OF_WEEK (1=Sunday, 7=Saturday)
+     * @param currentMinutes Minutes from midnight (0-1439)
+     */
+    fun isWithinRangeWithDay(currentDayOfWeek: Int, currentMinutes: Int): Boolean {
+        // If no day specified, fall back to same-day logic
+        if (startDayOfWeek == null || endDayOfWeek == null) {
+            return isWithinRange(currentMinutes)
+        }
+
+        // Convert to minutes from week start (Sunday midnight = 0)
+        val currentWeekMinutes = calculateWeekMinutes(currentDayOfWeek, currentMinutes)
+        val startWeekMinutes = calculateWeekMinutes(startDayOfWeek, startMinutes)
+        val endWeekMinutes = calculateWeekMinutes(endDayOfWeek, endMinutes)
+
+        return if (startWeekMinutes <= endWeekMinutes) {
+            // Normal range within week
+            currentWeekMinutes in startWeekMinutes..endWeekMinutes
+        } else {
+            // Range wraps around week boundary (e.g., Sat 8pm to Sun 6pm)
+            currentWeekMinutes >= startWeekMinutes || currentWeekMinutes <= endWeekMinutes
+        }
+    }
+
+    /**
+     * Calculate minutes from week start (Sunday midnight = 0)
+     * @param dayOfWeek Calendar.DAY_OF_WEEK (1=Sunday, 7=Saturday)
+     * @param minutesInDay Minutes from midnight (0-1439)
+     */
+    private fun calculateWeekMinutes(dayOfWeek: Int, minutesInDay: Int): Int {
+        // Calendar.SUNDAY = 1, MONDAY = 2, ..., SATURDAY = 7
+        // Convert to 0-based: Sunday = 0, Monday = 1, ..., Saturday = 6
+        val dayIndex = dayOfWeek - 1
+        return dayIndex * 1440 + minutesInDay
+    }
+
     fun toDisplayString(): String {
+        // Cross-day range format
+        if (startDayOfWeek != null && endDayOfWeek != null) {
+            val startDay = getDayAbbreviation(startDayOfWeek)
+            val endDay = getDayAbbreviation(endDayOfWeek)
+            val startHour = startMinutes / 60
+            val startMin = startMinutes % 60
+            val endHour = endMinutes / 60
+            val endMin = endMinutes % 60
+            return "$startDay ${formatTime(startHour, startMin)} - $endDay ${formatTime(endHour, endMin)}"
+        }
+        
+        // Same-day range format
         if (startMinutes == 0 && endMinutes == 1439) return "All day"
         
         val startHour = startMinutes / 60
@@ -113,6 +170,19 @@ data class TimeRange(
         val endMin = endMinutes % 60
 
         return "${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}"
+    }
+
+    private fun getDayAbbreviation(dayOfWeek: Int): String {
+        return when (dayOfWeek) {
+            java.util.Calendar.SUNDAY -> "Sun"
+            java.util.Calendar.MONDAY -> "Mon"
+            java.util.Calendar.TUESDAY -> "Tue"
+            java.util.Calendar.WEDNESDAY -> "Wed"
+            java.util.Calendar.THURSDAY -> "Thu"
+            java.util.Calendar.FRIDAY -> "Fri"
+            java.util.Calendar.SATURDAY -> "Sat"
+            else -> "?"
+        }
     }
 
     private fun formatTime(hour: Int, minute: Int): String {

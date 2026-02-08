@@ -152,7 +152,9 @@ class BlocklistViewModel @Inject constructor(
         scheduleType: BlockScheduleType,
         dayMask: Int,
         startTimeMinutes: Int,
-        endTimeMinutes: Int
+        endTimeMinutes: Int,
+        startDayOfWeek: Int? = null,
+        endDayOfWeek: Int? = null
     ) {
         viewModelScope.launch {
             val existing = blocklistDao.getBlockedApp(packageName)
@@ -162,7 +164,9 @@ class BlocklistViewModel @Inject constructor(
                         scheduleType = scheduleType,
                         dayMask = dayMask,
                         startTimeMinutes = startTimeMinutes,
-                        endTimeMinutes = endTimeMinutes
+                        endTimeMinutes = endTimeMinutes,
+                        startDayOfWeek = startDayOfWeek,
+                        endDayOfWeek = endDayOfWeek
                     )
                 )
             }
@@ -211,7 +215,9 @@ class BlocklistViewModel @Inject constructor(
         scheduleType: BlockScheduleType,
         dayMask: Int,
         startTimeMinutes: Int,
-        endTimeMinutes: Int
+        endTimeMinutes: Int,
+        startDayOfWeek: Int? = null,
+        endDayOfWeek: Int? = null
     ) {
         viewModelScope.launch {
             val existing = blocklistDao.getBlockedLink(pattern)
@@ -221,7 +227,9 @@ class BlocklistViewModel @Inject constructor(
                         scheduleType = scheduleType,
                         dayMask = dayMask,
                         startTimeMinutes = startTimeMinutes,
-                        endTimeMinutes = endTimeMinutes
+                        endTimeMinutes = endTimeMinutes,
+                        startDayOfWeek = startDayOfWeek,
+                        endDayOfWeek = endDayOfWeek
                     )
                 )
             }

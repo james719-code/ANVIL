@@ -1,5 +1,13 @@
 package com.james.anvil.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,13 +17,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.filled.WorkHistory
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,13 +56,17 @@ fun ScheduleEditDialog(
     currentDayMask: Int,
     currentStartMinutes: Int,
     currentEndMinutes: Int,
+    currentStartDayOfWeek: Int? = null,
+    currentEndDayOfWeek: Int? = null,
     onDismiss: () -> Unit,
-    onSave: (BlockScheduleType, Int, Int, Int) -> Unit
+    onSave: (BlockScheduleType, Int, Int, Int, Int?, Int?) -> Unit
 ) {
     var scheduleType by remember { mutableStateOf(currentScheduleType) }
     var dayMask by remember { mutableIntStateOf(currentDayMask) }
     var startMinutes by remember { mutableIntStateOf(currentStartMinutes) }
     var endMinutes by remember { mutableIntStateOf(currentEndMinutes) }
+    var startDayOfWeek by remember { mutableIntStateOf(currentStartDayOfWeek ?: java.util.Calendar.SUNDAY) }
+    var endDayOfWeek by remember { mutableIntStateOf(currentEndDayOfWeek ?: java.util.Calendar.SATURDAY) }
     
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
@@ -76,7 +98,7 @@ fun ScheduleEditDialog(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // Schedule Type Selection
-                SectionHeader("Schedule Type")
+                SectionHeader("Schedule Type", Icons.Default.Today)
                 
                 ScheduleTypeSelector(
                     selectedType = scheduleType,
@@ -86,14 +108,19 @@ fun ScheduleEditDialog(
                             BlockScheduleType.EVERYDAY -> dayMask = DayOfWeekMask.ALL_DAYS
                             BlockScheduleType.WEEKDAYS -> dayMask = DayOfWeekMask.WEEKDAYS_MASK
                             BlockScheduleType.CUSTOM -> { /* Keep current */ }
+                            BlockScheduleType.CUSTOM_RANGE -> { /* Keep current */ }
                         }
                     }
                 )
 
                 // Custom Day Selection (only when Custom is selected)
-                if (scheduleType == BlockScheduleType.CUSTOM) {
+                AnimatedVisibility(
+                    visible = scheduleType == BlockScheduleType.CUSTOM,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SectionHeader("Select Days")
+                        SectionHeader("Select Days", Icons.Default.ViewWeek)
                         DaySelector(
                             selectedMask = dayMask,
                             onDayToggle = { day ->
@@ -103,81 +130,136 @@ fun ScheduleEditDialog(
                     }
                 }
 
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    thickness = 1.dp
-                )
-
-                // Time Range Section
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SectionHeader("Time Range")
-                    
-                    // All Day Toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .clickable {
-                                val isAllDay = startMinutes == 0 && endMinutes == 1439
-                                if (!isAllDay) {
-                                    startMinutes = 0
-                                    endMinutes = 1439
-                                } else {
-                                    startMinutes = 8 * 60  // 8:00 AM
-                                    endMinutes = 18 * 60   // 6:00 PM
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Block all day",
-                            style = MaterialTheme.typography.bodyLarge
+                // Custom Range Selection (only when Custom Range is selected)
+                AnimatedVisibility(
+                    visible = scheduleType == BlockScheduleType.CUSTOM_RANGE,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        SectionHeader("Select Range", Icons.Default.DateRange)
+                        
+                        // From section
+                        RangeCard(
+                            title = "From",
+                            selectedDay = startDayOfWeek,
+                            onDaySelected = { startDayOfWeek = it },
+                            time = formatMinutesToTime(startMinutes),
+                            onTimeClick = { showStartTimePicker = true }
                         )
-                        Switch(
-                            checked = startMinutes == 0 && endMinutes == 1439,
-                            onCheckedChange = { allDay ->
-                                if (allDay) {
-                                    startMinutes = 0
-                                    endMinutes = 1439
-                                } else {
-                                    startMinutes = 8 * 60
-                                    endMinutes = 18 * 60
-                                }
-                            }
-                        )
-                    }
-
-                    // Time Pickers (only visible when not all day)
-                    if (!(startMinutes == 0 && endMinutes == 1439)) {
+                        
+                        // Arrow indicator
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            // Start Time
-                            TimePickerButton(
-                                label = "From",
-                                time = formatMinutesToTime(startMinutes),
-                                onClick = { showStartTimePicker = true },
-                                modifier = Modifier.weight(1f)
-                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ArrowForward,
+                                        contentDescription = "to",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .padding(2.dp)
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // To section
+                        RangeCard(
+                            title = "To",
+                            selectedDay = endDayOfWeek,
+                            onDaySelected = { endDayOfWeek = it },
+                            time = formatMinutesToTime(endMinutes),
+                            onTimeClick = { showEndTimePicker = true }
+                        )
+                    }
+                }
 
+                // Time Range Section (only for non-CUSTOM_RANGE types)
+                if (scheduleType != BlockScheduleType.CUSTOM_RANGE) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        thickness = 1.dp
+                    )
+
+                    // Time Range Section
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionHeader("Time Range", Icons.Default.AccessTime)
+                        
+                        // All Day Toggle
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .clickable {
+                                    val isAllDay = startMinutes == 0 && endMinutes == 1439
+                                    if (!isAllDay) {
+                                        startMinutes = 0
+                                        endMinutes = 1439
+                                    } else {
+                                        startMinutes = 8 * 60  // 8:00 AM
+                                        endMinutes = 18 * 60   // 6:00 PM
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Text(
-                                text = "→",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Block all day",
+                                style = MaterialTheme.typography.bodyLarge
                             )
+                            Switch(
+                                checked = startMinutes == 0 && endMinutes == 1439,
+                                onCheckedChange = { allDay ->
+                                    if (allDay) {
+                                        startMinutes = 0
+                                        endMinutes = 1439
+                                    } else {
+                                        startMinutes = 8 * 60
+                                        endMinutes = 18 * 60
+                                    }
+                                }
+                            )
+                        }
 
-                            // End Time
-                            TimePickerButton(
-                                label = "Until",
-                                time = formatMinutesToTime(endMinutes),
-                                onClick = { showEndTimePicker = true },
-                                modifier = Modifier.weight(1f)
-                            )
+                        // Time Pickers (only visible when not all day)
+                        if (!(startMinutes == 0 && endMinutes == 1439)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Start Time
+                                TimePickerButton(
+                                    label = "From",
+                                    time = formatMinutesToTime(startMinutes),
+                                    onClick = { showStartTimePicker = true },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Text(
+                                    text = "→",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                // End Time
+                                TimePickerButton(
+                                    label = "Until",
+                                    time = formatMinutesToTime(endMinutes),
+                                    onClick = { showEndTimePicker = true },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
                 }
@@ -189,7 +271,11 @@ fun ScheduleEditDialog(
                     val finalDayMask = if (scheduleType == BlockScheduleType.CUSTOM && dayMask == 0) {
                         DayOfWeekMask.ALL_DAYS
                     } else dayMask
-                    onSave(scheduleType, finalDayMask, startMinutes, endMinutes)
+                    
+                    val finalStartDay = if (scheduleType == BlockScheduleType.CUSTOM_RANGE) startDayOfWeek else null
+                    val finalEndDay = if (scheduleType == BlockScheduleType.CUSTOM_RANGE) endDayOfWeek else null
+                    
+                    onSave(scheduleType, finalDayMask, startMinutes, endMinutes, finalStartDay, finalEndDay)
                 },
                 shape = RoundedCornerShape(24.dp)
             ) {
@@ -233,13 +319,26 @@ fun ScheduleEditDialog(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary
-    )
+private fun SectionHeader(text: String, icon: ImageVector? = null) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
 }
 
 @Composable
@@ -247,76 +346,159 @@ private fun ScheduleTypeSelector(
     selectedType: BlockScheduleType,
     onTypeSelected: (BlockScheduleType) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ScheduleTypeOption(
+            icon = Icons.Default.CalendarMonth,
             label = "Everyday",
             description = "Block every day of the week",
             isSelected = selectedType == BlockScheduleType.EVERYDAY,
             onClick = { onTypeSelected(BlockScheduleType.EVERYDAY) }
         )
         ScheduleTypeOption(
+            icon = Icons.Default.WorkHistory,
             label = "Weekdays",
             description = "Monday through Friday",
             isSelected = selectedType == BlockScheduleType.WEEKDAYS,
             onClick = { onTypeSelected(BlockScheduleType.WEEKDAYS) }
         )
         ScheduleTypeOption(
+            icon = Icons.Default.ViewWeek,
             label = "Custom",
             description = "Choose specific days",
             isSelected = selectedType == BlockScheduleType.CUSTOM,
             onClick = { onTypeSelected(BlockScheduleType.CUSTOM) }
+        )
+        ScheduleTypeOption(
+            icon = Icons.Default.DateRange,
+            label = "Custom Range",
+            description = "From day+time to day+time",
+            isSelected = selectedType == BlockScheduleType.CUSTOM_RANGE,
+            onClick = { onTypeSelected(BlockScheduleType.CUSTOM_RANGE) }
         )
     }
 }
 
 @Composable
 private fun ScheduleTypeOption(
+    icon: ImageVector,
     label: String,
     description: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    }
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.02f else 1f,
+        animationSpec = tween(200),
+        label = "scale"
+    )
     
-    val borderColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        Color.Transparent
-    }
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        },
+        animationSpec = tween(200),
+        label = "bg"
+    )
+    
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        },
+        animationSpec = tween(200),
+        label = "border"
+    )
+    
+    val iconTint by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(200),
+        label = "icon"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .scale(animatedScale)
+            .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
-            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .border(1.5.dp, borderColor, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        RadioButton(
-            selected = isSelected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary
+        // Custom styled radio indicator with icon
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (isSelected) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else 
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = iconTint
             )
-        )
-        Column {
+        }
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else 
+                    MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+        
+        // Selection indicator
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .border(
+                    width = 2.dp,
+                    color = if (isSelected) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
         }
     }
 }
@@ -428,26 +610,43 @@ private fun TimePickerButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        border = ButtonDefaults.outlinedButtonBorder,
+        onClick = onClick
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = time,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = time,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -509,4 +708,218 @@ private fun formatMinutesToTime(minutes: Int): String {
         else -> hour
     }
     return String.format("%d:%02d %s", displayHour, minute, period)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayDropdown(
+    selectedDay: Int,
+    onDaySelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    val days = listOf(
+        java.util.Calendar.SUNDAY to "Sunday",
+        java.util.Calendar.MONDAY to "Monday",
+        java.util.Calendar.TUESDAY to "Tuesday",
+        java.util.Calendar.WEDNESDAY to "Wednesday",
+        java.util.Calendar.THURSDAY to "Thursday",
+        java.util.Calendar.FRIDAY to "Friday",
+        java.util.Calendar.SATURDAY to "Saturday"
+    )
+    
+    val selectedDayName = days.find { it.first == selectedDay }?.second ?: "Sunday"
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedDayName,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            shape = RoundedCornerShape(12.dp)
+        )
+        
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            days.forEach { (dayValue, dayName) ->
+                DropdownMenuItem(
+                    text = { Text(dayName) },
+                    onClick = {
+                        onDaySelected(dayValue)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeCard(
+    title: String,
+    selectedDay: Int,
+    onDaySelected: (Int) -> Unit,
+    time: String,
+    onTimeClick: () -> Unit
+) {
+    val days = listOf(
+        java.util.Calendar.SUNDAY to "Sunday",
+        java.util.Calendar.MONDAY to "Monday",
+        java.util.Calendar.TUESDAY to "Tuesday",
+        java.util.Calendar.WEDNESDAY to "Wednesday",
+        java.util.Calendar.THURSDAY to "Thursday",
+        java.util.Calendar.FRIDAY to "Friday",
+        java.util.Calendar.SATURDAY to "Saturday"
+    )
+    
+    val selectedDayName = days.find { it.first == selectedDay }?.second ?: "Sunday"
+    var dayExpanded by remember { mutableStateOf(false) }
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = ButtonDefaults.outlinedButtonBorder
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Title
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            // Day and Time Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Day Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = dayExpanded,
+                    onExpandedChange = { dayExpanded = it },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .clickable { dayExpanded = true },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = ButtonDefaults.outlinedButtonBorder
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Day",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = selectedDayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded)
+                        }
+                    }
+                    
+                    ExposedDropdownMenu(
+                        expanded = dayExpanded,
+                        onDismissRequest = { dayExpanded = false }
+                    ) {
+                        days.forEach { (dayValue, dayName) ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = dayName,
+                                        fontWeight = if (dayValue == selectedDay) FontWeight.Bold else FontWeight.Normal
+                                    ) 
+                                },
+                                onClick = {
+                                    onDaySelected(dayValue)
+                                    dayExpanded = false
+                                },
+                                leadingIcon = if (dayValue == selectedDay) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } else null,
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
+                
+                // Time Button
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = ButtonDefaults.outlinedButtonBorder,
+                    onClick = onTimeClick
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Time",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = time,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "Select time",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

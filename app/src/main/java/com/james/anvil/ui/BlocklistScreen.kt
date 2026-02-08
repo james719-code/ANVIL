@@ -148,14 +148,18 @@ fun BlockedAppsTab(viewModel: BlocklistViewModel) {
                 currentDayMask = blockedApp.dayMask,
                 currentStartMinutes = blockedApp.startTimeMinutes,
                 currentEndMinutes = blockedApp.endTimeMinutes,
+                currentStartDayOfWeek = blockedApp.startDayOfWeek,
+                currentEndDayOfWeek = blockedApp.endDayOfWeek,
                 onDismiss = { showScheduleDialog = false },
-                onSave = { scheduleType, dayMask, startMinutes, endMinutes ->
+                onSave = { scheduleType, dayMask, startMinutes, endMinutes, startDayOfWeek, endDayOfWeek ->
                     viewModel.updateAppSchedule(
                         packageName = blockedApp.packageName,
                         scheduleType = scheduleType,
                         dayMask = dayMask,
                         startTimeMinutes = startMinutes,
-                        endTimeMinutes = endMinutes
+                        endTimeMinutes = endMinutes,
+                        startDayOfWeek = startDayOfWeek,
+                        endDayOfWeek = endDayOfWeek
                     )
                     showScheduleDialog = false
                 }
@@ -288,14 +292,18 @@ fun BlockedLinksTab(viewModel: BlocklistViewModel) {
             currentDayMask = link.dayMask,
             currentStartMinutes = link.startTimeMinutes,
             currentEndMinutes = link.endTimeMinutes,
+            currentStartDayOfWeek = link.startDayOfWeek,
+            currentEndDayOfWeek = link.endDayOfWeek,
             onDismiss = { showScheduleDialog = false },
-            onSave = { scheduleType, dayMask, startMinutes, endMinutes ->
+            onSave = { scheduleType, dayMask, startMinutes, endMinutes, startDayOfWeek, endDayOfWeek ->
                 viewModel.updateLinkSchedule(
                     pattern = link.pattern,
                     scheduleType = scheduleType,
                     dayMask = dayMask,
                     startTimeMinutes = startMinutes,
-                    endTimeMinutes = endMinutes
+                    endTimeMinutes = endMinutes,
+                    startDayOfWeek = startDayOfWeek,
+                    endDayOfWeek = endDayOfWeek
                 )
                 showScheduleDialog = false
             }
