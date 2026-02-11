@@ -2,6 +2,9 @@ package com.james.anvil.core
 
 import android.os.SystemClock
 import com.james.anvil.data.TaskDao
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.Calendar
 
 class DecisionEngine(
@@ -11,6 +14,10 @@ class DecisionEngine(
 ) {
 
     private val timeGuard = TimeIntegrityGuard()
+
+    /** Reactive blocking state – observed by the accessibility service. */
+    private val _isBlockedFlow = MutableStateFlow(false)
+    val isBlockedFlow: StateFlow<Boolean> = _isBlockedFlow.asStateFlow()
 
     suspend fun updateState() {
         
@@ -38,6 +45,7 @@ class DecisionEngine(
             if (penaltyManager.isPenaltyActive()) {
                 penaltyManager.clearPenalty()
             }
+            _isBlockedFlow.value = false
             return
         }
 
@@ -62,6 +70,9 @@ class DecisionEngine(
                 }
             }
         }
+
+        // Push the freshly-computed blocking state
+        _isBlockedFlow.value = isBlocked()
     }
 
     suspend fun isBlocked(): Boolean {

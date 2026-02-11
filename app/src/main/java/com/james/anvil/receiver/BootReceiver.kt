@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.AnvilWorker
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.HistoryCleanupWorker
 import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
 import java.util.Calendar
@@ -64,6 +65,15 @@ class BootReceiver : BroadcastReceiver() {
                 MidnightContributionWorker.WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,
                 midnightRequest
+            )
+            
+            // Schedule HistoryCleanupWorker to prune old visited links daily
+            val cleanupRequest = PeriodicWorkRequestBuilder<HistoryCleanupWorker>(24, TimeUnit.HOURS)
+                .build()
+            workManager.enqueueUniquePeriodicWork(
+                "AnvilHistoryCleanup",
+                ExistingPeriodicWorkPolicy.KEEP,
+                cleanupRequest
             )
         }
     }

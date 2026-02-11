@@ -49,6 +49,7 @@ import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.ui.theme.WindowInfo
+import com.james.anvil.ui.viewmodel.StreakViewModel
 import java.text.NumberFormat
 import java.util.*
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,7 +60,9 @@ fun DashboardScreen(
     viewModel: TaskViewModel,
     budgetViewModel: BudgetViewModel = hiltViewModel(),
     blocklistViewModel: BlocklistViewModel = hiltViewModel(),
-    onNavigateToPage: ((Int) -> Unit)? = null
+    streakViewModel: StreakViewModel = hiltViewModel(),
+    onNavigateToPage: ((Int) -> Unit)? = null,
+    onNavigateToForge: (() -> Unit)? = null
 ) {
     val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
     val totalPendingCount by viewModel.totalPendingCount.collectAsState(initial = 0)
@@ -75,8 +78,8 @@ fun DashboardScreen(
     val gcashBalance by budgetViewModel.gcashBalance.collectAsState(initial = 0.0)
     val totalActiveLoanedAmount by budgetViewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
     val activeLoans by budgetViewModel.activeLoans.collectAsState(initial = emptyList())
-    val habitContributions by viewModel.habitContributions.collectAsState(initial = emptyList())
-    val currentStreak by viewModel.currentStreak.collectAsState(initial = 0)
+    val habitContributions by streakViewModel.habitContributions.collectAsState(initial = emptyList())
+    val currentStreak by streakViewModel.currentStreak.collectAsState(initial = 0)
     val hasDailyTasks by viewModel.hasDailyTasks.collectAsState(initial = false)
     
     val graceDays = viewModel.getGraceDaysCount() // Note: This is a function, not a flow in ViewModel. Consider making it reactive if needed, but for now we'll trust the viewmodel update flow.
@@ -183,6 +186,13 @@ fun DashboardScreen(
                 item {
                     StreakCard(streak = currentStreak)
                 }
+            }
+
+            // Forge Level Card
+            item {
+                ForgeLevelCard(
+                    onClick = { onNavigateToForge?.invoke() }
+                )
             }
 
             // Quick Stats Row - Adaptive for larger screens

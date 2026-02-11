@@ -89,6 +89,15 @@ val DarkGray = Color(0xFF121212)          // Lock screen background
 val BorderGray = Color(0xFF333333)        // Lock screen borders
 
 // ============================================
+// XP & LEVELING COLORS
+// Forge-themed progression UI
+// ============================================
+val XpGold = Color(0xFFFFD700)            // XP amount text, level badge glow
+val XpBarFill = Color(0xFFD4A853)         // XP progress bar fill (matches ForgedGold)
+val XpBarTrack = Color(0xFF2A2A3E)        // XP progress bar background track
+val LevelBadgeBg = Color(0xFF1A1A2E)      // Level badge circle background
+
+// ============================================
 // LEGACY ALIASES (Deprecated - use above instead)
 // Kept for backward compatibility during migration
 // ============================================

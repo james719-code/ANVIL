@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionStartActivity
@@ -30,7 +31,10 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.material3.ColorProviders
+import androidx.glance.Image
+import androidx.glance.ColorFilter
 import com.james.anvil.MainActivity
+import com.james.anvil.R
 import com.james.anvil.ui.theme.*
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -71,9 +75,9 @@ private val AnvilGlanceColors = ColorProviders(
         secondaryContainer = ElectricTeal.copy(alpha = 0.12f),
         onSecondaryContainer = ElectricTeal,
         background = BackgroundLight,
-        onBackground = TextBlack,
+        onBackground = TextPrimaryLight,
         surface = SurfaceLight,
-        onSurface = TextBlack,
+        onSurface = TextPrimaryLight,
         surfaceVariant = SurfaceElevatedLight,
         onSurfaceVariant = TextSecondaryLight,
         tertiary = WarningOrange,
@@ -91,9 +95,9 @@ private val AnvilGlanceColors = ColorProviders(
         secondaryContainer = ElectricTeal.copy(alpha = 0.24f),
         onSecondaryContainer = ElectricTeal,
         background = BackgroundDark,
-        onBackground = TextWhite,
+        onBackground = TextPrimaryDark,
         surface = SurfaceDark,
-        onSurface = TextWhite,
+        onSurface = TextPrimaryDark,
         surfaceVariant = SurfaceElevatedDark,
         onSurfaceVariant = TextSecondaryDark,
         tertiary = WarningOrange,
@@ -108,57 +112,88 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(20.dp)
+            .cornerRadius(24.dp)
             .background(GlanceTheme.colors.surface)
-            .padding(16.dp)
             .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
     ) {
         Column(
-            modifier = GlanceModifier.fillMaxSize(),
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // Professional header
+            // ─── Header ────────────────────────────────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.Start
             ) {
-                // Brand accent bar
+                // Gradient accent bar (brand identity)
                 Box(
                     modifier = GlanceModifier
                         .width(3.dp)
-                        .height(16.dp)
+                        .height(18.dp)
                         .cornerRadius(2.dp)
                         .background(GlanceTheme.colors.primary),
                     content = {}
                 )
                 Spacer(modifier = GlanceModifier.width(8.dp))
-                Text(
-                    text = "ANVIL",
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                Column {
+                    Text(
+                        text = "ANVIL",
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                )
+                    Text(
+                        text = "Productivity",
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    )
+                }
                 Spacer(modifier = GlanceModifier.defaultWeight())
-                // Status indicator
-                Text(
-                    text = if (stats.pendingTasks > 0) "Active" else "Clear",
-                    style = TextStyle(
-                        color = if (stats.pendingTasks > 0) 
-                            GlanceTheme.colors.tertiary 
-                        else 
-                            GlanceTheme.colors.secondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
+                // Live status pill
+                Box(
+                    modifier = GlanceModifier
+                        .cornerRadius(12.dp)
+                        .background(
+                            if (stats.pendingTasks > 0)
+                                GlanceTheme.colors.tertiary
+                            else
+                                GlanceTheme.colors.secondary
+                        )
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = if (stats.pendingTasks > 0) "⚡ Active" else "✓ Clear",
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onPrimary,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                )
+                }
             }
-            
-            Spacer(modifier = GlanceModifier.height(14.dp))
-            
-            // Stats Grid - Row 1
+
+            Spacer(modifier = GlanceModifier.height(12.dp))
+
+            // ─── Thin separator ────────────────────────────
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(GlanceTheme.colors.surfaceVariant),
+                content = {}
+            )
+
+            Spacer(modifier = GlanceModifier.height(12.dp))
+
+            // ─── Stats Row 1: Pending + Completed ─────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
@@ -166,60 +201,76 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                 StatCard(
                     value = stats.pendingTasks.toString(),
                     label = "Pending",
+                    emoji = "📋",
                     isHighlighted = stats.pendingTasks > 0,
                     modifier = GlanceModifier.defaultWeight()
                 )
-                
-                Spacer(modifier = GlanceModifier.width(10.dp))
-                
+
+                Spacer(modifier = GlanceModifier.width(8.dp))
+
                 StatCard(
                     value = stats.completedToday.toString(),
-                    label = "Completed",
+                    label = "Done Today",
+                    emoji = "✅",
                     isSuccess = true,
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
-            
-            Spacer(modifier = GlanceModifier.height(10.dp))
-            
-            // Stats Grid - Row 2
+
+            Spacer(modifier = GlanceModifier.height(8.dp))
+
+            // ─── Stats Row 2: Progress + Blocks ───────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Progress indicator with refined style
+                // Progress card — hero-style with primary accent
                 Box(
                     modifier = GlanceModifier
                         .defaultWeight()
-                        .cornerRadius(14.dp)
+                        .cornerRadius(16.dp)
                         .background(GlanceTheme.colors.primaryContainer)
                         .padding(12.dp)
                 ) {
                     Column {
-                        Text(
-                            text = "${(stats.dailyProgress * 100).toInt()}%",
-                            style = TextStyle(
-                                color = GlanceTheme.colors.primary,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = "${(stats.dailyProgress * 100).toInt()}",
+                                style = TextStyle(
+                                    color = GlanceTheme.colors.primary,
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             )
-                        )
+                            Text(
+                                text = "%",
+                                style = TextStyle(
+                                    color = GlanceTheme.colors.primary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.height(2.dp))
                         Text(
                             text = "Weekly Progress",
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         )
                     }
                 }
-                
-                Spacer(modifier = GlanceModifier.width(10.dp))
-                
+
+                Spacer(modifier = GlanceModifier.width(8.dp))
+
                 StatCard(
                     value = stats.activeBlocks.toString(),
-                    label = "Active Blocks",
+                    label = "Blocked",
+                    emoji = "🛡️",
                     modifier = GlanceModifier.defaultWeight()
                 )
             }
@@ -231,6 +282,7 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
 private fun StatCard(
     value: String,
     label: String,
+    emoji: String = "",
     modifier: GlanceModifier = GlanceModifier,
     isHighlighted: Boolean = false,
     isSuccess: Boolean = false
@@ -240,27 +292,34 @@ private fun StatCard(
         isHighlighted -> GlanceTheme.colors.tertiaryContainer
         else -> GlanceTheme.colors.surfaceVariant
     }
-    
+
     val valueColor = when {
         isSuccess -> GlanceTheme.colors.secondary
         isHighlighted -> GlanceTheme.colors.tertiary
         else -> GlanceTheme.colors.onSurface
     }
-    
+
     Box(
         modifier = modifier
-            .cornerRadius(14.dp)
+            .cornerRadius(16.dp)
             .background(backgroundColor)
             .padding(12.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.Start
         ) {
+            if (emoji.isNotEmpty()) {
+                Text(
+                    text = emoji,
+                    style = TextStyle(fontSize = 12.sp)
+                )
+                Spacer(modifier = GlanceModifier.height(4.dp))
+            }
             Text(
                 text = value,
                 style = TextStyle(
                     color = valueColor,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -268,11 +327,10 @@ private fun StatCard(
                 text = label,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Medium
                 )
             )
         }
     }
 }
-

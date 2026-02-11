@@ -16,6 +16,9 @@ interface HistoryDao {
     
     @Query("SELECT domain, COUNT(*) as count FROM visited_links GROUP BY domain ORDER BY count DESC LIMIT 20")
     fun getTopDomains(): Flow<List<DomainCount>>
+
+    @Query("DELETE FROM visited_links WHERE timestamp < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long)
 }
 
 data class DomainCount(

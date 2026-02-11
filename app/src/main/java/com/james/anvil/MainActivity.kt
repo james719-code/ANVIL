@@ -55,6 +55,7 @@ import com.james.anvil.ui.BlocklistScreen
 import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.SplashScreen
 import com.james.anvil.ui.AboutScreen
+import com.james.anvil.ui.ForgeProfileScreen
 import android.content.Intent
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
@@ -101,6 +102,7 @@ class MainActivity : ComponentActivity() {
                 ANVILTheme(darkTheme = isDarkTheme) {
                     var showSettings by remember { mutableStateOf(false) }
                     var showAbout by remember { mutableStateOf(false) }
+                    var showForgeProfile by remember { mutableStateOf(false) }
                     var showSplash by remember { mutableStateOf(false) }
                     var loadingProgress by remember { mutableFloatStateOf(100f) }
                     var isLoading by remember { mutableStateOf(false) }
@@ -109,6 +111,9 @@ class MainActivity : ComponentActivity() {
                     
                     
                     // Handle back button when settings or about is open
+                BackHandler(enabled = showForgeProfile) {
+                    showForgeProfile = false
+                }
                 BackHandler(enabled = showAbout) {
                     showAbout = false
                 }
@@ -126,6 +131,7 @@ class MainActivity : ComponentActivity() {
                         MainScreen(
                             viewModel = viewModel, 
                             onNavigateToSettings = { showSettings = true },
+                            onNavigateToForge = { showForgeProfile = true },
                             onPagesPreloaded = {
                                 if (isLoading) {
                                     scope.launch {
@@ -168,6 +174,23 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AboutScreen(
                                 onBack = { showAbout = false }
+                            )
+                        }
+
+                        // Forge Profile Overlay - Slides over the main content
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showForgeProfile,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            ForgeProfileScreen(
+                                onNavigateBack = { showForgeProfile = false }
                             )
                         }
                         
@@ -220,6 +243,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     viewModel: TaskViewModel, 
     onNavigateToSettings: () -> Unit,
+    onNavigateToForge: () -> Unit = {},
     onPagesPreloaded: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -262,7 +286,8 @@ fun MainScreen(
                         snackbarHostState = snackbarHostState,
                         onNavigateToPage = { targetPage ->
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
-                        }
+                        },
+                        onNavigateToForge = onNavigateToForge
                     )
                 }
                 
@@ -303,7 +328,8 @@ fun MainScreen(
                         snackbarHostState = snackbarHostState,
                         onNavigateToPage = { targetPage ->
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
-                        }
+                        },
+                        onNavigateToForge = onNavigateToForge
                     )
                 }
             }
@@ -323,12 +349,14 @@ private fun ScreenContent(
     page: Int,
     viewModel: TaskViewModel,
     snackbarHostState: SnackbarHostState,
-    onNavigateToPage: (Int) -> Unit
+    onNavigateToPage: (Int) -> Unit,
+    onNavigateToForge: () -> Unit = {}
 ) {
     when (page) {
         0 -> DashboardScreen(
             viewModel = viewModel,
-            onNavigateToPage = onNavigateToPage
+            onNavigateToPage = onNavigateToPage,
+            onNavigateToForge = onNavigateToForge
         )
         1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
         2 -> BudgetScreen()

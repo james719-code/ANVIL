@@ -17,9 +17,10 @@ import androidx.room.TypeConverters
         BudgetEntry::class,
         Loan::class,
         LoanRepayment::class,
-        HabitContribution::class
+        HabitContribution::class,
+        UserProgress::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -32,6 +33,7 @@ abstract class AnvilDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun loanDao(): LoanDao
     abstract fun habitContributionDao(): HabitContributionDao
+    abstract fun userProgressDao(): UserProgressDao
 
     companion object {
         @Volatile
@@ -115,6 +117,24 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration to add XP & Leveling system.
+         * Creates the user_progress table for tracking XP events.
+         */
+        private val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `user_progress` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `xpAmount` INTEGER NOT NULL,
+                        `source` TEXT NOT NULL,
+                        `sourceLabel` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL
+                    )
+                """)
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -122,7 +142,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .build()
                 INSTANCE = instance
                 instance

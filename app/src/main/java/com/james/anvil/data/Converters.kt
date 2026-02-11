@@ -51,4 +51,10 @@ class Converters {
 
     @TypeConverter
     fun toBlockScheduleType(value: String): BlockScheduleType = BlockScheduleType.valueOf(value)
+
+    @TypeConverter
+    fun fromXpSource(value: XpSource): String = value.name
+
+    @TypeConverter
+    fun toXpSource(value: String): XpSource = XpSource.valueOf(value)
 }
