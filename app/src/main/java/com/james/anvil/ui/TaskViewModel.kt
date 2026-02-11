@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.BonusTask
-import com.james.anvil.data.HabitContribution
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.core.BonusManager
@@ -37,9 +36,9 @@ class TaskViewModel @Inject constructor(
     private val db = AnvilDatabase.getDatabase(application)
     private val taskDao = db.taskDao()
     private val bonusTaskDao = db.bonusTaskDao()
-    private val habitContributionDao = db.habitContributionDao()
     private val prefs: SharedPreferences = application.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
     private val bonusManager = BonusManager(application)
+    private val levelManager = com.james.anvil.core.LevelManager(application)
 
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
@@ -95,79 +94,6 @@ class TaskViewModel @Inject constructor(
 
     val bonusTaskCount: Flow<Int> = bonusTaskDao.countBonusTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
-
-    // Habit Contributions (days with no pending tasks)
-    val habitContributions: Flow<List<HabitContribution>> = habitContributionDao.observeAllContributions()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
-
-    // Streak System
-    private val _currentStreak = MutableStateFlow(0)
-    val currentStreak: StateFlow<Int> = _currentStreak.asStateFlow()
-
-    init {
-        // Calculate Streak whenever contributions change
-        viewModelScope.launch {
-            habitContributions.collect { contributions ->
-                _currentStreak.value = calculateCurrentStreak(contributions)
-            }
-        }
-    }
-
-    private fun calculateCurrentStreak(contributions: List<HabitContribution>): Int {
-        if (contributions.isEmpty()) return 0
-        
-        val sorted = contributions.sortedByDescending { it.date }
-        val today = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val yesterday = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
-        
-        val todayMs = today.timeInMillis
-        val yesterdayMs = yesterday.timeInMillis
-        
-        // precise check for day boundaries
-        fun isSameDay(date1: Long, date2: Long): Boolean {
-             val c1 = Calendar.getInstance().apply { timeInMillis = date1 }
-             val c2 = Calendar.getInstance().apply { timeInMillis = date2 }
-             return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
-                    c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
-        }
-
-        // Check if streak is active (has contribution for Today OR Yesterday)
-        // If the most recent contribution is older than yesterday, streak is broken -> 0
-        val latestDate = sorted.first().date
-        if (!isSameDay(latestDate, todayMs) && !isSameDay(latestDate, yesterdayMs)) {
-            return 0
-        }
-
-        var streak = 0
-        var expectedDate = if (isSameDay(latestDate, todayMs)) today else yesterday
-        
-        // We iterate through sorted contributions
-        for (contribution in sorted) {
-            val contributionCal = Calendar.getInstance().apply { timeInMillis = contribution.date }
-            
-            // Normalize contribution date to start of day for comparison
-            contributionCal.set(Calendar.HOUR_OF_DAY, 0)
-            contributionCal.set(Calendar.MINUTE, 0)
-            contributionCal.set(Calendar.SECOND, 0)
-            contributionCal.set(Calendar.MILLISECOND, 0)
-
-            if (contributionCal.get(Calendar.YEAR) == expectedDate.get(Calendar.YEAR) &&
-                contributionCal.get(Calendar.DAY_OF_YEAR) == expectedDate.get(Calendar.DAY_OF_YEAR)) {
-                streak++
-                expectedDate.add(Calendar.DAY_OF_YEAR, -1) // Expect previous day next
-            } else {
-                 if (contributionCal.timeInMillis < expectedDate.timeInMillis) {
-                     break
-                 }
-            }
-        }
-        return streak
-    }
 
     private val _dailyQuote = MutableStateFlow("")
     val dailyQuote: StateFlow<String> = _dailyQuote.asStateFlow()
@@ -286,6 +212,7 @@ class TaskViewModel @Inject constructor(
                 task.copy(isCompleted = true, completedAt = now)
             }
             taskDao.update(completedTask)
+            levelManager.awardTaskXp(task.title, task.hardnessLevel)
             StatsWidget.refreshAll(getApplication())
         }
     }
@@ -340,6 +267,7 @@ class TaskViewModel @Inject constructor(
             )
             bonusTaskDao.insert(bonusTask)
             bonusManager.addBonusTask()
+            levelManager.awardBonusTaskXp(title)
             StatsWidget.refreshAll(getApplication())
         }
     }

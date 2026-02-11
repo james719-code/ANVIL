@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.HistoryCleanupWorker
 import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
 import com.james.anvil.worker.WidgetRefreshWorker
@@ -23,10 +24,12 @@ object WorkerScheduler {
     // Work names for unique work identification
     private const val WORK_NAME_REMINDER = "AnvilReminderCheck"
     private const val WORK_NAME_DAILY_RESET = "AnvilDailyReset"
+    private const val WORK_NAME_HISTORY_CLEANUP = "AnvilHistoryCleanup"
     
     // Intervals
     private const val REMINDER_INTERVAL_MINUTES = 15L
     private const val DAILY_RESET_INTERVAL_HOURS = 12L
+    private const val HISTORY_CLEANUP_INTERVAL_HOURS = 24L
     private const val WIDGET_REFRESH_INTERVAL_MINUTES = 30L
     
     // Backoff settings
@@ -43,6 +46,7 @@ object WorkerScheduler {
         scheduleDailyResetWorker(workManager)
         scheduleWidgetRefreshWorker(workManager)
         scheduleMidnightContributionWorker(workManager)
+        scheduleHistoryCleanupWorker(workManager)
     }
     
     /**
@@ -170,6 +174,34 @@ object WorkerScheduler {
     }
     
     /**
+     * Schedules the history cleanup worker.
+     * Runs once daily to delete visited-link entries older than 30 days.
+     */
+    private fun scheduleHistoryCleanupWorker(workManager: WorkManager) {
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .build()
+        
+        val request = PeriodicWorkRequestBuilder<HistoryCleanupWorker>(
+            HISTORY_CLEANUP_INTERVAL_HOURS, TimeUnit.HOURS
+        )
+            .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                BACKOFF_DELAY_SECONDS,
+                TimeUnit.SECONDS
+            )
+            .addTag(TAG_HISTORY_CLEANUP)
+            .build()
+        
+        workManager.enqueueUniquePeriodicWork(
+            WORK_NAME_HISTORY_CLEANUP,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+    
+    /**
      * Cancels all scheduled work.
      * Useful for cleanup or when user disables features.
      */
@@ -179,6 +211,7 @@ object WorkerScheduler {
         workManager.cancelUniqueWork(WORK_NAME_DAILY_RESET)
         workManager.cancelUniqueWork(WidgetRefreshWorker.WORK_NAME)
         workManager.cancelUniqueWork(MidnightContributionWorker.WORK_NAME)
+        workManager.cancelUniqueWork(WORK_NAME_HISTORY_CLEANUP)
     }
     
     /**
@@ -193,4 +226,5 @@ object WorkerScheduler {
     const val TAG_DAILY_RESET = "daily_reset_worker"
     const val TAG_WIDGET_REFRESH = "widget_refresh_worker"
     const val TAG_MIDNIGHT_CONTRIBUTION = "midnight_contribution_worker"
+    const val TAG_HISTORY_CLEANUP = "history_cleanup_worker"
 }
