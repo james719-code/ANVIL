@@ -3,6 +3,7 @@ package com.james.anvil.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.james.anvil.core.BlockingConstants
@@ -29,6 +30,10 @@ enum class BlockType {
 }
 
 class AnvilAccessibilityService : AccessibilityService() {
+
+    companion object {
+        private const val TAG = "AnvilAccessibility"
+    }
 
     private lateinit var decisionEngine: DecisionEngine
     private lateinit var db: AnvilDatabase
@@ -121,7 +126,7 @@ class AnvilAccessibilityService : AccessibilityService() {
                         looksLikeCompleteUrl(currentUrl) &&
                         currentUrl != lastConfirmedUrl
                 
-                if (shouldCheckUrl && currentUrl != null) {
+                if (shouldCheckUrl) {
                     lastConfirmedUrl = currentUrl
                     
                     val browserPkg = packageName
@@ -163,7 +168,7 @@ class AnvilAccessibilityService : AccessibilityService() {
             }
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error processing accessibility event for $packageName", e)
         } finally {
             // CRITICAL: Must recycle the root node to prevent memory leaks
             rootNode.recycle()

@@ -22,7 +22,14 @@ object DatabaseModule {
             AnvilDatabase::class.java,
             "anvil_database"
         )
-        .fallbackToDestructiveMigration()
+        .addMigrations(
+            AnvilDatabase.MIGRATION_7_8,
+            AnvilDatabase.MIGRATION_8_9,
+            AnvilDatabase.MIGRATION_9_10,
+            AnvilDatabase.MIGRATION_10_11,
+            AnvilDatabase.MIGRATION_11_12,
+            AnvilDatabase.MIGRATION_12_13
+        )
         .build()
     }
 

@@ -39,7 +39,7 @@ abstract class AnvilDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AnvilDatabase? = null
 
-        private val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
+        val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 // Add new columns to budget_entries
                 database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `categoryType` TEXT NOT NULL DEFAULT 'NONE'")
@@ -50,7 +50,7 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
+        val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE `loans` ADD COLUMN `interestRate` REAL NOT NULL DEFAULT 0.0")
                 database.execSQL("ALTER TABLE `loans` ADD COLUMN `totalExpectedAmount` REAL NOT NULL DEFAULT 0.0")
@@ -65,7 +65,7 @@ abstract class AnvilDatabase : RoomDatabase() {
          * - startTimeMinutes: 0 (midnight start)
          * - endTimeMinutes: 1439 (11:59 PM end = all day)
          */
-        private val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+        val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 // Add schedule columns to blocked_apps table
                 database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `scheduleType` TEXT NOT NULL DEFAULT 'EVERYDAY'")
@@ -86,7 +86,7 @@ abstract class AnvilDatabase : RoomDatabase() {
          * Creates the habit_contributions table for tracking days
          * where no tasks were pending (green days on contribution graph).
          */
-        private val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+        val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS `habit_contributions` (
@@ -105,7 +105,7 @@ abstract class AnvilDatabase : RoomDatabase() {
          * Adds startDayOfWeek and endDayOfWeek columns for CUSTOM_RANGE schedule type.
          * These fields are nullable for backward compatibility.
          */
-        private val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 // Add day of week columns to blocked_apps table
                 database.execSQL("ALTER TABLE `blocked_apps` ADD COLUMN `startDayOfWeek` INTEGER")
@@ -121,7 +121,7 @@ abstract class AnvilDatabase : RoomDatabase() {
          * Migration to add XP & Leveling system.
          * Creates the user_progress table for tracking XP events.
          */
-        private val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+        val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS `user_progress` (

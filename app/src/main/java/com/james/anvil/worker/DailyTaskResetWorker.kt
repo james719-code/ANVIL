@@ -1,6 +1,7 @@
 package com.james.anvil.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.james.anvil.data.AnvilDatabase
@@ -11,23 +12,33 @@ class DailyTaskResetWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
+    companion object {
+        private const val TAG = "DailyTaskResetWorker"
+    }
+
     override suspend fun doWork(): Result {
-        val db = AnvilDatabase.getDatabase(applicationContext)
-        val taskDao = db.taskDao()
-        
-        val startOfToday = getStartOfDay(System.currentTimeMillis())
-        
-        val dailyTasksToReset = taskDao.getDailyTasksNeedingReset(startOfToday)
-        
-        dailyTasksToReset.forEach { task ->
-            val resetTask = task.copy(
-                isCompleted = false,
-                reminderSent = false
-            )
-            taskDao.update(resetTask)
+        return try {
+            val db = AnvilDatabase.getDatabase(applicationContext)
+            val taskDao = db.taskDao()
+
+            val startOfToday = getStartOfDay(System.currentTimeMillis())
+
+            val dailyTasksToReset = taskDao.getDailyTasksNeedingReset(startOfToday)
+
+            dailyTasksToReset.forEach { task ->
+                val resetTask = task.copy(
+                    isCompleted = false,
+                    reminderSent = false
+                )
+                taskDao.update(resetTask)
+            }
+
+            Log.d(TAG, "Reset ${dailyTasksToReset.size} daily tasks")
+            Result.success()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reset daily tasks", e)
+            Result.retry()
         }
-        
-        return Result.success()
     }
     
     private fun getStartOfDay(time: Long): Long {
