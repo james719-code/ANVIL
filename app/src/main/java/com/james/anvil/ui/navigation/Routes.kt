@@ -39,6 +39,9 @@ object LoansRoute
 @Serializable
 object ForgeProfileRoute
 
+@Serializable
+object FocusSessionRoute
+
 // ============================================
 // DETAIL DESTINATIONS (With Arguments)
 // ============================================

@@ -22,5 +22,8 @@ data class Task(
     val lastCompletedDate: Long? = null,
     
     // Hardness level: 1-5, represents days before deadline task must be completed
-    val hardnessLevel: Int = 1
+    val hardnessLevel: Int = 1,
+    
+    // Freeform notes/description
+    val notes: String = ""
 )

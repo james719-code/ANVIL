@@ -17,6 +17,7 @@ import com.james.anvil.ui.DashboardScreen
 import com.james.anvil.ui.EditTaskScreen
 import com.james.anvil.ui.BudgetScreen
 import com.james.anvil.ui.ForgeProfileScreen
+import com.james.anvil.ui.FocusSessionScreen
 import androidx.compose.material3.SnackbarHostState
 
 private const val NAV_ANIMATION_DURATION = 300
@@ -88,6 +89,12 @@ fun NavigationGraph(
 
         composable<ForgeProfileRoute> {
             ForgeProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<FocusSessionRoute> {
+            FocusSessionScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

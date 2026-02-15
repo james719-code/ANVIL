@@ -24,5 +24,6 @@ enum class XpSource {
     BONUS,      // Bonus task completion
     STREAK,     // Daily streak maintenance
     BUDGET,     // Logging a budget entry
-    LOAN        // Paying off a loan
+    LOAN,       // Paying off a loan
+    FOCUS       // Focus session completion
 }

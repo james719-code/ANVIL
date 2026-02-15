@@ -391,8 +391,8 @@ fun TasksScreen(
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
                 },
-                onTaskAdded = { title, deadline, category, steps, isDaily, hardnessLevel ->
-                    viewModel.addTask(title, deadline, category, steps, isDaily, hardnessLevel)
+                onTaskAdded = { title, deadline, category, steps, isDaily, hardnessLevel, notes ->
+                    viewModel.addTask(title, deadline, category, steps, isDaily, hardnessLevel, notes)
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) showAddTaskSheet = false
                     }
@@ -605,6 +605,17 @@ fun TaskInfoBottomSheetContent(
             Spacer(modifier = Modifier.height(8.dp))
         }
         Text(text = "Status: ${if (task.isCompleted) "Completed" else "Pending"}")
+
+        if (task.notes.isNotBlank()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Notes:", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = task.notes,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         if (task.isCompleted && task.completedAt != null) {
             Text(text = "Completed at: ${formatDate(task.completedAt)}")
         }
@@ -650,6 +661,7 @@ fun EditTaskBottomSheetContent(
 ) {
     var title by remember { mutableStateOf(task.title) }
     var category by remember { mutableStateOf(task.category) }
+    var notes by remember { mutableStateOf(task.notes) }
     var steps by remember { mutableStateOf(task.steps) }
     var currentStepTitle by remember { mutableStateOf("") }
     var isDaily by remember { mutableStateOf(task.isDaily) }
@@ -694,6 +706,16 @@ fun EditTaskBottomSheetContent(
             onValueChange = { title = it },
             label = { Text("Task Title") },
             modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text("Notes (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            maxLines = 4
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -828,7 +850,8 @@ fun EditTaskBottomSheetContent(
                         category = category.ifBlank { "General" }, 
                         steps = steps,
                         isDaily = isDaily,
-                        hardnessLevel = hardnessLevel.toInt()
+                        hardnessLevel = hardnessLevel.toInt(),
+                        notes = notes
                     ))
                 }
             }) {
@@ -843,10 +866,11 @@ fun EditTaskBottomSheetContent(
 fun AddTaskBottomSheetContent(
     existingCategories: List<String>,
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Long, String, List<TaskStep>, Boolean, Int) -> Unit
+    onTaskAdded: (String, Long, String, List<TaskStep>, Boolean, Int, String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
     var steps by remember { mutableStateOf(listOf<TaskStep>()) }
     var currentStepTitle by remember { mutableStateOf("") }
     var isDaily by remember { mutableStateOf(false) }
@@ -891,6 +915,16 @@ fun AddTaskBottomSheetContent(
             onValueChange = { title = it },
             label = { Text("Task Title") },
             modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text("Notes (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            maxLines = 4
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -1015,7 +1049,7 @@ fun AddTaskBottomSheetContent(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt())
+                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt(), notes)
                 }
             }) {
                 Text("Create")

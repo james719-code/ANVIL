@@ -28,7 +28,9 @@ object DatabaseModule {
             AnvilDatabase.MIGRATION_9_10,
             AnvilDatabase.MIGRATION_10_11,
             AnvilDatabase.MIGRATION_11_12,
-            AnvilDatabase.MIGRATION_12_13
+            AnvilDatabase.MIGRATION_12_13,
+            AnvilDatabase.MIGRATION_13_14,
+            AnvilDatabase.MIGRATION_14_15
         )
         .build()
     }
@@ -53,4 +55,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLoanDao(database: AnvilDatabase): LoanDao = database.loanDao()
+
+    @Provides
+    fun provideFocusSessionDao(database: AnvilDatabase): FocusSessionDao = database.focusSessionDao()
 }

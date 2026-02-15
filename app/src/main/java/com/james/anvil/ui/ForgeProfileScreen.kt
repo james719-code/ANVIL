@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +52,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +68,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.james.anvil.core.AchievementManager
 import com.james.anvil.core.LevelManager
+import com.james.anvil.data.Achievement
 import com.james.anvil.data.XpSource
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.theme.DesignTokens
@@ -78,6 +84,7 @@ import com.james.anvil.ui.theme.XpBarFill
 import com.james.anvil.ui.theme.XpBarTrack
 import com.james.anvil.ui.theme.XpGold
 import com.james.anvil.ui.viewmodel.LevelViewModel
+import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,6 +102,25 @@ fun ForgeProfileScreen(
     val xpForNextLevel by levelViewModel.xpForNextLevel.collectAsState()
     val xpForCurrentLevel by levelViewModel.xpForCurrentLevel.collectAsState()
     val recentEntries by levelViewModel.recentXpEntries.collectAsState(initial = emptyList())
+
+    // Achievements
+    val context = LocalContext.current
+    val achievementManager = remember { AchievementManager(context) }
+    val achievements = remember(totalXp, currentLevel) {
+        achievementManager.evaluateAchievements(
+            completedTaskCount = 0, // Will be filled from actual stats later
+            currentStreak = 0,
+            longestStreak = 0,
+            currentLevel = currentLevel,
+            budgetEntryCount = 0,
+            focusSessionCount = 0,
+            totalFocusMinutes = 0,
+            bonusTaskCount = 0,
+            iceCount = 0,
+            loansCleared = 0
+        )
+    }
+    val unlockedCount = achievements.count { it.isUnlocked }
 
     Scaffold(
         topBar = {
@@ -140,6 +166,14 @@ fun ForgeProfileScreen(
             // Level Roadmap
             item {
                 LevelRoadmapCard(currentLevel = currentLevel)
+            }
+
+            // Achievements Gallery
+            item {
+                AchievementsGallery(
+                    achievements = achievements,
+                    unlockedCount = unlockedCount
+                )
             }
 
             // Activity Feed Header
@@ -449,6 +483,95 @@ private fun LevelRoadmapCard(currentLevel: Int) {
         }
     }
 }
+// ============================================
+// ACHIEVEMENTS GALLERY
+// ============================================
+
+@Composable
+private fun AchievementsGallery(
+    achievements: List<Achievement>,
+    unlockedCount: Int
+) {
+    AnvilCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(DesignTokens.SpacingMd)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Achievements",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$unlockedCount / ${achievements.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ForgedGold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingSm))
+
+            // Grid of achievement badges
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                modifier = Modifier.height(
+                    // Calculate height based on rows needed
+                    ((achievements.size + 3) / 4 * 96).dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                userScrollEnabled = false
+            ) {
+                items(achievements) { achievement ->
+                    AchievementBadge(achievement)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AchievementBadge(achievement: Achievement) {
+    Column(
+        modifier = Modifier
+            .background(
+                if (achievement.isUnlocked)
+                    ForgedGold.copy(alpha = 0.08f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = if (achievement.isUnlocked) achievement.icon else "🔒",
+            fontSize = 24.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = achievement.title,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = if (achievement.isUnlocked)
+                MaterialTheme.colorScheme.onSurface
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+    }
+}
 
 // ============================================
 // XP ACTIVITY ITEM
@@ -467,6 +590,7 @@ private fun XpActivityItem(
         XpSource.STREAK -> Icons.Outlined.LocalFireDepartment to ForgedGold
         XpSource.BUDGET -> Icons.Outlined.Receipt to SuccessGreen
         XpSource.LOAN -> Icons.Outlined.Payments to ForgedGold
+        XpSource.FOCUS -> Icons.Outlined.CheckCircle to ElectricTeal
     }
 
     val dateFormat = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())

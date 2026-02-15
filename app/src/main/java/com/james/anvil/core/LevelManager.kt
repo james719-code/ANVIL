@@ -56,6 +56,7 @@ class LevelManager(context: Context) {
         const val XP_PER_STREAK_BASE = 10     // Multiplied by streak day count
         const val XP_PER_BUDGET_ENTRY = 5
         const val XP_PER_LOAN_PAYOFF = 50
+        const val XP_PER_FOCUS_SESSION = 30
     }
 
     // ================================================
@@ -82,6 +83,10 @@ class LevelManager(context: Context) {
 
     fun awardLoanPayoffXp(borrowerName: String) {
         awardXp(XP_PER_LOAN_PAYOFF, XpSource.LOAN, "Paid off: $borrowerName")
+    }
+
+    fun awardFocusSessionXp(minutes: Int) {
+        awardXp(XP_PER_FOCUS_SESSION, XpSource.FOCUS, "Focus: ${minutes}min session")
     }
 
     private fun awardXp(amount: Int, source: XpSource, label: String) {

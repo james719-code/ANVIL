@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,6 +44,7 @@ import com.james.anvil.ui.components.MotivationCard
 import com.james.anvil.ui.components.StreakCard
 import com.james.anvil.data.HabitContribution
 import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.ElectricBlue
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.InfoBlue
@@ -62,7 +64,8 @@ fun DashboardScreen(
     blocklistViewModel: BlocklistViewModel = hiltViewModel(),
     streakViewModel: StreakViewModel = hiltViewModel(),
     onNavigateToPage: ((Int) -> Unit)? = null,
-    onNavigateToForge: (() -> Unit)? = null
+    onNavigateToForge: (() -> Unit)? = null,
+    onNavigateToFocus: (() -> Unit)? = null
 ) {
     val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
     val totalPendingCount by viewModel.totalPendingCount.collectAsState(initial = 0)
@@ -195,40 +198,55 @@ fun DashboardScreen(
                 )
             }
 
-            // Quick Stats Row - Adaptive for larger screens
+            // Quick Stats Grid - 2x2 layout
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
-                ) {
-                    // Pending
-                    StatChip(
-                        modifier = Modifier.weight(1f),
-                        onClick = { onNavigateToPage?.invoke(1) },
-                        icon = Icons.Outlined.Schedule,
-                        label = "Pending",
-                        value = "$totalPendingCount",
-                        color = InfoBlue
-                    )
-                    // Completed
-                    StatChip(
-                        modifier = Modifier.weight(1f),
-                        onClick = { onNavigateToPage?.invoke(1) },
-                        icon = Icons.Outlined.CheckCircle,
-                        label = "Done",
-                        value = "$completedTodayCount",
-                        color = ElectricTeal
-                    )
-                    // Bonus
-                    StatChip(
-                        modifier = Modifier.weight(1f),
-                        onClick = { onNavigateToPage?.invoke(4) },
-                        icon = Icons.Outlined.Star,
-                        label = "Bonus",
-                        value = "$bonusTaskCount",
-                        color = WarningOrange
-                    )
-
+                Column(verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
+                    ) {
+                        // Pending
+                        StatChip(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigateToPage?.invoke(1) },
+                            icon = Icons.Outlined.Schedule,
+                            label = "Pending",
+                            value = "$totalPendingCount",
+                            color = InfoBlue
+                        )
+                        // Completed
+                        StatChip(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigateToPage?.invoke(1) },
+                            icon = Icons.Outlined.CheckCircle,
+                            label = "Done",
+                            value = "$completedTodayCount",
+                            color = ElectricTeal
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
+                    ) {
+                        // Bonus
+                        StatChip(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigateToPage?.invoke(4) },
+                            icon = Icons.Outlined.Star,
+                            label = "Bonus",
+                            value = "$bonusTaskCount",
+                            color = WarningOrange
+                        )
+                        // Focus
+                        StatChip(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigateToFocus?.invoke() },
+                            icon = Icons.Outlined.Timer,
+                            label = "Focus",
+                            value = "▶",
+                            color = ElectricBlue
+                        )
+                    }
                 }
             }
             

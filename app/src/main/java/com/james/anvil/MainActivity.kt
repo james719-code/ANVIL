@@ -56,6 +56,7 @@ import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.SplashScreen
 import com.james.anvil.ui.AboutScreen
 import com.james.anvil.ui.ForgeProfileScreen
+import com.james.anvil.ui.FocusSessionScreen
 import android.content.Intent
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
@@ -103,6 +104,7 @@ class MainActivity : ComponentActivity() {
                     var showSettings by remember { mutableStateOf(false) }
                     var showAbout by remember { mutableStateOf(false) }
                     var showForgeProfile by remember { mutableStateOf(false) }
+                    var showFocusSession by remember { mutableStateOf(false) }
                     var showSplash by remember { mutableStateOf(false) }
                     var loadingProgress by remember { mutableFloatStateOf(100f) }
                     var isLoading by remember { mutableStateOf(false) }
@@ -111,6 +113,9 @@ class MainActivity : ComponentActivity() {
                     
                     
                     // Handle back button when settings or about is open
+                BackHandler(enabled = showFocusSession) {
+                    showFocusSession = false
+                }
                 BackHandler(enabled = showForgeProfile) {
                     showForgeProfile = false
                 }
@@ -132,6 +137,7 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel, 
                             onNavigateToSettings = { showSettings = true },
                             onNavigateToForge = { showForgeProfile = true },
+                            onNavigateToFocus = { showFocusSession = true },
                             onPagesPreloaded = {
                                 if (isLoading) {
                                     scope.launch {
@@ -193,6 +199,23 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { showForgeProfile = false }
                             )
                         }
+
+                        // Focus Session Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showFocusSession,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            FocusSessionScreen(
+                                onNavigateBack = { showFocusSession = false }
+                            )
+                        }
                         
                         // Splash Screen Overlay
                         if (showSplash) {
@@ -244,6 +267,7 @@ fun MainScreen(
     viewModel: TaskViewModel, 
     onNavigateToSettings: () -> Unit,
     onNavigateToForge: () -> Unit = {},
+    onNavigateToFocus: () -> Unit = {},
     onPagesPreloaded: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -287,7 +311,8 @@ fun MainScreen(
                         onNavigateToPage = { targetPage ->
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
                         },
-                        onNavigateToForge = onNavigateToForge
+                        onNavigateToForge = onNavigateToForge,
+                        onNavigateToFocus = onNavigateToFocus
                     )
                 }
                 
@@ -329,7 +354,8 @@ fun MainScreen(
                         onNavigateToPage = { targetPage ->
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
                         },
-                        onNavigateToForge = onNavigateToForge
+                        onNavigateToForge = onNavigateToForge,
+                        onNavigateToFocus = onNavigateToFocus
                     )
                 }
             }
@@ -350,13 +376,15 @@ private fun ScreenContent(
     viewModel: TaskViewModel,
     snackbarHostState: SnackbarHostState,
     onNavigateToPage: (Int) -> Unit,
-    onNavigateToForge: () -> Unit = {}
+    onNavigateToForge: () -> Unit = {},
+    onNavigateToFocus: () -> Unit = {}
 ) {
     when (page) {
         0 -> DashboardScreen(
             viewModel = viewModel,
             onNavigateToPage = onNavigateToPage,
-            onNavigateToForge = onNavigateToForge
+            onNavigateToForge = onNavigateToForge,
+            onNavigateToFocus = onNavigateToFocus
         )
         1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
         2 -> BudgetScreen()

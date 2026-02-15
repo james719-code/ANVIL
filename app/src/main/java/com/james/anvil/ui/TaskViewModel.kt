@@ -183,7 +183,7 @@ class TaskViewModel @Inject constructor(
         prefs.edit().putBoolean(PrefsKeys.ONBOARDING_COMPLETED, false).apply()
     }
 
-    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1) {
+    fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1, notes: String = "") {
         viewModelScope.launch {
             val task = Task(
                 title = title,
@@ -192,7 +192,8 @@ class TaskViewModel @Inject constructor(
                 steps = steps,
                 createdAt = System.currentTimeMillis(),
                 isDaily = isDaily,
-                hardnessLevel = hardnessLevel.coerceIn(1, 5)
+                hardnessLevel = hardnessLevel.coerceIn(1, 5),
+                notes = notes
             )
             taskDao.insert(task)
             StatsWidget.refreshAll(getApplication())

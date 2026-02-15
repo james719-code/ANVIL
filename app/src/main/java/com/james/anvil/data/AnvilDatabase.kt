@@ -18,9 +18,10 @@ import androidx.room.TypeConverters
         Loan::class,
         LoanRepayment::class,
         HabitContribution::class,
-        UserProgress::class
+        UserProgress::class,
+        FocusSession::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -34,6 +35,7 @@ abstract class AnvilDatabase : RoomDatabase() {
     abstract fun loanDao(): LoanDao
     abstract fun habitContributionDao(): HabitContributionDao
     abstract fun userProgressDao(): UserProgressDao
+    abstract fun focusSessionDao(): FocusSessionDao
 
     companion object {
         @Volatile
@@ -135,6 +137,35 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration to add notes field to tasks.
+         */
+        val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `tasks` ADD COLUMN `notes` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * Migration to add focus sessions table.
+         */
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `focus_sessions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `startTime` INTEGER NOT NULL,
+                        `endTime` INTEGER NOT NULL,
+                        `workMinutes` INT NOT NULL,
+                        `breakMinutes` INT NOT NULL,
+                        `sessionsCompleted` INT NOT NULL,
+                        `totalFocusMinutes` INT NOT NULL,
+                        `isCompleted` INTEGER NOT NULL DEFAULT 1
+                    )
+                """)
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -142,7 +173,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                 .build()
                 INSTANCE = instance
                 instance
