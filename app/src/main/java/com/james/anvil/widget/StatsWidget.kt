@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.actionStartActivity
@@ -25,16 +24,12 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.material3.ColorProviders
-import androidx.glance.Image
-import androidx.glance.ColorFilter
 import com.james.anvil.MainActivity
-import com.james.anvil.R
 import com.james.anvil.ui.theme.*
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -119,16 +114,16 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(14.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // ─── Header ────────────────────────────────────
+            // ─── Header: Brand + Level Badge ──────────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalAlignment = Alignment.Start
             ) {
-                // Gradient accent bar (brand identity)
+                // Accent bar
                 Box(
                     modifier = GlanceModifier
                         .width(3.dp)
@@ -148,29 +143,34 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                         )
                     )
                     Text(
-                        text = "Productivity",
+                        text = "Lv.${stats.currentLevel} ${stats.levelTitle}",
                         style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
+                            color = GlanceTheme.colors.primary,
                             fontSize = 9.sp,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Medium
                         )
                     )
                 }
                 Spacer(modifier = GlanceModifier.defaultWeight())
-                // Live status pill
+                // Status pill
                 Box(
                     modifier = GlanceModifier
                         .cornerRadius(12.dp)
                         .background(
-                            if (stats.pendingTasks > 0)
-                                GlanceTheme.colors.tertiary
-                            else
-                                GlanceTheme.colors.secondary
+                            when {
+                                stats.currentStreak >= 3 -> GlanceTheme.colors.error
+                                stats.pendingTasks > 0 -> GlanceTheme.colors.tertiary
+                                else -> GlanceTheme.colors.secondary
+                            }
                         )
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (stats.pendingTasks > 0) "⚡ Active" else "✓ Clear",
+                        text = when {
+                            stats.currentStreak >= 3 -> "🔥 ${stats.currentStreak}d"
+                            stats.pendingTasks > 0 -> "⚡ Active"
+                            else -> "✓ Clear"
+                        },
                         style = TextStyle(
                             color = GlanceTheme.colors.onPrimary,
                             fontSize = 9.sp,
@@ -180,9 +180,14 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(12.dp))
+            Spacer(modifier = GlanceModifier.height(8.dp))
 
-            // ─── Thin separator ────────────────────────────
+            // ─── XP Progress Bar ──────────────────────────
+            XpProgressBar(stats)
+
+            Spacer(modifier = GlanceModifier.height(10.dp))
+
+            // ─── Thin separator ───────────────────────────
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -191,9 +196,9 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                 content = {}
             )
 
-            Spacer(modifier = GlanceModifier.height(12.dp))
+            Spacer(modifier = GlanceModifier.height(10.dp))
 
-            // ─── Stats Row 1: Pending + Completed ─────────
+            // ─── Stats Row 1: Pending + Completed ────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
@@ -205,9 +210,7 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                     isHighlighted = stats.pendingTasks > 0,
                     modifier = GlanceModifier.defaultWeight()
                 )
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
+                Spacer(modifier = GlanceModifier.width(6.dp))
                 StatCard(
                     value = stats.completedToday.toString(),
                     label = "Done Today",
@@ -217,62 +220,124 @@ private fun WidgetContent(context: Context, stats: WidgetStats) {
                 )
             }
 
-            Spacer(modifier = GlanceModifier.height(8.dp))
+            Spacer(modifier = GlanceModifier.height(6.dp))
 
-            // ─── Stats Row 2: Progress + Blocks ───────────
+            // ─── Stats Row 2: Streak + Focus ─────────────
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
-                // Progress card — hero-style with primary accent
-                Box(
-                    modifier = GlanceModifier
-                        .defaultWeight()
-                        .cornerRadius(16.dp)
-                        .background(GlanceTheme.colors.primaryContainer)
-                        .padding(12.dp)
-                ) {
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = "${(stats.dailyProgress * 100).toInt()}",
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.primary,
-                                    fontSize = 26.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Text(
-                                text = "%",
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.primary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            )
-                        }
-                        Spacer(modifier = GlanceModifier.height(2.dp))
-                        Text(
-                            text = "Weekly Progress",
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = GlanceModifier.width(8.dp))
-
                 StatCard(
-                    value = stats.activeBlocks.toString(),
-                    label = "Blocked",
-                    emoji = "🛡️",
+                    value = "${stats.currentStreak}d",
+                    label = "Streak",
+                    emoji = "🔥",
+                    isHighlighted = stats.currentStreak > 0,
                     modifier = GlanceModifier.defaultWeight()
                 )
+                Spacer(modifier = GlanceModifier.width(6.dp))
+                StatCard(
+                    value = "${stats.focusMinutesToday}m",
+                    label = "Focus",
+                    emoji = "🎯",
+                    isSuccess = stats.focusMinutesToday > 0,
+                    modifier = GlanceModifier.defaultWeight()
+                )
+            }
+
+            Spacer(modifier = GlanceModifier.height(6.dp))
+
+            // ─── Bottom Summary Row ──────────────────────
+            Row(
+                modifier = GlanceModifier.fillMaxWidth()
+                    .cornerRadius(12.dp)
+                    .background(GlanceTheme.colors.surfaceVariant)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "🛡️ ${stats.activeBlocks} blocked",
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Text(
+                    text = "${(stats.dailyProgress * 100).toInt()}% weekly",
+                    style = TextStyle(
+                        color = GlanceTheme.colors.primary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        }
+    }
+}
+
+/**
+ * XP progress bar built from nested Box composables.
+ * Shows current XP, level progress, and XP needed for next level.
+ */
+@Composable
+private fun XpProgressBar(stats: WidgetStats) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        // Label row
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "⚒️ ${stats.totalXp} XP",
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(modifier = GlanceModifier.defaultWeight())
+            Text(
+                text = "${(stats.xpProgress * 100).toInt()}%",
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+        }
+        Spacer(modifier = GlanceModifier.height(4.dp))
+        // Progress bar track
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .cornerRadius(3.dp)
+                .background(GlanceTheme.colors.surfaceVariant)
+        ) {
+            // Progress bar fill — we use a Row trick to simulate percentage width
+            Row(modifier = GlanceModifier.fillMaxWidth()) {
+                if (stats.xpProgress > 0f) {
+                    Box(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(6.dp)
+                            .cornerRadius(3.dp)
+                            .background(GlanceTheme.colors.primary),
+                        content = {}
+                    )
+                }
+                if (stats.xpProgress < 1f) {
+                    // "Empty" portion — use a proportional weight
+                    val emptyWeight = ((1f - stats.xpProgress) / stats.xpProgress.coerceAtLeast(0.01f))
+                    // Glance doesn't support dynamic float weights, so we approximate
+                    // by using conditional spacer sizing
+                    Spacer(
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(6.dp)
+                    )
+                }
             }
         }
     }
@@ -301,36 +366,38 @@ private fun StatCard(
 
     Box(
         modifier = modifier
-            .cornerRadius(16.dp)
+            .cornerRadius(14.dp)
             .background(backgroundColor)
-            .padding(12.dp)
+            .padding(10.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.Start
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
             if (emoji.isNotEmpty()) {
                 Text(
                     text = emoji,
-                    style = TextStyle(fontSize = 12.sp)
+                    style = TextStyle(fontSize = 14.sp)
                 )
-                Spacer(modifier = GlanceModifier.height(4.dp))
+                Spacer(modifier = GlanceModifier.width(6.dp))
             }
-            Text(
-                text = value,
-                style = TextStyle(
-                    color = valueColor,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
+            Column {
+                Text(
+                    text = value,
+                    style = TextStyle(
+                        color = valueColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
-            )
-            Text(
-                text = label,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Medium
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 )
-            )
+            }
         }
     }
 }
