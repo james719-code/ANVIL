@@ -58,10 +58,8 @@ class StreakViewModel @Inject constructor(
         val yesterdayMs = yesterday.timeInMillis
 
         fun isSameDay(date1: Long, date2: Long): Boolean {
-            val c1 = Calendar.getInstance().apply { timeInMillis = date1 }
-            val c2 = Calendar.getInstance().apply { timeInMillis = date2 }
-            return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
-                    c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+            val dayMillis = 86400000L
+            return date1 / dayMillis == date2 / dayMillis
         }
 
         val latestDate = sorted.first().date
@@ -73,19 +71,14 @@ class StreakViewModel @Inject constructor(
         var expectedDate = if (isSameDay(latestDate, todayMs)) today else yesterday
 
         for (contribution in sorted) {
-            val contributionCal = Calendar.getInstance().apply { timeInMillis = contribution.date }
+            val contributionMs = contribution.date
+            val normalizedMs = contributionMs - (contributionMs % 86400000L)
 
-            contributionCal.set(Calendar.HOUR_OF_DAY, 0)
-            contributionCal.set(Calendar.MINUTE, 0)
-            contributionCal.set(Calendar.SECOND, 0)
-            contributionCal.set(Calendar.MILLISECOND, 0)
-
-            if (contributionCal.get(Calendar.YEAR) == expectedDate.get(Calendar.YEAR) &&
-                contributionCal.get(Calendar.DAY_OF_YEAR) == expectedDate.get(Calendar.DAY_OF_YEAR)) {
+            if (normalizedMs / 86400000L == expectedDate.timeInMillis / 86400000L) {
                 streak++
                 expectedDate.add(Calendar.DAY_OF_YEAR, -1)
             } else {
-                if (contributionCal.timeInMillis < expectedDate.timeInMillis) {
+                if (normalizedMs < expectedDate.timeInMillis) {
                     break
                 }
             }

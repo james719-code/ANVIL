@@ -659,17 +659,63 @@ fun EditTaskBottomSheetContent(
     onDismiss: () -> Unit,
     onSave: (Task) -> Unit
 ) {
-    var title by remember { mutableStateOf(task.title) }
-    var category by remember { mutableStateOf(task.category) }
-    var notes by remember { mutableStateOf(task.notes) }
-    var steps by remember { mutableStateOf(task.steps) }
+    TaskFormContent(
+        headerTitle = "Edit Task",
+        initialTitle = task.title,
+        initialCategory = task.category,
+        initialNotes = task.notes,
+        initialSteps = task.steps,
+        initialIsDaily = task.isDaily,
+        initialHardnessLevel = task.hardnessLevel.toFloat(),
+        initialDeadline = task.deadline,
+        existingCategories = existingCategories,
+        submitButtonText = "Save",
+        onDismiss = onDismiss,
+        onSubmit = { title, deadline, category, steps, isDaily, hardnessLevel, notes ->
+            onSave(task.copy(
+                title = title,
+                deadline = deadline,
+                category = category.ifBlank { "General" },
+                steps = steps,
+                isDaily = isDaily,
+                hardnessLevel = hardnessLevel,
+                notes = notes
+            ))
+        }
+    )
+}
+
+
+/**
+ * Shared task form composable used by both Add and Edit task sheets.
+ * Eliminates code duplication between AddTaskBottomSheetContent and EditTaskBottomSheetContent.
+ */
+@Composable
+private fun TaskFormContent(
+    headerTitle: String,
+    initialTitle: String,
+    initialCategory: String,
+    initialNotes: String,
+    initialSteps: List<TaskStep>,
+    initialIsDaily: Boolean,
+    initialHardnessLevel: Float,
+    initialDeadline: Long,
+    existingCategories: List<String>,
+    submitButtonText: String,
+    onDismiss: () -> Unit,
+    onSubmit: (title: String, deadline: Long, category: String, steps: List<TaskStep>, isDaily: Boolean, hardnessLevel: Int, notes: String) -> Unit
+) {
+    var title by remember { mutableStateOf(initialTitle) }
+    var category by remember { mutableStateOf(initialCategory) }
+    var notes by remember { mutableStateOf(initialNotes) }
+    var steps by remember { mutableStateOf(initialSteps) }
     var currentStepTitle by remember { mutableStateOf("") }
-    var isDaily by remember { mutableStateOf(task.isDaily) }
-    var hardnessLevel by remember { mutableFloatStateOf(task.hardnessLevel.toFloat()) }
+    var isDaily by remember { mutableStateOf(initialIsDaily) }
+    var hardnessLevel by remember { mutableFloatStateOf(initialHardnessLevel) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
-    var selectedDeadline by remember { mutableStateOf(task.deadline) }
+    var selectedDeadline by remember { mutableStateOf(initialDeadline) }
 
     val datePickerDialog = DatePickerDialog(
         context,
@@ -698,7 +744,7 @@ fun EditTaskBottomSheetContent(
             .padding(24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text("Edit Task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(headerTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
@@ -734,7 +780,7 @@ fun EditTaskBottomSheetContent(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Daily task toggle
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -754,9 +800,10 @@ fun EditTaskBottomSheetContent(
                 onCheckedChange = { isDaily = it }
             )
         }
-        
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         if (!isDaily) {
-            Spacer(modifier = Modifier.height(16.dp))
             // Hardness Level Slider
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -794,9 +841,9 @@ fun EditTaskBottomSheetContent(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
+
         Text("Steps:")
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -844,23 +891,14 @@ fun EditTaskBottomSheetContent(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
                 if (title.isNotBlank()) {
-                    onSave(task.copy(
-                        title = title, 
-                        deadline = selectedDeadline, 
-                        category = category.ifBlank { "General" }, 
-                        steps = steps,
-                        isDaily = isDaily,
-                        hardnessLevel = hardnessLevel.toInt(),
-                        notes = notes
-                    ))
+                    onSubmit(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt(), notes)
                 }
             }) {
-                Text("Save")
+                Text(submitButtonText)
             }
         }
     }
 }
-
 
 @Composable
 fun AddTaskBottomSheetContent(
@@ -868,194 +906,20 @@ fun AddTaskBottomSheetContent(
     onDismiss: () -> Unit,
     onTaskAdded: (String, Long, String, List<TaskStep>, Boolean, Int, String) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var steps by remember { mutableStateOf(listOf<TaskStep>()) }
-    var currentStepTitle by remember { mutableStateOf("") }
-    var isDaily by remember { mutableStateOf(false) }
-    var hardnessLevel by remember { mutableFloatStateOf(1f) }
-
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    var selectedDeadline by remember { mutableStateOf(System.currentTimeMillis()) }
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
-            TimePickerDialog(
-                context,
-                { _, hourOfDay, minute ->
-                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                    calendar.set(Calendar.MINUTE, minute)
-                    selectedDeadline = calendar.timeInMillis
-                },
-                calendar.get(Calendar.HOUR_OF_DAY),
-                calendar.get(Calendar.MINUTE),
-                false
-            ).show()
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
+    TaskFormContent(
+        headerTitle = "New Task",
+        initialTitle = "",
+        initialCategory = "",
+        initialNotes = "",
+        initialSteps = emptyList(),
+        initialIsDaily = false,
+        initialHardnessLevel = 1f,
+        initialDeadline = System.currentTimeMillis(),
+        existingCategories = existingCategories,
+        submitButtonText = "Create",
+        onDismiss = onDismiss,
+        onSubmit = onTaskAdded
     )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text("New Task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Task Title") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Notes (optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-            maxLines = 4
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        CategorySelectionInput(
-            category = category,
-            onCategoryChange = { category = it },
-            existingCategories = existingCategories
-        )
-
-        if (!isDaily) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Deadline:")
-            Button(onClick = { datePickerDialog.show() }) {
-                Text(text = formatDate(selectedDeadline))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Daily task toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text("Daily Task", fontWeight = FontWeight.Medium)
-                Text(
-                    "Repeats every day",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = isDaily,
-                onCheckedChange = { isDaily = it }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (!isDaily) {
-            // Hardness Level Slider
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Hardness Level", fontWeight = FontWeight.Medium)
-                        Text(
-                            when (hardnessLevel.toInt()) {
-                                1 -> "Complete by deadline"
-                                2 -> "Complete 2 days before"
-                                3 -> "Complete 3 days before"
-                                4 -> "Complete 4 days before"
-                                5 -> "Complete 5 days before"
-                                else -> ""
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        text = "${hardnessLevel.toInt()}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Slider(
-                    value = hardnessLevel,
-                    onValueChange = { hardnessLevel = it },
-                    valueRange = 1f..5f,
-                    steps = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        Text("Steps:")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = currentStepTitle,
-                onValueChange = { currentStepTitle = it },
-                label = { Text("Add Step") },
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = {
-                if (currentStepTitle.isNotBlank()) {
-                    steps = steps + TaskStep(title = currentStepTitle)
-                    currentStepTitle = ""
-                }
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Step")
-            }
-        }
-
-        steps.forEach { step ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "• ${step.title}", modifier = Modifier.weight(1f))
-                IconButton(onClick = {
-                    val newSteps = steps.toMutableList()
-                    newSteps.remove(step)
-                    steps = newSteps
-                }) {
-                    Icon(Icons.Default.Close, contentDescription = "Remove Step", tint = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                if (title.isNotBlank()) {
-                    onTaskAdded(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt(), notes)
-                }
-            }) {
-                Text("Create")
-            }
-        }
-    }
 }
 
 

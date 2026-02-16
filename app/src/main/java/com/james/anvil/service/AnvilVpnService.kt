@@ -50,7 +50,9 @@ class AnvilVpnService : VpnService() {
 
         private const val VPN_ADDRESS = "10.0.0.2"
         private const val VPN_DNS = "10.0.0.1" // Our local DNS proxy
-        private const val UPSTREAM_DNS = "8.8.8.8" // Google DNS as upstream
+        private const val DEFAULT_UPSTREAM_DNS = "8.8.8.8" // Default upstream DNS
+        private const val PREFS_NAME = "anvil_vpn_prefs"
+        private const val KEY_UPSTREAM_DNS = "upstream_dns"
         private const val VPN_MTU = 1500
 
         private const val NOTIFICATION_CHANNEL_ID = "anvil_vpn_channel"
@@ -65,6 +67,9 @@ class AnvilVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Upstream DNS address, configurable via SharedPreferences
+    private lateinit var upstreamDns: String
+
     // Cache of blocked link patterns with schedule info
     private val blockedLinksMap = ConcurrentHashMap<String, BlockedLink>()
 
@@ -74,6 +79,10 @@ class AnvilVpnService : VpnService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        // Load user-configured DNS server
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        upstreamDns = prefs.getString(KEY_UPSTREAM_DNS, DEFAULT_UPSTREAM_DNS) ?: DEFAULT_UPSTREAM_DNS
 
         // Observe blocklist changes
         val db = AnvilDatabase.getDatabase(applicationContext)
@@ -366,7 +375,7 @@ class AnvilVpnService : VpnService() {
             val socket = DatagramSocket()
             protect(socket)
 
-            val dnsServer = InetAddress.getByName(UPSTREAM_DNS)
+            val dnsServer = InetAddress.getByName(upstreamDns)
             socket.send(DatagramPacket(dnsData, dnsData.size, dnsServer, 53))
 
             // Receive response

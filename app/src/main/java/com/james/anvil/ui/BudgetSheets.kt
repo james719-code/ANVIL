@@ -41,15 +41,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.*
 import com.james.anvil.ui.theme.*
+import com.james.anvil.util.Categories
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
 // Common quick suggestions for descriptions
-private val expenseSuggestions = listOf(
-    "Food & Groceries", "Transportation", "Bills & Utilities", 
-    "Shopping", "Entertainment", "Health", "Education"
-)
+private val expenseSuggestions = Categories.Budget.expenseCategories
 
 private val incomeSuggestions = listOf(
     "Salary", "Freelance", "Side Hustle", 

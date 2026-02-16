@@ -590,7 +590,10 @@ fun AdaptiveNavigationRail(
     }
 }
 
+private val dateFormatThreadLocal = ThreadLocal.withInitial {
+    SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+}
+
 fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    return dateFormatThreadLocal.get()!!.format(Date(timestamp))
 }

@@ -73,10 +73,12 @@ import com.james.anvil.core.LevelManager
 import com.james.anvil.data.Achievement
 import com.james.anvil.data.XpSource
 import com.james.anvil.ui.components.AnvilCard
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ElectricBlue
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ForgedGold
+import com.james.anvil.ui.theme.ForgedGoldDark
 import com.james.anvil.ui.theme.ForgedGoldLight
 import com.james.anvil.ui.theme.LevelBadgeBg
 import com.james.anvil.ui.theme.SuccessGreen
@@ -259,6 +261,12 @@ private fun LevelHeroCard(
         label = "glow_alpha"
     )
 
+    val isDark = isSystemInDarkTheme()
+    val badgeBg = if (isDark) LevelBadgeBg else MaterialTheme.colorScheme.surfaceVariant
+    val barTrack = if (isDark) XpBarTrack else MaterialTheme.colorScheme.surfaceVariant
+    val goldText = if (isDark) XpGold else ForgedGoldDark
+    val goldAccent = if (isDark) ForgedGold else ForgedGoldDark
+
     AnvilCard {
         Column(
             modifier = Modifier
@@ -271,24 +279,24 @@ private fun LevelHeroCard(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(100.dp)
-                    .shadow(12.dp, CircleShape, ambientColor = XpGold.copy(alpha = glowAlpha))
+                    .shadow(12.dp, CircleShape, ambientColor = goldText.copy(alpha = glowAlpha))
                     .clip(CircleShape)
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                LevelBadgeBg,
-                                LevelBadgeBg.copy(alpha = 0.8f)
+                                badgeBg,
+                                badgeBg.copy(alpha = 0.8f)
                             )
                         )
                     )
-                    .border(2.dp, ForgedGold.copy(alpha = 0.6f), CircleShape)
+                    .border(2.dp, goldAccent.copy(alpha = 0.6f), CircleShape)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$level",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Black,
-                        color = XpGold,
+                        color = goldText,
                         fontSize = 36.sp
                     )
                 }
@@ -301,7 +309,7 @@ private fun LevelHeroCard(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = ForgedGold
+                color = goldAccent
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -330,7 +338,7 @@ private fun LevelHeroCard(
                         text = if (xpForNextLevel > 0) "$totalXp / $xpForNextLevel XP" else "✦ Maxed",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = XpGold
+                        color = goldText
                     )
                 }
 
@@ -345,7 +353,7 @@ private fun LevelHeroCard(
                 ) {
                     // Track
                     drawRoundRect(
-                        color = XpBarTrack,
+                        color = barTrack,
                         size = size,
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx())
                     )
@@ -643,7 +651,7 @@ private fun XpActivityItem(
             text = "+$xpAmount XP",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = XpGold
+            color = if (isSystemInDarkTheme()) XpGold else ForgedGoldDark
         )
     }
 }
@@ -669,6 +677,12 @@ fun ForgeLevelCard(
         label = "dashboard_xp"
     )
 
+    val isDark = isSystemInDarkTheme()
+    val badgeBg = if (isDark) LevelBadgeBg else MaterialTheme.colorScheme.surfaceVariant
+    val barTrack = if (isDark) XpBarTrack else MaterialTheme.colorScheme.surfaceVariant
+    val goldText = if (isDark) XpGold else ForgedGoldDark
+    val goldAccent = if (isDark) ForgedGold else ForgedGoldDark
+
     AnvilCard(onClick = onClick) {
         Row(
             modifier = Modifier
@@ -684,16 +698,16 @@ fun ForgeLevelCard(
                     .clip(CircleShape)
                     .background(
                         brush = Brush.radialGradient(
-                            colors = listOf(LevelBadgeBg, LevelBadgeBg.copy(alpha = 0.8f))
+                            colors = listOf(badgeBg, badgeBg.copy(alpha = 0.8f))
                         )
                     )
-                    .border(1.5.dp, ForgedGold.copy(alpha = 0.5f), CircleShape)
+                    .border(1.5.dp, goldAccent.copy(alpha = 0.5f), CircleShape)
             ) {
                 Text(
                     text = "$currentLevel",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = XpGold
+                    color = goldText
                 )
             }
 
@@ -709,7 +723,7 @@ fun ForgeLevelCard(
                         text = currentTitle,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = ForgedGold
+                        color = goldAccent
                     )
                     Text(
                         text = "$totalXp XP",
@@ -728,7 +742,7 @@ fun ForgeLevelCard(
                         .clip(RoundedCornerShape(3.dp))
                 ) {
                     drawRoundRect(
-                        color = XpBarTrack,
+                        color = barTrack,
                         size = size,
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())
                     )

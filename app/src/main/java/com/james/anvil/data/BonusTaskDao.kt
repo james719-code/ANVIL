@@ -26,4 +26,22 @@ interface BonusTaskDao {
 
     @Query("SELECT SUM(contributionValue) FROM bonus_tasks WHERE completedAt >= :startOfDay AND completedAt < :endOfDay")
     suspend fun getContributionForDay(startOfDay: Long, endOfDay: Long): Int?
+
+    /**
+     * Returns aggregated contribution values grouped by day for a date range.
+     * The day is calculated as completedAt truncated to the start of day (using integer division).
+     */
+    @Query("""
+        SELECT (completedAt / 86400000) * 86400000 AS dayStart, 
+               SUM(contributionValue) AS total 
+        FROM bonus_tasks 
+        WHERE completedAt >= :startTime AND completedAt < :endTime 
+        GROUP BY completedAt / 86400000
+    """)
+    suspend fun getContributionsInRange(startTime: Long, endTime: Long): List<DailyContribution>
 }
+
+data class DailyContribution(
+    val dayStart: Long,
+    val total: Int
+)

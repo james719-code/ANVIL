@@ -25,12 +25,14 @@ class DailyTaskResetWorker(
 
             val dailyTasksToReset = taskDao.getDailyTasksNeedingReset(startOfToday)
 
-            dailyTasksToReset.forEach { task ->
-                val resetTask = task.copy(
-                    isCompleted = false,
-                    reminderSent = false
-                )
-                taskDao.update(resetTask)
+            if (dailyTasksToReset.isNotEmpty()) {
+                val resetTasks = dailyTasksToReset.map { task ->
+                    task.copy(
+                        isCompleted = false,
+                        reminderSent = false
+                    )
+                }
+                taskDao.updateAll(resetTasks)
             }
 
             Log.d(TAG, "Reset ${dailyTasksToReset.size} daily tasks")

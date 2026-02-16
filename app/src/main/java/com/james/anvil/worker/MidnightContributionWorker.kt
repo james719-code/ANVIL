@@ -97,15 +97,13 @@ class MidnightContributionWorker(
             
             if (tasksToReset.isNotEmpty()) {
                 Log.d(TAG, "Resetting ${tasksToReset.size} daily tasks for today")
-                tasksToReset.forEach { task ->
-                    // We explicitly set completedAt to null and isCompleted to false
-                    // We leave lastCompletedDate as is (it preserves history of last completion)
-                    val resetTask = task.copy(
+                val resetTasks = tasksToReset.map { task ->
+                    task.copy(
                         isCompleted = false,
                         completedAt = null
                     )
-                    taskDao.update(resetTask)
                 }
+                taskDao.updateAll(resetTasks)
             } else {
                 Log.d(TAG, "No daily tasks need resetting")
             }

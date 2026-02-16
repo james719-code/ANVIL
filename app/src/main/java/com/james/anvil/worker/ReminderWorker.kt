@@ -40,6 +40,8 @@ class ReminderWorker(
         val tasks = taskDao.getAllIncompleteTasks()
         val now = System.currentTimeMillis()
         
+        val tasksToUpdate = mutableListOf<Task>()
+
         tasks.forEach { task ->
             if (task.reminderSent) return@forEach
             
@@ -65,19 +67,21 @@ class ReminderWorker(
                 
                 // Mark reminder as sent (only for non-daily tasks, dailies get fresh reminders each day)
                 if (!task.isDaily) {
-                    taskDao.update(task.copy(reminderSent = true))
+                    tasksToUpdate.add(task.copy(reminderSent = true))
                 }
             }
+        }
+
+        if (tasksToUpdate.isNotEmpty()) {
+            taskDao.updateAll(tasksToUpdate)
         }
         
         return Result.success()
     }
     
     private fun isSameDay(time1: Long, time2: Long): Boolean {
-        val cal1 = Calendar.getInstance().apply { timeInMillis = time1 }
-        val cal2 = Calendar.getInstance().apply { timeInMillis = time2 }
-        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+        val dayMillis = 86400000L
+        return time1 / dayMillis == time2 / dayMillis
     }
     
     private fun sendNotification(task: Task) {

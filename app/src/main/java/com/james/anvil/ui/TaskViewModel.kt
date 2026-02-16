@@ -296,25 +296,34 @@ class TaskViewModel @Inject constructor(
     // Contribution data for graph
     suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> {
         return withContext(Dispatchers.IO) {
-            val result = mutableMapOf<Long, Int>()
             val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            // End is tomorrow's start (to include today fully)
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            val endTime = calendar.timeInMillis
             
+            calendar.add(Calendar.DAY_OF_YEAR, -(daysBack + 1))
+            val startTime = calendar.timeInMillis
+
+            // Single batch query instead of N individual queries
+            val contributions = bonusTaskDao.getContributionsInRange(startTime, endTime)
+            val contributionMap = contributions.associate { it.dayStart to it.total }
+
+            // Build result map with 0 for days with no contributions
+            val result = mutableMapOf<Long, Int>()
+            val dayCal = Calendar.getInstance()
             for (i in 0 until daysBack) {
-                calendar.timeInMillis = System.currentTimeMillis()
-                calendar.add(Calendar.DAY_OF_YEAR, -i)
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                
-                val startOfDay = calendar.timeInMillis
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
-                val endOfDay = calendar.timeInMillis
-                
-                val bonusCount = bonusTaskDao.getContributionForDay(startOfDay, endOfDay) ?: 0
-                val completedTasks = taskDao.observeCompletedTasks(startOfDay)
-                
-                result[startOfDay] = bonusCount
+                dayCal.timeInMillis = System.currentTimeMillis()
+                dayCal.add(Calendar.DAY_OF_YEAR, -i)
+                dayCal.set(Calendar.HOUR_OF_DAY, 0)
+                dayCal.set(Calendar.MINUTE, 0)
+                dayCal.set(Calendar.SECOND, 0)
+                dayCal.set(Calendar.MILLISECOND, 0)
+                val startOfDay = dayCal.timeInMillis
+                result[startOfDay] = contributionMap[startOfDay] ?: 0
             }
             result
         }

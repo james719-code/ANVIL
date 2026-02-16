@@ -135,7 +135,7 @@ class AnvilAccessibilityService : AccessibilityService() {
                     scope.launch {
                         val visitedLink = VisitedLink(
                             domain = extractDomain(urlToSave),
-                            fullUrl = urlToSave,
+                            fullUrl = com.james.anvil.util.CryptoUtil.encrypt(urlToSave),
                             timestamp = System.currentTimeMillis(),
                             browserPackage = browserPkg
                         )

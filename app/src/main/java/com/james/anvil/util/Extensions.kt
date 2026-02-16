@@ -67,15 +67,28 @@ fun Context.openUrl(url: String) {
  */
 fun Context.sendEmail(email: String, subject: String = "", body: String = "") {
     try {
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:")
-            putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
-            putExtra(Intent.EXTRA_SUBJECT, subject)
-            putExtra(Intent.EXTRA_TEXT, body)
-        }
+        // Build mailto URI with query parameters for maximum compatibility
+        val mailtoUri = Uri.Builder()
+            .scheme("mailto")
+            .opaquePart(email)
+            .appendQueryParameter("subject", subject)
+            .appendQueryParameter("body", body)
+            .build()
+        val intent = Intent(Intent.ACTION_SENDTO, mailtoUri)
         startActivity(intent)
     } catch (e: Exception) {
-        showToast("No email app found")
+        // Fallback to ACTION_SEND with message/rfc822 MIME type
+        try {
+            val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "message/rfc822"
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_TEXT, body)
+            }
+            startActivity(Intent.createChooser(fallbackIntent, "Send email"))
+        } catch (e2: Exception) {
+            showToast("No email app found")
+        }
     }
 }
 
