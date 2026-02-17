@@ -225,7 +225,7 @@ private fun LoanItem(
     onViewHistory: () -> Unit = {}
 ) {
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-    val progress = 1 - (loan.remainingAmount / loan.totalExpectedAmount).coerceIn(0.0, 1.0)
+    val progress = 1 - (loan.remainingAmount / loan.originalAmount).coerceIn(0.0, 1.0)
     val isGcash = loan.balanceType == BalanceType.GCASH
     val isActive = loan.status != LoanStatus.FULLY_REPAID
     var showMenu by remember { mutableStateOf(false) }
@@ -296,9 +296,9 @@ private fun LoanItem(
                             fontWeight = FontWeight.Bold,
                             color = if (isActive) MaterialTheme.colorScheme.onSurface else CashTeal
                         )
-                        if (loan.remainingAmount != loan.totalExpectedAmount) {
+                        if (loan.remainingAmount != loan.originalAmount) {
                             Text(
-                                text = "of ${currencyFormat.format(loan.totalExpectedAmount)}",
+                                text = "of ${currencyFormat.format(loan.originalAmount)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

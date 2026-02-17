@@ -130,7 +130,7 @@ class BudgetViewModel @Inject constructor(
             val loan = Loan(
                 borrowerName = borrowerName,
                 originalAmount = amount,
-                remainingAmount = totalExpectedAmount,
+                remainingAmount = amount,
                 balanceType = balanceType,
                 interestRate = interestRate,
                 totalExpectedAmount = totalExpectedAmount,
@@ -169,7 +169,7 @@ class BudgetViewModel @Inject constructor(
             val newStatus = when {
                 newRemainingAmount <= 0 -> LoanStatus.FULLY_REPAID
                 newRemainingAmount < loan.originalAmount -> LoanStatus.PARTIALLY_REPAID
-                else -> LoanStatus.ACTIVE
+                else -> LoanStatus.ACTIVE // Still owes the full principal
             }
             
             val updatedLoan = loan.copy(

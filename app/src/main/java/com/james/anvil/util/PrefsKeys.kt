@@ -33,4 +33,7 @@ object PrefsKeys {
     
     // Widget settings
     const val WIDGET_REFRESH_INTERVAL = "widget_refresh_interval"
+
+    // Expense/income reminder notifications (12 PM & 6 PM)
+    const val EXPENSE_REMINDER_ENABLED = "expense_reminder_enabled"
 }

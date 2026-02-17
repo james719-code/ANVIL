@@ -6,6 +6,8 @@ import android.content.Intent
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.james.anvil.util.PrefsKeys
+import com.james.anvil.util.WorkerScheduler
 import com.james.anvil.worker.AnvilWorker
 import com.james.anvil.worker.DailyTaskResetWorker
 import com.james.anvil.worker.HistoryCleanupWorker
@@ -75,6 +77,12 @@ class BootReceiver : BroadcastReceiver() {
                 ExistingPeriodicWorkPolicy.KEEP,
                 cleanupRequest
             )
+
+            // Re-schedule expense/income reminder workers (12 PM & 6 PM) if enabled
+            val prefs = context.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
+            if (prefs.getBoolean(PrefsKeys.EXPENSE_REMINDER_ENABLED, true)) {
+                WorkerScheduler.scheduleExpenseReminderWorkers(context)
+            }
         }
     }
 }

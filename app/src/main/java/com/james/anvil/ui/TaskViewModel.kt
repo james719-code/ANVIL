@@ -11,6 +11,7 @@ import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.core.BonusManager
 import com.james.anvil.util.PrefsKeys
+import com.james.anvil.util.WorkerScheduler
 import com.james.anvil.widget.StatsWidget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -154,6 +155,21 @@ class TaskViewModel @Inject constructor(
     fun toggleTheme(isDark: Boolean) {
         _isDarkTheme.value = isDark
         prefs.edit().putBoolean(PrefsKeys.DARK_THEME, isDark).apply()
+    }
+
+    private val _expenseReminderEnabled = MutableStateFlow(
+        prefs.getBoolean(PrefsKeys.EXPENSE_REMINDER_ENABLED, true)
+    )
+    val expenseReminderEnabled: StateFlow<Boolean> = _expenseReminderEnabled.asStateFlow()
+
+    fun toggleExpenseReminder(enabled: Boolean) {
+        _expenseReminderEnabled.value = enabled
+        prefs.edit().putBoolean(PrefsKeys.EXPENSE_REMINDER_ENABLED, enabled).apply()
+        if (enabled) {
+            WorkerScheduler.scheduleExpenseReminderWorkers(getApplication())
+        } else {
+            WorkerScheduler.cancelExpenseReminderWorkers(getApplication())
+        }
     }
     
     // Onboarding state

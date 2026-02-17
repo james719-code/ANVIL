@@ -3,11 +3,12 @@ package com.james.anvil.util
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.ExpenseReminderWorker
 import com.james.anvil.worker.HistoryCleanupWorker
 import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
@@ -41,12 +42,13 @@ object WorkerScheduler {
      */
     fun scheduleAllWorkers(context: Context) {
         val workManager = WorkManager.getInstance(context)
-        
+
         scheduleReminderWorker(workManager)
         scheduleDailyResetWorker(workManager)
         scheduleWidgetRefreshWorker(workManager)
         scheduleMidnightContributionWorker(workManager)
         scheduleHistoryCleanupWorker(workManager)
+        scheduleExpenseReminderWorkers(context)
     }
     
     /**
@@ -202,6 +204,50 @@ object WorkerScheduler {
     }
     
     /**
+     * Schedules the 12 PM and 6 PM expense/income reminder workers.
+     * Each runs on a 24-hour cycle aligned to the next occurrence of its target time.
+     */
+    fun scheduleExpenseReminderWorkers(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+        scheduleExpenseReminderAt(workManager, hour = 12, label = ExpenseReminderWorker.LABEL_NOON, workName = ExpenseReminderWorker.WORK_NAME_NOON)
+        scheduleExpenseReminderAt(workManager, hour = 18, label = ExpenseReminderWorker.LABEL_EVENING, workName = ExpenseReminderWorker.WORK_NAME_EVENING)
+    }
+
+    private fun scheduleExpenseReminderAt(workManager: WorkManager, hour: Int, label: String, workName: String) {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (!after(now)) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val initialDelayMs = target.timeInMillis - now.timeInMillis
+
+        val inputData = Data.Builder()
+            .putString(ExpenseReminderWorker.KEY_REMINDER_LABEL, label)
+            .build()
+
+        val request = PeriodicWorkRequestBuilder<ExpenseReminderWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+            .setInputData(inputData)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_DELAY_SECONDS, TimeUnit.SECONDS)
+            .addTag(TAG_EXPENSE_REMINDER)
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(workName, ExistingPeriodicWorkPolicy.KEEP, request)
+    }
+
+    /**
+     * Cancels only the expense reminder workers (called when user disables the setting).
+     */
+    fun cancelExpenseReminderWorkers(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(ExpenseReminderWorker.WORK_NAME_NOON)
+        workManager.cancelUniqueWork(ExpenseReminderWorker.WORK_NAME_EVENING)
+    }
+
+    /**
      * Cancels all scheduled work.
      * Useful for cleanup or when user disables features.
      */
@@ -212,6 +258,8 @@ object WorkerScheduler {
         workManager.cancelUniqueWork(WidgetRefreshWorker.WORK_NAME)
         workManager.cancelUniqueWork(MidnightContributionWorker.WORK_NAME)
         workManager.cancelUniqueWork(WORK_NAME_HISTORY_CLEANUP)
+        workManager.cancelUniqueWork(ExpenseReminderWorker.WORK_NAME_NOON)
+        workManager.cancelUniqueWork(ExpenseReminderWorker.WORK_NAME_EVENING)
     }
     
     /**
@@ -227,4 +275,5 @@ object WorkerScheduler {
     const val TAG_WIDGET_REFRESH = "widget_refresh_worker"
     const val TAG_MIDNIGHT_CONTRIBUTION = "midnight_contribution_worker"
     const val TAG_HISTORY_CLEANUP = "history_cleanup_worker"
+    const val TAG_EXPENSE_REMINDER = "expense_reminder_worker"
 }

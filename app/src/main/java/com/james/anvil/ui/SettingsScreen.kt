@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.*
@@ -56,6 +57,7 @@ fun SettingsScreen(
 
 
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val expenseReminderEnabled by viewModel.expenseReminderEnabled.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
@@ -141,6 +143,36 @@ fun SettingsScreen(
                         Switch(
                             checked = isDarkTheme,
                             onCheckedChange = { viewModel.toggleTheme(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Notifications Section
+            SettingsSectionHeader(title = "NOTIFICATIONS")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsCard {
+                SettingsRow(
+                    icon = Icons.Outlined.Notifications,
+                    iconTint = WarningOrange,
+                    title = "Budget Reminders",
+                    subtitle = if (expenseReminderEnabled)
+                        "Reminding you at 12:00 PM & 6:00 PM"
+                    else
+                        "Off",
+                    trailing = {
+                        Switch(
+                            checked = expenseReminderEnabled,
+                            onCheckedChange = { viewModel.toggleExpenseReminder(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary,
