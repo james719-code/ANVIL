@@ -11,6 +11,8 @@ import com.james.anvil.data.CategoryType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
+import com.james.anvil.data.QuestCategory
+import com.james.anvil.core.QuestManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +28,7 @@ class BudgetViewModel @Inject constructor(
     private val db = AnvilDatabase.getDatabase(application)
     private val budgetDao = db.budgetDao()
     private val loanDao = db.loanDao()
+    private val questManager = QuestManager(application)
 
     // Budget
     val budgetEntries: Flow<List<BudgetEntry>> = budgetDao.observeAllEntries()
@@ -81,6 +84,7 @@ class BudgetViewModel @Inject constructor(
                 timestamp = System.currentTimeMillis()
             )
             budgetDao.insert(entry)
+            questManager.updateQuestProgress(QuestCategory.BUDGET)
         }
     }
 

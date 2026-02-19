@@ -73,4 +73,18 @@ interface TaskDao {
         AND (deadline - (hardnessLevel * 86400000)) < :now
     """)
     suspend fun getTasksViolatingHardness(now: Long): List<Task>
+
+    // ── Forge Report Queries ──
+
+    /** Count tasks completed in a time range */
+    @Query("SELECT COUNT(*) FROM tasks WHERE isCompleted = 1 AND completedAt >= :startTime AND completedAt < :endTime")
+    suspend fun countCompletedInRange(startTime: Long, endTime: Long): Int
+
+    /** Count tasks created in a time range */
+    @Query("SELECT COUNT(*) FROM tasks WHERE createdAt >= :startTime AND createdAt < :endTime")
+    suspend fun countCreatedInRange(startTime: Long, endTime: Long): Int
+
+    /** Get completed tasks in range (for category breakdown) */
+    @Query("SELECT * FROM tasks WHERE isCompleted = 1 AND completedAt >= :startTime AND completedAt < :endTime")
+    suspend fun getCompletedTasksInRange(startTime: Long, endTime: Long): List<Task>
 }

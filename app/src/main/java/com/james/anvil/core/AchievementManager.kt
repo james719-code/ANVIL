@@ -29,7 +29,14 @@ class AchievementManager(context: Context) {
         totalFocusMinutes: Int,
         bonusTaskCount: Int,
         iceCount: Int,
-        loansCleared: Int
+        loansCleared: Int,
+        monstersDefeated: Int = 0,
+        bossesDefeated: Int = 0,
+        questsCompleted: Int = 0,
+        equippedGearSlots: Int = 0,
+        unlockedSkills: Int = 0,
+        savingsGoalsCompleted: Int = 0,
+        lifetimeCoins: Int = 0
     ): List<Achievement> {
         val definitions = listOf(
             AchievementDef(AchievementId.FIRST_TASK, "First Forging", "Complete your first task", "⚒️") {
@@ -85,6 +92,37 @@ class AchievementManager(context: Context) {
             },
             AchievementDef(AchievementId.LOAN_CLEARED, "Debt Free", "Clear a loan completely", "✅") {
                 loansCleared >= 1
+            },
+            // RPG Achievements
+            AchievementDef(AchievementId.FIRST_MONSTER_SLAIN, "Monster Slayer", "Defeat your first monster", "\uD83D\uDC79") {
+                monstersDefeated >= 1
+            },
+            AchievementDef(AchievementId.MONSTER_HUNTER_10, "Monster Hunter", "Defeat 10 monsters", "\uD83D\uDDE1\uFE0F") {
+                monstersDefeated >= 10
+            },
+            AchievementDef(AchievementId.BOSS_SLAYER, "Boss Slayer", "Defeat a boss monster", "\uD83D\uDC32") {
+                bossesDefeated >= 1
+            },
+            AchievementDef(AchievementId.QUEST_STARTER, "Quest Starter", "Complete your first quest", "\uD83D\uDCDC") {
+                questsCompleted >= 1
+            },
+            AchievementDef(AchievementId.QUEST_MASTER_25, "Quest Master", "Complete 25 quests", "\uD83C\uDFC6") {
+                questsCompleted >= 25
+            },
+            AchievementDef(AchievementId.FULL_GEAR_SET, "Fully Equipped", "Equip all 3 gear slots", "\uD83D\uDEE1\uFE0F") {
+                equippedGearSlots >= 3
+            },
+            AchievementDef(AchievementId.SKILL_TREE_10, "Skill Master", "Unlock 10 skills", "\uD83C\uDF32") {
+                unlockedSkills >= 10
+            },
+            AchievementDef(AchievementId.SAVINGS_FIRST_GOAL, "First Treasure", "Complete a savings goal", "\uD83C\uDF81") {
+                savingsGoalsCompleted >= 1
+            },
+            AchievementDef(AchievementId.SAVINGS_MASTER_5, "Treasure Hoarder", "Complete 5 savings goals", "\uD83D\uDCB0") {
+                savingsGoalsCompleted >= 5
+            },
+            AchievementDef(AchievementId.FORGE_COINS_1000, "Coin Collector", "Accumulate 1000 lifetime coins", "\uD83E\uDE99") {
+                lifetimeCoins >= 1000
             }
         )
 

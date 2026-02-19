@@ -39,6 +39,12 @@ interface BonusTaskDao {
         GROUP BY completedAt / 86400000
     """)
     suspend fun getContributionsInRange(startTime: Long, endTime: Long): List<DailyContribution>
+
+    // ── Forge Report Queries ──
+
+    /** Count bonus tasks completed in a time range */
+    @Query("SELECT COUNT(*) FROM bonus_tasks WHERE completedAt >= :startTime AND completedAt < :endTime")
+    suspend fun countBonusTasksInRange(startTime: Long, endTime: Long): Int
 }
 
 data class DailyContribution(

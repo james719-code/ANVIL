@@ -75,6 +75,7 @@ import com.james.anvil.data.XpSource
 import com.james.anvil.ui.components.AnvilCard
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.ErrorRed
 import com.james.anvil.ui.theme.ElectricBlue
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.ForgedGold
@@ -95,7 +96,9 @@ import java.util.Locale
 @Composable
 fun ForgeProfileScreen(
     levelViewModel: LevelViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToSkillTree: () -> Unit = {},
+    onNavigateToGear: () -> Unit = {}
 ) {
     val totalXp by levelViewModel.totalXp.collectAsState()
     val currentLevel by levelViewModel.currentLevel.collectAsState()
@@ -108,9 +111,18 @@ fun ForgeProfileScreen(
     // Achievements
     val context = LocalContext.current
     val achievementManager = remember { AchievementManager(context) }
-    val achievements = remember(totalXp, currentLevel) {
+    // RPG stats for achievements - use remember to avoid re-creating managers each recomposition
+    val rpgStats = remember(context) {
+        val db = com.james.anvil.data.AnvilDatabase.getDatabase(context)
+        db
+    }
+    val monstersDefeated by rpgStats.monsterDao().observeDefeatedCount().collectAsState(initial = 0)
+    val equippedGear by rpgStats.gearDao().observeEquippedGear().collectAsState(initial = emptyList())
+    val coinBalance by rpgStats.forgeTransactionDao().observeBalance().collectAsState(initial = 0)
+
+    val achievements = remember(totalXp, currentLevel, monstersDefeated, equippedGear.size, coinBalance) {
         achievementManager.evaluateAchievements(
-            completedTaskCount = 0, // Will be filled from actual stats later
+            completedTaskCount = 0,
             currentStreak = 0,
             longestStreak = 0,
             currentLevel = currentLevel,
@@ -119,7 +131,10 @@ fun ForgeProfileScreen(
             totalFocusMinutes = 0,
             bonusTaskCount = 0,
             iceCount = 0,
-            loansCleared = 0
+            loansCleared = 0,
+            monstersDefeated = monstersDefeated,
+            equippedGearSlots = equippedGear.size,
+            lifetimeCoins = coinBalance
         )
     }
     val unlockedCount = achievements.count { it.isUnlocked }
@@ -168,6 +183,27 @@ fun ForgeProfileScreen(
             // Level Roadmap
             item {
                 LevelRoadmapCard(currentLevel = currentLevel)
+            }
+
+            // RPG Quick Actions
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingSm)
+                ) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onNavigateToSkillTree,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("\uD83C\uDF32 Skill Tree")
+                    }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onNavigateToGear,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("\u2694\uFE0F Equipment")
+                    }
+                }
             }
 
             // Achievements Gallery
@@ -599,6 +635,9 @@ private fun XpActivityItem(
         XpSource.BUDGET -> Icons.Outlined.Receipt to SuccessGreen
         XpSource.LOAN -> Icons.Outlined.Payments to ForgedGold
         XpSource.FOCUS -> Icons.Outlined.CheckCircle to ElectricTeal
+        XpSource.SAVINGS -> Icons.Outlined.Receipt to ForgedGold
+        XpSource.QUEST -> Icons.Outlined.Bolt to ElectricBlue
+        XpSource.COMBAT -> Icons.Outlined.LocalFireDepartment to ErrorRed
     }
 
     val dateFormat = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())

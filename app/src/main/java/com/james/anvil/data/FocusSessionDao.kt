@@ -28,4 +28,18 @@ interface FocusSessionDao {
 
     @Query("SELECT COUNT(*) FROM focus_sessions")
     fun observeTotalSessionCount(): Flow<Int>
+
+    // ── Forge Report Queries ──
+
+    /** Total focus minutes in a time range */
+    @Query("SELECT COALESCE(SUM(totalFocusMinutes), 0) FROM focus_sessions WHERE startTime >= :startTime AND startTime < :endTime")
+    suspend fun getTotalFocusMinutesInRange(startTime: Long, endTime: Long): Int
+
+    /** Total sessions completed in a time range */
+    @Query("SELECT COUNT(*) FROM focus_sessions WHERE startTime >= :startTime AND startTime < :endTime")
+    suspend fun getSessionCountInRange(startTime: Long, endTime: Long): Int
+
+    /** Focus sessions in a range (for daily breakdown) */
+    @Query("SELECT * FROM focus_sessions WHERE startTime >= :startTime AND startTime < :endTime ORDER BY startTime ASC")
+    suspend fun getSessionsInRange(startTime: Long, endTime: Long): List<FocusSession>
 }

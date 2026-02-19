@@ -42,6 +42,27 @@ object ForgeProfileRoute
 @Serializable
 object FocusSessionRoute
 
+@Serializable
+object SavingsGoalsRoute
+
+@Serializable
+object ForgeShopRoute
+
+@Serializable
+data class MonsterCombatRoute(val monsterId: Long)
+
+@Serializable
+object QuestLogRoute
+
+@Serializable
+object SkillTreeRoute
+
+@Serializable
+object GearEquipmentRoute
+
+@Serializable
+object ForgeReportRoute
+
 // ============================================
 // DETAIL DESTINATIONS (With Arguments)
 // ============================================

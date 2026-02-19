@@ -28,4 +28,7 @@ interface HabitContributionDao {
 
     @Query("DELETE FROM habit_contributions WHERE date = :startOfDay")
     suspend fun deleteContributionForDay(startOfDay: Long)
+
+    @Query("SELECT COUNT(*) FROM habit_contributions")
+    suspend fun getTotalContributionCount(): Int
 }

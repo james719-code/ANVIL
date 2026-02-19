@@ -47,4 +47,18 @@ interface BudgetDao {
     fun getCurrentBalance(balanceType: BalanceType): Flow<Double>
     @Query("DELETE FROM budget_entries WHERE loanId = :loanId")
     suspend fun deleteByLoanId(loanId: Long)
+
+    // ── Forge Report Queries ──
+
+    /** Total spending (EXPENSE only) in a time range */
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE type = 'EXPENSE' AND timestamp >= :startTime AND timestamp < :endTime")
+    suspend fun getTotalSpendingInRange(startTime: Long, endTime: Long): Double
+
+    /** Total income in a time range */
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE type = 'INCOME' AND timestamp >= :startTime AND timestamp < :endTime")
+    suspend fun getTotalIncomeInRange(startTime: Long, endTime: Long): Double
+
+    /** Spending by category type (NECESSITY vs LEISURE) in a time range */
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE type = 'EXPENSE' AND categoryType = :categoryType AND timestamp >= :startTime AND timestamp < :endTime")
+    suspend fun getSpendingByCategoryType(categoryType: String, startTime: Long, endTime: Long): Double
 }

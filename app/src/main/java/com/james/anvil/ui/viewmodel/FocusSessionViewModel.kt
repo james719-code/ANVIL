@@ -4,9 +4,13 @@ import android.app.Application
 import android.os.CountDownTimer
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.james.anvil.core.CombatManager
+import com.james.anvil.core.DamageSource
 import com.james.anvil.core.LevelManager
+import com.james.anvil.core.QuestManager
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.FocusSession
+import com.james.anvil.data.QuestCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +31,8 @@ class FocusSessionViewModel @Inject constructor(
     private val db = AnvilDatabase.getDatabase(application)
     private val focusSessionDao = db.focusSessionDao()
     private val levelManager = LevelManager(application)
+    private val questManager = QuestManager(application)
+    private val combatManager = CombatManager(application)
 
     // Settings
     private val _workMinutes = MutableStateFlow(25)
@@ -178,6 +184,8 @@ class FocusSessionViewModel @Inject constructor(
             )
             focusSessionDao.insert(session)
             levelManager.awardFocusSessionXp(totalMinutes)
+            questManager.updateQuestProgress(QuestCategory.FOCUS)
+            dealDamageToActiveMonster(totalMinutes)
         }
     }
 
@@ -200,6 +208,8 @@ class FocusSessionViewModel @Inject constructor(
                 focusSessionDao.insert(session)
                 if (totalMinutes >= _workMinutes.value) {
                     levelManager.awardFocusSessionXp(totalMinutes)
+                    questManager.updateQuestProgress(QuestCategory.FOCUS)
+                    dealDamageToActiveMonster(totalMinutes)
                 }
             }
         }
@@ -214,6 +224,14 @@ class FocusSessionViewModel @Inject constructor(
         _currentRound.value = 1
         _isRunning.value = false
         completedRounds = 0
+    }
+
+    private suspend fun dealDamageToActiveMonster(totalMinutes: Int) {
+        val monster = db.monsterDao().getFirstActiveMonster() ?: return
+        val damage = totalMinutes / 5
+        if (damage > 0) {
+            combatManager.dealDamage(monster.id, damage, DamageSource.FOCUS)
+        }
     }
 
     override fun onCleared() {

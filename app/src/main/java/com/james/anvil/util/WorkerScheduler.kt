@@ -12,6 +12,7 @@ import com.james.anvil.worker.ExpenseReminderWorker
 import com.james.anvil.worker.HistoryCleanupWorker
 import com.james.anvil.worker.MidnightContributionWorker
 import com.james.anvil.worker.ReminderWorker
+import com.james.anvil.worker.QuestRefreshWorker
 import com.james.anvil.worker.WidgetRefreshWorker
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -49,6 +50,7 @@ object WorkerScheduler {
         scheduleMidnightContributionWorker(workManager)
         scheduleHistoryCleanupWorker(workManager)
         scheduleExpenseReminderWorkers(context)
+        scheduleQuestRefreshWorker(workManager)
     }
     
     /**
@@ -276,4 +278,40 @@ object WorkerScheduler {
     const val TAG_MIDNIGHT_CONTRIBUTION = "midnight_contribution_worker"
     const val TAG_HISTORY_CLEANUP = "history_cleanup_worker"
     const val TAG_EXPENSE_REMINDER = "expense_reminder_worker"
+    const val TAG_QUEST_REFRESH = "quest_refresh_worker"
+
+    private fun scheduleQuestRefreshWorker(workManager: WorkManager) {
+        val currentTime = Calendar.getInstance()
+        val targetTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 10)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (before(currentTime)) add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val initialDelayMs = targetTime.timeInMillis - currentTime.timeInMillis
+
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .build()
+
+        val request = PeriodicWorkRequestBuilder<QuestRefreshWorker>(
+            24, TimeUnit.HOURS
+        )
+            .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+            .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                BACKOFF_DELAY_SECONDS,
+                TimeUnit.SECONDS
+            )
+            .addTag(TAG_QUEST_REFRESH)
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            QuestRefreshWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
 }

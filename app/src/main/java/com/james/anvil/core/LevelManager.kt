@@ -2,12 +2,17 @@ package com.james.anvil.core
 
 import android.content.Context
 import com.james.anvil.data.AnvilDatabase
+import com.james.anvil.data.UserProgressDao
 import com.james.anvil.data.UserProgress
 import com.james.anvil.data.XpSource
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Central XP engine for the Forge leveling system.
@@ -15,12 +20,19 @@ import kotlinx.coroutines.launch
  * 
  * Follows the same SharedPreferences + Room pattern as BonusManager.
  */
-class LevelManager(context: Context) {
+@Singleton
+class LevelManager @Inject constructor(
+    private val userProgressDao: UserProgressDao,
+    @ApplicationContext context: Context
+) {
+    /** Legacy constructor for non-DI usage */
+    constructor(context: Context) : this(
+        AnvilDatabase.getDatabase(context).userProgressDao(),
+        context
+    )
 
-    private val db = AnvilDatabase.getDatabase(context)
-    private val userProgressDao = db.userProgressDao()
     private val prefs = context.getSharedPreferences("anvil_level_prefs", Context.MODE_PRIVATE)
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         /** 
@@ -89,7 +101,19 @@ class LevelManager(context: Context) {
         awardXp(XP_PER_FOCUS_SESSION, XpSource.FOCUS, "Focus: ${minutes}min session")
     }
 
-    private fun awardXp(amount: Int, source: XpSource, label: String) {
+    fun awardSavingsGoalXp(goalName: String, xpAmount: Int) {
+        awardXp(xpAmount, XpSource.SAVINGS, "Savings goal: $goalName")
+    }
+
+    fun awardQuestXp(questTitle: String, xpAmount: Int) {
+        awardXp(xpAmount, XpSource.QUEST, "Quest: $questTitle")
+    }
+
+    fun awardCombatXp(monsterName: String, xpAmount: Int) {
+        awardXp(xpAmount, XpSource.COMBAT, "Defeated: $monsterName")
+    }
+
+    internal fun awardXp(amount: Int, source: XpSource, label: String) {
         scope.launch {
             val entry = UserProgress(
                 xpAmount = amount,

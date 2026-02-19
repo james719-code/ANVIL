@@ -25,5 +25,8 @@ enum class XpSource {
     STREAK,     // Daily streak maintenance
     BUDGET,     // Logging a budget entry
     LOAN,       // Paying off a loan
-    FOCUS       // Focus session completion
+    FOCUS,      // Focus session completion
+    SAVINGS,    // Completing a savings goal
+    QUEST,      // Completing a quest
+    COMBAT      // Defeating a monster
 }

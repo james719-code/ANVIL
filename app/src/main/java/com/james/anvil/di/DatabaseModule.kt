@@ -1,7 +1,6 @@
 package com.james.anvil.di
 
 import android.content.Context
-import androidx.room.Room
 import com.james.anvil.data.*
 import dagger.Module
 import dagger.Provides
@@ -17,22 +16,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AnvilDatabase {
-        return Room.databaseBuilder(
-            context.applicationContext,
-            AnvilDatabase::class.java,
-            "anvil_database"
-        )
-        .addMigrations(
-            AnvilDatabase.MIGRATION_7_8,
-            AnvilDatabase.MIGRATION_8_9,
-            AnvilDatabase.MIGRATION_9_10,
-            AnvilDatabase.MIGRATION_10_11,
-            AnvilDatabase.MIGRATION_11_12,
-            AnvilDatabase.MIGRATION_12_13,
-            AnvilDatabase.MIGRATION_13_14,
-            AnvilDatabase.MIGRATION_14_15
-        )
-        .build()
+        // Delegate to the companion-object singleton to ensure only ONE Room instance exists.
+        // Previously this called Room.databaseBuilder() independently, creating a second instance
+        // with a separate connection pool and invalidation tracker.
+        return AnvilDatabase.getDatabase(context)
     }
 
     @Provides
@@ -58,4 +45,28 @@ object DatabaseModule {
 
     @Provides
     fun provideFocusSessionDao(database: AnvilDatabase): FocusSessionDao = database.focusSessionDao()
+
+    @Provides
+    fun provideMonsterDao(database: AnvilDatabase): MonsterDao = database.monsterDao()
+
+    @Provides
+    fun provideSavingsGoalDao(database: AnvilDatabase): SavingsGoalDao = database.savingsGoalDao()
+
+    @Provides
+    fun provideGearDao(database: AnvilDatabase): GearDao = database.gearDao()
+
+    @Provides
+    fun provideQuestDao(database: AnvilDatabase): QuestDao = database.questDao()
+
+    @Provides
+    fun provideSkillNodeDao(database: AnvilDatabase): SkillNodeDao = database.skillNodeDao()
+
+    @Provides
+    fun provideForgeTransactionDao(database: AnvilDatabase): ForgeTransactionDao = database.forgeTransactionDao()
+
+    @Provides
+    fun provideHabitContributionDao(database: AnvilDatabase): HabitContributionDao = database.habitContributionDao()
+
+    @Provides
+    fun provideUserProgressDao(database: AnvilDatabase): UserProgressDao = database.userProgressDao()
 }

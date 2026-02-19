@@ -57,6 +57,12 @@ import com.james.anvil.ui.SplashScreen
 import com.james.anvil.ui.AboutScreen
 import com.james.anvil.ui.ForgeProfileScreen
 import com.james.anvil.ui.FocusSessionScreen
+import com.james.anvil.ui.SavingsGoalsScreen
+import com.james.anvil.ui.ForgeShopScreen
+import com.james.anvil.ui.QuestLogScreen
+import com.james.anvil.ui.MonsterCombatScreen
+import com.james.anvil.ui.SkillTreeScreen
+import com.james.anvil.ui.GearEquipmentScreen
 import android.content.Intent
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
@@ -105,6 +111,13 @@ class MainActivity : ComponentActivity() {
                     var showAbout by remember { mutableStateOf(false) }
                     var showForgeProfile by remember { mutableStateOf(false) }
                     var showFocusSession by remember { mutableStateOf(false) }
+                    var showSavingsGoals by remember { mutableStateOf(false) }
+                    var showForgeShop by remember { mutableStateOf(false) }
+                    var showQuestLog by remember { mutableStateOf(false) }
+                    var showMonsterCombat by remember { mutableStateOf(false) }
+                    var combatMonsterId by remember { mutableStateOf(0L) }
+                    var showSkillTree by remember { mutableStateOf(false) }
+                    var showGearEquipment by remember { mutableStateOf(false) }
                     var showSplash by remember { mutableStateOf(false) }
                     var loadingProgress by remember { mutableFloatStateOf(100f) }
                     var isLoading by remember { mutableStateOf(false) }
@@ -113,6 +126,24 @@ class MainActivity : ComponentActivity() {
                     
                     
                     // Handle back button when settings or about is open
+                BackHandler(enabled = showGearEquipment) {
+                    showGearEquipment = false
+                }
+                BackHandler(enabled = showSkillTree) {
+                    showSkillTree = false
+                }
+                BackHandler(enabled = showMonsterCombat) {
+                    showMonsterCombat = false
+                }
+                BackHandler(enabled = showQuestLog) {
+                    showQuestLog = false
+                }
+                BackHandler(enabled = showForgeShop) {
+                    showForgeShop = false
+                }
+                BackHandler(enabled = showSavingsGoals) {
+                    showSavingsGoals = false
+                }
                 BackHandler(enabled = showFocusSession) {
                     showFocusSession = false
                 }
@@ -134,10 +165,17 @@ class MainActivity : ComponentActivity() {
                         // Main App Content - Always composed to enable preloading
                         // It stays underneath the Splash screen while loading
                         MainScreen(
-                            viewModel = viewModel, 
+                            viewModel = viewModel,
                             onNavigateToSettings = { showSettings = true },
                             onNavigateToForge = { showForgeProfile = true },
                             onNavigateToFocus = { showFocusSession = true },
+                            onNavigateToSavings = { showSavingsGoals = true },
+                            onNavigateToShop = { showForgeShop = true },
+                            onNavigateToQuests = { showQuestLog = true },
+                            onNavigateToMonsterCombat = { monsterId ->
+                                combatMonsterId = monsterId
+                                showMonsterCombat = true
+                            },
                             onPagesPreloaded = {
                                 if (isLoading) {
                                     scope.launch {
@@ -196,7 +234,9 @@ class MainActivity : ComponentActivity() {
                             )
                         ) {
                             ForgeProfileScreen(
-                                onNavigateBack = { showForgeProfile = false }
+                                onNavigateBack = { showForgeProfile = false },
+                                onNavigateToSkillTree = { showSkillTree = true },
+                                onNavigateToGear = { showGearEquipment = true }
                             )
                         }
 
@@ -216,7 +256,110 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { showFocusSession = false }
                             )
                         }
-                        
+
+                        // Savings Goals Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showSavingsGoals,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            SavingsGoalsScreen(
+                                onBack = { showSavingsGoals = false }
+                            )
+                        }
+
+                        // Forge Shop Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showForgeShop,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            ForgeShopScreen(
+                                onBack = { showForgeShop = false }
+                            )
+                        }
+
+                        // Quest Log Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showQuestLog,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            QuestLogScreen(
+                                onBack = { showQuestLog = false }
+                            )
+                        }
+
+                        // Monster Combat Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showMonsterCombat,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            MonsterCombatScreen(
+                                monsterId = combatMonsterId,
+                                onBack = { showMonsterCombat = false }
+                            )
+                        }
+
+                        // Skill Tree Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showSkillTree,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            SkillTreeScreen(
+                                onBack = { showSkillTree = false }
+                            )
+                        }
+
+                        // Gear Equipment Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showGearEquipment,
+                            enter = slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            ),
+                            exit = slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(DesignTokens.AnimDurationSlow)
+                            )
+                        ) {
+                            GearEquipmentScreen(
+                                onBack = { showGearEquipment = false }
+                            )
+                        }
+
                         // Splash Screen Overlay
                         if (showSplash) {
                             SplashScreen(
@@ -264,10 +407,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(
-    viewModel: TaskViewModel, 
+    viewModel: TaskViewModel,
     onNavigateToSettings: () -> Unit,
     onNavigateToForge: () -> Unit = {},
     onNavigateToFocus: () -> Unit = {},
+    onNavigateToSavings: () -> Unit = {},
+    onNavigateToShop: () -> Unit = {},
+    onNavigateToQuests: () -> Unit = {},
+    onNavigateToMonsterCombat: (Long) -> Unit = {},
     onPagesPreloaded: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -312,7 +459,11 @@ fun MainScreen(
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
                         },
                         onNavigateToForge = onNavigateToForge,
-                        onNavigateToFocus = onNavigateToFocus
+                        onNavigateToFocus = onNavigateToFocus,
+                        onNavigateToSavings = onNavigateToSavings,
+                        onNavigateToShop = onNavigateToShop,
+                        onNavigateToQuests = onNavigateToQuests,
+                        onNavigateToMonsterCombat = onNavigateToMonsterCombat
                     )
                 }
                 
@@ -355,7 +506,11 @@ fun MainScreen(
                             handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
                         },
                         onNavigateToForge = onNavigateToForge,
-                        onNavigateToFocus = onNavigateToFocus
+                        onNavigateToFocus = onNavigateToFocus,
+                        onNavigateToSavings = onNavigateToSavings,
+                        onNavigateToShop = onNavigateToShop,
+                        onNavigateToQuests = onNavigateToQuests,
+                        onNavigateToMonsterCombat = onNavigateToMonsterCombat
                     )
                 }
             }
@@ -377,18 +532,25 @@ private fun ScreenContent(
     snackbarHostState: SnackbarHostState,
     onNavigateToPage: (Int) -> Unit,
     onNavigateToForge: () -> Unit = {},
-    onNavigateToFocus: () -> Unit = {}
+    onNavigateToFocus: () -> Unit = {},
+    onNavigateToSavings: () -> Unit = {},
+    onNavigateToShop: () -> Unit = {},
+    onNavigateToQuests: () -> Unit = {},
+    onNavigateToMonsterCombat: (Long) -> Unit = {}
 ) {
     when (page) {
         0 -> DashboardScreen(
             viewModel = viewModel,
             onNavigateToPage = onNavigateToPage,
             onNavigateToForge = onNavigateToForge,
-            onNavigateToFocus = onNavigateToFocus
+            onNavigateToFocus = onNavigateToFocus,
+            onNavigateToSavings = onNavigateToSavings,
+            onNavigateToShop = onNavigateToShop,
+            onNavigateToQuests = onNavigateToQuests
         )
         1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
         2 -> BudgetScreen()
-        3 -> BlocklistScreen()
+        3 -> BlocklistScreen(onNavigateToMonsterCombat = onNavigateToMonsterCombat)
     }
 }
 

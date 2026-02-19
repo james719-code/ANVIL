@@ -59,4 +59,59 @@ class Converters {
 
     @TypeConverter
     fun toXpSource(value: String): XpSource = XpSource.valueOf(value)
+
+    // RPG Gamification converters
+    @TypeConverter
+    fun fromMonsterType(value: MonsterType): String = value.name
+
+    @TypeConverter
+    fun toMonsterType(value: String): MonsterType = MonsterType.valueOf(value)
+
+    @TypeConverter
+    fun fromLootType(value: LootType): String = value.name
+
+    @TypeConverter
+    fun toLootType(value: String): LootType = LootType.valueOf(value)
+
+    @TypeConverter
+    fun fromGearSlot(value: GearSlot): String = value.name
+
+    @TypeConverter
+    fun toGearSlot(value: String): GearSlot = GearSlot.valueOf(value)
+
+    @TypeConverter
+    fun fromGearRarity(value: GearRarity): String = value.name
+
+    @TypeConverter
+    fun toGearRarity(value: String): GearRarity = GearRarity.valueOf(value)
+
+    @TypeConverter
+    fun fromStatType(value: StatType): String = value.name
+
+    @TypeConverter
+    fun toStatType(value: String): StatType = StatType.valueOf(value)
+
+    @TypeConverter
+    fun fromQuestType(value: QuestType): String = value.name
+
+    @TypeConverter
+    fun toQuestType(value: String): QuestType = QuestType.valueOf(value)
+
+    @TypeConverter
+    fun fromQuestCategory(value: QuestCategory): String = value.name
+
+    @TypeConverter
+    fun toQuestCategory(value: String): QuestCategory = QuestCategory.valueOf(value)
+
+    @TypeConverter
+    fun fromSkillBranch(value: SkillBranch): String = value.name
+
+    @TypeConverter
+    fun toSkillBranch(value: String): SkillBranch = SkillBranch.valueOf(value)
+
+    @TypeConverter
+    fun fromCoinSource(value: CoinSource): String = value.name
+
+    @TypeConverter
+    fun toCoinSource(value: String): CoinSource = CoinSource.valueOf(value)
 }

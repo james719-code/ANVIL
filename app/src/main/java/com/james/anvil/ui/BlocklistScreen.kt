@@ -24,10 +24,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.james.anvil.ui.viewmodel.CombatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BlocklistScreen(viewModel: BlocklistViewModel = hiltViewModel()) {
+fun BlocklistScreen(
+    viewModel: BlocklistViewModel = hiltViewModel(),
+    combatViewModel: CombatViewModel = hiltViewModel(),
+    onNavigateToMonsterCombat: (Long) -> Unit = {}
+) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Apps", "Links")
 
@@ -40,7 +45,7 @@ fun BlocklistScreen(viewModel: BlocklistViewModel = hiltViewModel()) {
                 title = "Blocklist",
                 subtitle = "Shield yourself from distractions"
             )
-            
+
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent,
@@ -55,10 +60,14 @@ fun BlocklistScreen(viewModel: BlocklistViewModel = hiltViewModel()) {
                     )
                 }
             }
-            
+
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTabIndex) {
-                    0 -> BlockedAppsTab(viewModel)
+                    0 -> BlockedAppsTab(
+                        viewModel = viewModel,
+                        combatViewModel = combatViewModel,
+                        onNavigateToMonsterCombat = onNavigateToMonsterCombat
+                    )
                     1 -> BlockedLinksTab(viewModel)
                 }
             }
@@ -67,7 +76,11 @@ fun BlocklistScreen(viewModel: BlocklistViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun BlockedAppsTab(viewModel: BlocklistViewModel) {
+fun BlockedAppsTab(
+    viewModel: BlocklistViewModel,
+    combatViewModel: CombatViewModel = hiltViewModel(),
+    onNavigateToMonsterCombat: (Long) -> Unit = {}
+) {
     val appListWithCategories by viewModel.appListWithCategories.collectAsState(initial = emptyList())
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showScheduleDialog by remember { mutableStateOf(false) }
@@ -109,8 +122,17 @@ fun BlockedAppsTab(viewModel: BlocklistViewModel) {
                     BlocklistItem(
                         app = app,
                         onToggleBlock = { isBlocked ->
-                            if (isBlocked) viewModel.blockApp(app.appInfo.packageName)
-                            else viewModel.unblockApp(app.appInfo.packageName)
+                            if (isBlocked) {
+                                viewModel.blockApp(app.appInfo.packageName)
+                            } else {
+                                // Spawn a monster instead of direct unblock
+                                combatViewModel.spawnMonsterForApp(
+                                    packageName = app.appInfo.packageName,
+                                    appLabel = app.appInfo.name
+                                ) { monsterId ->
+                                    onNavigateToMonsterCombat(monsterId)
+                                }
+                            }
                         },
                         onCategoryClick = {
                             selectedAppForCategory = app

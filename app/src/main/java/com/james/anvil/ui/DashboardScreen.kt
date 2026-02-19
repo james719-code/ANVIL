@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,6 +52,7 @@ import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.ui.theme.WindowInfo
+import com.james.anvil.ui.viewmodel.ForgeCoinViewModel
 import com.james.anvil.ui.viewmodel.StreakViewModel
 import java.text.NumberFormat
 import java.util.*
@@ -63,10 +65,16 @@ fun DashboardScreen(
     budgetViewModel: BudgetViewModel = hiltViewModel(),
     blocklistViewModel: BlocklistViewModel = hiltViewModel(),
     streakViewModel: StreakViewModel = hiltViewModel(),
+    forgeCoinViewModel: ForgeCoinViewModel = hiltViewModel(),
     onNavigateToPage: ((Int) -> Unit)? = null,
     onNavigateToForge: (() -> Unit)? = null,
-    onNavigateToFocus: (() -> Unit)? = null
+    onNavigateToFocus: (() -> Unit)? = null,
+    onNavigateToSavings: (() -> Unit)? = null,
+    onNavigateToShop: (() -> Unit)? = null,
+    onNavigateToQuests: (() -> Unit)? = null,
+    onNavigateToReport: (() -> Unit)? = null
 ) {
+    val coinBalance by forgeCoinViewModel.coinBalance.collectAsState()
     val dailyProgress by viewModel.dailyProgress.collectAsState(initial = 0f)
     val totalPendingCount by viewModel.totalPendingCount.collectAsState(initial = 0)
     val dailyQuote by viewModel.dailyQuote.collectAsState(initial = "")
@@ -196,6 +204,135 @@ fun DashboardScreen(
                 ForgeLevelCard(
                     onClick = { onNavigateToForge?.invoke() }
                 )
+            }
+
+            // Forge Economy Card - Coins + Savings + Shop
+            item {
+                AnvilCard(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Coin balance
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("\uD83D\uDCB0", fontSize = 24.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "$coinBalance",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ForgedGold
+                                )
+                                Text(
+                                    "Forge Coins",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                        // Quick action buttons
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilledTonalButton(
+                                onClick = { onNavigateToSavings?.invoke() },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = ForgedGold.copy(alpha = 0.15f)
+                                )
+                            ) {
+                                Text("Savings", fontSize = 12.sp, color = ForgedGold)
+                            }
+                            FilledTonalButton(
+                                onClick = { onNavigateToShop?.invoke() },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = ElectricBlue.copy(alpha = 0.15f)
+                                )
+                            ) {
+                                Text("Shop", fontSize = 12.sp, color = ElectricBlue)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Active Quests Card
+            item {
+                AnvilCard(
+                    onClick = { onNavigateToReport?.invoke() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("\uD83D\uDCCA", fontSize = 24.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "Forge Report",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "View your productivity trends",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Outlined.Assessment,
+                            contentDescription = null,
+                            tint = ForgedGold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            // Active Quests Card
+            item {
+                AnvilCard(
+                    onClick = { onNavigateToQuests?.invoke() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("\u2694\uFE0F", fontSize = 24.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "Active Quests",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Tap to view quest log",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = ElectricBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
             // Quick Stats Grid - 2x2 layout

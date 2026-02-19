@@ -8,6 +8,8 @@ import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.HabitContribution
 import com.james.anvil.data.Task
 import com.james.anvil.core.BonusManager
+import com.james.anvil.core.ForgeCoinManager
+import com.james.anvil.data.CoinSource
 import java.util.Calendar
 
 /**
@@ -69,6 +71,14 @@ class MidnightContributionWorker(
                 )
                 habitContributionDao.insert(contribution)
                 Log.d(TAG, "Recorded habit contribution for ${formatDate(yesterday)} (Clean Sweep of Dailies)")
+
+                // Award streak coins every 7 days
+                val streakLength = habitContributionDao.getTotalContributionCount()
+                if (streakLength > 0 && streakLength % 7 == 0) {
+                    val coinManager = ForgeCoinManager(applicationContext)
+                    coinManager.awardCoins(10, CoinSource.STREAK_BONUS, "7-day streak milestone!")
+                    Log.d(TAG, "Awarded 10 streak coins for ${streakLength}-day milestone")
+                }
             } else {
                  Log.d(TAG, "No contribution: Dailies not all done. Checking for Ice (Grace Days)...")
                  

@@ -10,6 +10,10 @@ import com.james.anvil.data.BonusTask
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.core.BonusManager
+import com.james.anvil.core.CombatManager
+import com.james.anvil.core.DamageSource
+import com.james.anvil.core.QuestManager
+import com.james.anvil.data.QuestCategory
 import com.james.anvil.util.PrefsKeys
 import com.james.anvil.util.WorkerScheduler
 import com.james.anvil.widget.StatsWidget
@@ -40,6 +44,8 @@ class TaskViewModel @Inject constructor(
     private val prefs: SharedPreferences = application.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
     private val bonusManager = BonusManager(application)
     private val levelManager = com.james.anvil.core.LevelManager(application)
+    private val questManager = QuestManager(application)
+    private val combatManager = CombatManager(application)
 
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
@@ -230,6 +236,9 @@ class TaskViewModel @Inject constructor(
             }
             taskDao.update(completedTask)
             levelManager.awardTaskXp(task.title, task.hardnessLevel)
+            questManager.updateQuestProgress(QuestCategory.TASK)
+            // Deal damage to all active monsters
+            dealDamageToActiveMonsters(10 * task.hardnessLevel, DamageSource.TASK)
             StatsWidget.refreshAll(getApplication())
         }
     }
@@ -285,6 +294,7 @@ class TaskViewModel @Inject constructor(
             bonusTaskDao.insert(bonusTask)
             bonusManager.addBonusTask()
             levelManager.awardBonusTaskXp(title)
+            questManager.updateQuestProgress(QuestCategory.TASK)
             StatsWidget.refreshAll(getApplication())
         }
     }
@@ -308,6 +318,11 @@ class TaskViewModel @Inject constructor(
     fun getGraceDaysCount(): Int = bonusManager.getGraceDays()
 
     fun getBonusTasksForGrace(): Int = bonusManager.getRequiredBonusForGrace()
+
+    private suspend fun dealDamageToActiveMonsters(baseDamage: Int, source: DamageSource) {
+        val monster = db.monsterDao().getFirstActiveMonster() ?: return
+        combatManager.dealDamage(monster.id, baseDamage, source)
+    }
 
     // Contribution data for graph
     suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> {
