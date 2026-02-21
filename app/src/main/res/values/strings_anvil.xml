@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">Anvil Enforcer protects your focus.</string>
+    <string name="accessibility_service_description" translatable="false">Anvil Enforcer protects your focus.</string>
 </resources>

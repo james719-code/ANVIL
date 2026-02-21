@@ -31,6 +31,9 @@ object PrefsKeys {
     const val LOCK_PATTERN = "lock_pattern"
     const val LOCK_PIN = "lock_pin"
     
+    // Pause mode setting
+    const val PAUSE_MODE_ACTIVE = "pause_mode_active"
+    
     // Widget settings
     const val WIDGET_REFRESH_INTERVAL = "widget_refresh_interval"
 

@@ -1,7 +1,9 @@
 package com.james.anvil.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -15,6 +17,7 @@ import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
 import com.james.anvil.data.VisitedLink
 import com.james.anvil.ui.LockActivity
+import com.james.anvil.util.PrefsKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -50,11 +53,24 @@ class AnvilAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastConfirmedUrl: String? = null
     
+    @Volatile
+    private var isPauseModeActive: Boolean = false
+    private lateinit var appPrefs: SharedPreferences
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == PrefsKeys.PAUSE_MODE_ACTIVE) {
+            isPauseModeActive = prefs.getBoolean(key, false)
+        }
+    }
 
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         db = AnvilDatabase.getDatabase(applicationContext)
+
+        // Load app preferences
+        appPrefs = applicationContext.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
+        isPauseModeActive = appPrefs.getBoolean(PrefsKeys.PAUSE_MODE_ACTIVE, false)
+        appPrefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         // Initialize Core Logic
         val penaltyManager = PenaltyManager(applicationContext)
@@ -186,6 +202,8 @@ class AnvilAccessibilityService : AccessibilityService() {
         currentUrl: String?,
         rootNode: AccessibilityNodeInfo
     ): Boolean {
+        if (isPauseModeActive) return false
+
         // A. Check App Blocklist with Schedule
         val blockedApp = blockedAppsMap[packageName]
         if (blockedApp != null && blockedApp.isBlockingActiveNow()) {
@@ -213,6 +231,8 @@ class AnvilAccessibilityService : AccessibilityService() {
         currentUrl: String?,
         rootNode: AccessibilityNodeInfo
     ): Boolean {
+        if (isPauseModeActive) return false
+
         // A. Block known bypass apps (VPNs, Tor browsers, private browsers) during penalty
         if (isBypassApp(packageName)) {
             return true
@@ -479,6 +499,13 @@ class AnvilAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {
         // Service interrupted by system
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::appPrefs.isInitialized) {
+            appPrefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+        }
     }
 
     private fun isBrowserPackage(packageName: String?): Boolean {

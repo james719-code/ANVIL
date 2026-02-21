@@ -163,6 +163,14 @@ class TaskViewModel @Inject constructor(
         prefs.edit().putBoolean(PrefsKeys.DARK_THEME, isDark).apply()
     }
 
+    private val _isPauseModeActive = MutableStateFlow(prefs.getBoolean(PrefsKeys.PAUSE_MODE_ACTIVE, false))
+    val isPauseModeActive: StateFlow<Boolean> = _isPauseModeActive.asStateFlow()
+
+    fun togglePauseMode(isActive: Boolean) {
+        _isPauseModeActive.value = isActive
+        prefs.edit().putBoolean(PrefsKeys.PAUSE_MODE_ACTIVE, isActive).apply()
+    }
+
     private val _expenseReminderEnabled = MutableStateFlow(
         prefs.getBoolean(PrefsKeys.EXPENSE_REMINDER_ENABLED, true)
     )

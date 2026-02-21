@@ -57,6 +57,7 @@ fun SettingsScreen(
 
 
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val isPauseModeActive by viewModel.isPauseModeActive.collectAsState()
     val expenseReminderEnabled by viewModel.expenseReminderEnabled.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -320,6 +321,30 @@ fun SettingsScreen(
                         )
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            SettingsCard {
+                SettingsRow(
+                    icon = Icons.Outlined.Shield,
+                    iconTint = if (isPauseModeActive) WarningOrange else SuccessGreen,
+                    title = "Pause Mode",
+                    subtitle = if (isPauseModeActive) "All blocking is paused" else "Blocking is active",
+                    trailing = {
+                        Switch(
+                            checked = isPauseModeActive,
+                            onCheckedChange = { viewModel.togglePauseMode(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = if (isDarkTheme) Color.LightGray else MaterialTheme.colorScheme.outline,
+                                uncheckedTrackColor = if (isDarkTheme) Color.Gray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant,
+                                uncheckedBorderColor = if (isDarkTheme) Color.Gray else MaterialTheme.colorScheme.outline
+                            )
+                        )
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

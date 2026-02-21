@@ -103,12 +103,17 @@ fun DashboardScreen(
     val calendar = remember { java.util.Calendar.getInstance() }
 
     val completedTodayCount = remember(completedTasks) {
+        val now = java.util.Calendar.getInstance()
+        now.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        now.set(java.util.Calendar.MINUTE, 0)
+        now.set(java.util.Calendar.SECOND, 0)
+        now.set(java.util.Calendar.MILLISECOND, 0)
+        val todayStart = now.timeInMillis
+        val todayEnd = todayStart + 24 * 60 * 60 * 1000L
+
         completedTasks.count {
-            val taskCal = java.util.Calendar.getInstance()
-            val todayYear = calendar.get(java.util.Calendar.YEAR)
-            val todayDay = calendar.get(java.util.Calendar.DAY_OF_YEAR)
-            taskCal.timeInMillis = it.completedAt ?: 0L
-            taskCal.get(java.util.Calendar.YEAR) == todayYear && taskCal.get(java.util.Calendar.DAY_OF_YEAR) == todayDay
+            val completedAt = it.completedAt ?: 0L
+            completedAt in todayStart until todayEnd
         }
     }
 
@@ -148,8 +153,8 @@ fun DashboardScreen(
                     }
                 )
                 .padding(horizontal = horizontalPadding),
-            verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLg),
-            contentPadding = PaddingValues(top = DesignTokens.SpacingMd, bottom = DesignTokens.SpacingMd)
+            verticalArrangement = Arrangement.spacedBy(24.dp), // Increased spacing for a breathable modern feel
+            contentPadding = PaddingValues(top = 24.dp, bottom = 48.dp)
         ) {
 
 
@@ -212,52 +217,67 @@ fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(24.dp), // Increased padding
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Coin balance
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("\uD83D\uDCB0", fontSize = 24.sp)
-                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(ForgedGold.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("\uD83D\uDCB0", fontSize = 24.sp)
+                            }
+                            Spacer(Modifier.width(16.dp)) // Increased spacer
                             Column {
                                 Text(
                                     "$coinBalance",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.headlineMedium, // Larger typography
+                                    fontWeight = FontWeight.Black, // Heavier weight
                                     color = ForgedGold
                                 )
                                 Text(
                                     "Forge Coins",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
                         // Quick action buttons
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
                             FilledTonalButton(
                                 onClick = { onNavigateToSavings?.invoke() },
                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = ForgedGold.copy(alpha = 0.15f)
-                                )
+                                    containerColor = ForgedGold.copy(alpha = 0.1f),
+                                    contentColor = ForgedGold
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.height(36.dp)
                             ) {
-                                Text("Savings", fontSize = 12.sp, color = ForgedGold)
+                                Text("Savings", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                             FilledTonalButton(
                                 onClick = { onNavigateToShop?.invoke() },
                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = ElectricBlue.copy(alpha = 0.15f)
-                                )
+                                    containerColor = ElectricBlue.copy(alpha = 0.1f),
+                                    contentColor = ElectricBlue
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.height(36.dp)
                             ) {
-                                Text("Shop", fontSize = 12.sp, color = ElectricBlue)
+                                Text("Shop", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
                 }
             }
 
-            // Active Quests Card
+            // Active Quests Card (Moved Up optionally, keeping originally ordering but styled)
             item {
                 AnvilCard(
                     onClick = { onNavigateToReport?.invoke() },
@@ -266,23 +286,31 @@ fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(20.dp), // Increased padding
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("\uD83D\uDCCA", fontSize = 24.sp)
-                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(ForgedGold.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("\uD83D\uDCCA", fontSize = 24.sp)
+                            }
+                            Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(
                                     "Forge Report",
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "View your productivity trends",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    "View productivity trends",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -290,13 +318,13 @@ fun DashboardScreen(
                             Icons.Outlined.Assessment,
                             contentDescription = null,
                             tint = ForgedGold,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
 
-            // Active Quests Card
+            // Active Quests Card (Actual Quests)
             item {
                 AnvilCard(
                     onClick = { onNavigateToQuests?.invoke() },
@@ -305,23 +333,31 @@ fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(20.dp), // Matched padding with Report Card
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("\u2694\uFE0F", fontSize = 24.sp)
-                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(ElectricBlue.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("\u2694\uFE0F", fontSize = 24.sp)
+                            }
+                            Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(
                                     "Active Quests",
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Spacer(Modifier.height(4.dp))
                                 Text(
                                     "Tap to view quest log",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -329,7 +365,7 @@ fun DashboardScreen(
                             Icons.Outlined.Schedule,
                             contentDescription = null,
                             tint = ElectricBlue,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -337,10 +373,10 @@ fun DashboardScreen(
 
             // Quick Stats Grid - 2x2 layout
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Pending
                         StatChip(
@@ -363,7 +399,7 @@ fun DashboardScreen(
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Bonus
                         StatChip(
@@ -389,7 +425,7 @@ fun DashboardScreen(
             
             // Grace Period & Exchange
             if (graceDays > 0 || bonusTaskCount >= 5) {
-                  item {
+                item {
                     AnvilCard(
                         onClick = {
                             if (bonusTaskCount >= 5) {
@@ -398,7 +434,7 @@ fun DashboardScreen(
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier.padding(24.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -408,40 +444,41 @@ fun DashboardScreen(
                                         Icons.Filled.Star, 
                                         null, 
                                         tint = ForgedGold, 
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         "REWARD SYSTEM",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            letterSpacing = 1.sp,
-                                            fontWeight = FontWeight.Bold
+                                            letterSpacing = 1.2.sp,
+                                            fontWeight = FontWeight.ExtraBold
                                         ),
                                         color = ForgedGold
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     "Ice Available: $graceDays 🧊",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Black,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    if (bonusTaskCount >= 5) "Can exchange bonus tasks now" 
+                                    if (bonusTaskCount >= 5) "Exchange 5 bonus tasks for 1 Ice" 
                                     else "Need ${5 - bonusTaskCount} more bonus tasks for an Ice",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             if (bonusTaskCount >= 5) {
                                 Box(
                                     modifier = Modifier
-                                        .size(44.dp)
-                                        .background(ForgedGold.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                                        .size(48.dp)
+                                        .background(ForgedGold.copy(alpha = 0.1f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Filled.Warning, "Exchange", tint = ForgedGold, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Filled.Warning, "Exchange", tint = ForgedGold, modifier = Modifier.size(24.dp))
                                 }
                             }
                         }
@@ -462,22 +499,23 @@ fun DashboardScreen(
                         onClick = { onNavigateToPage?.invoke(2) }
                     ) {
                         Column(
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier.padding(24.dp)
                         ) {
                             Icon(
                                 Icons.Outlined.AccountBalanceWallet,
                                 null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                                    .padding(8.dp)
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                    .padding(12.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Text("Budget", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 currencyFormat.format(cashBalance + gcashBalance),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -489,22 +527,23 @@ fun DashboardScreen(
                         onClick = { onNavigateToPage?.invoke(3) }
                     ) {
                         Column(
-                            modifier = Modifier.padding(20.dp)
+                            modifier = Modifier.padding(24.dp)
                         ) {
                             Icon(
                                 Icons.Outlined.Shield,
                                 null,
                                 tint = ElectricTeal,
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .background(ElectricTeal.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                                    .padding(8.dp)
+                                    .size(48.dp)
+                                    .background(ElectricTeal.copy(alpha = 0.1f), CircleShape)
+                                    .padding(12.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Blocked", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Text("Blocked", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 "${blockedApps.size} apps",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -521,7 +560,7 @@ fun DashboardScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
+                                .padding(24.dp), // Matched padding
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -531,36 +570,37 @@ fun DashboardScreen(
                                         Icons.Filled.Warning, 
                                         null, 
                                         tint = ForgedGold, 
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         "ACTIVE DEBT",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            letterSpacing = 1.sp,
-                                            fontWeight = FontWeight.Bold
+                                            letterSpacing = 1.2.sp,
+                                            fontWeight = FontWeight.ExtraBold
                                         ),
                                         color = ForgedGold
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     currencyFormat.format(totalActiveLoanedAmount),
                                     style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Black,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     "${activeLoans.size} borrowers",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             
                             Box(
                                 modifier = Modifier
-                                    .size(52.dp)
-                                    .background(ForgedGold.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                                    .size(48.dp)
+                                    .background(ForgedGold.copy(alpha = 0.1f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -578,23 +618,23 @@ fun DashboardScreen(
 
             // Consistency Graph
             item {
-               Column {
-                   Text(
-                       text = "Habit Consistency",
-                       style = MaterialTheme.typography.titleLarge,
-                       fontWeight = FontWeight.Bold,
-                       color = MaterialTheme.colorScheme.onBackground,
-                       modifier = Modifier.padding(bottom = 12.dp)
-                   )
-                   AnvilCard {
-                       Box(modifier = Modifier.padding(16.dp)) {
+               Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Consistency",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    AnvilCard {
+                        Box(modifier = Modifier.padding(24.dp)) {
                            ContributionGraph(
                                 allTasks = allTasks,
                                 bonusTasks = bonusTasks,
                                 habitContributions = habitContributions
                             )
-                       }
-                   }
+                        }
+                    }
                }
             }
         }
@@ -638,28 +678,37 @@ fun StatChip(
         modifier = modifier,
         onClick = onClick
     ) {
-
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(color.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }

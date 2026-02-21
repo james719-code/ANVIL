@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -13,12 +14,17 @@ import com.james.anvil.MainActivity
 import com.james.anvil.R
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.BlockedLink
+import com.james.anvil.util.PrefsKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.DatagramPacket
@@ -27,7 +33,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -70,15 +76,76 @@ class AnvilVpnService : VpnService() {
     // Upstream DNS address, configurable via SharedPreferences
     private lateinit var upstreamDns: String
 
-    // Cache of blocked link patterns with schedule info
-    private val blockedLinksMap = ConcurrentHashMap<String, BlockedLink>()
+    // Cache of normalized block rules with schedule info
+    private class BlockRule(val normalizedPattern: String, val blockedLink: BlockedLink)
+    @Volatile
+    private var blockedRules = emptyList<BlockRule>()
+
+    @Volatile
+    private var activeBlockedPatterns = emptyList<String>()
+
+    private fun updateActiveBlocklist() {
+        val rules = blockedRules
+        activeBlockedPatterns = rules.filter { it.blockedLink.isBlockingActiveNow() }
+                                     .map { it.normalizedPattern }
+    }
+
+    private val packetBufferPool = ConcurrentLinkedQueue<ByteArray>()
+    
+    private fun acquirePacketBuffer(): ByteArray {
+        return packetBufferPool.poll() ?: ByteArray(VPN_MTU)
+    }
+
+    private fun releasePacketBuffer(buffer: ByteArray) {
+        if (packetBufferPool.size < 64) {
+            packetBufferPool.offer(buffer)
+        }
+    }
+
+    private class PacketData(val buffer: ByteArray, val length: Int, val ihl: Int)
+    private val packetChannel = Channel<PacketData>(capacity = 128)
+
+    // Pool of DatagramSockets for fast DNS forwarding without IPC overhead
+    private val socketPool = ArrayBlockingQueue<DatagramSocket>(16)
+
+    private fun acquireSocket(): DatagramSocket {
+        var s = socketPool.poll()
+        while (s != null && s.isClosed) {
+            s = socketPool.poll()
+        }
+        if (s != null) return s
+        val newSocket = DatagramSocket()
+        protect(newSocket)
+        newSocket.soTimeout = 3000
+        return newSocket
+    }
+
+    private fun releaseSocket(socket: DatagramSocket) {
+        if (socket.isClosed || !socketPool.offer(socket)) {
+            socket.close()
+        }
+    }
 
     @Volatile
     private var shouldRun = false
 
+    @Volatile
+    private var isPauseModeActive = false
+    private lateinit var appPrefs: SharedPreferences
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == PrefsKeys.PAUSE_MODE_ACTIVE) {
+            isPauseModeActive = prefs.getBoolean(key, false)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        // Load app preferences
+        appPrefs = getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, MODE_PRIVATE)
+        isPauseModeActive = appPrefs.getBoolean(PrefsKeys.PAUSE_MODE_ACTIVE, false)
+        appPrefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         // Load user-configured DNS server
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -88,10 +155,16 @@ class AnvilVpnService : VpnService() {
         val db = AnvilDatabase.getDatabase(applicationContext)
         serviceScope.launch {
             db.blocklistDao().observeEnabledBlockedLinksWithSchedule().collectLatest { links ->
-                blockedLinksMap.clear()
-                links.forEach { link ->
-                    blockedLinksMap[link.pattern.lowercase()] = link
-                }
+                blockedRules = links.map { BlockRule(normalizeDomain(it.pattern), it) }
+                updateActiveBlocklist()
+            }
+        }
+
+        // Ticking job to update active blocklist without allocating calendars for every packet
+        serviceScope.launch {
+            while (isActive) {
+                updateActiveBlocklist()
+                delay(30_000)
             }
         }
     }
@@ -186,6 +259,21 @@ class AnvilVpnService : VpnService() {
         
         val buffer = ByteArray(VPN_MTU)
 
+        // Start worker coroutines
+        repeat(4) {
+            serviceScope.launch {
+                for (packetData in packetChannel) {
+                    try {
+                        processPacket(packetData.buffer, packetData.length, packetData.ihl, outputStream)
+                    } catch (e: Exception) {
+                        // Ignore individual packet errors
+                    } finally {
+                        releasePacketBuffer(packetData.buffer)
+                    }
+                }
+            }
+        }
+
         try {
             while (shouldRun) {
                 val length = inputStream.read(buffer)
@@ -194,13 +282,26 @@ class AnvilVpnService : VpnService() {
                     continue
                 }
 
-                // Process packet
-                serviceScope.launch {
-                    try {
-                        processPacket(buffer, length, outputStream)
-                    } catch (e: Exception) {
-                        // Ignore individual packet errors
-                    }
+                // Fast check if it is IPv4 and UDP to port 53 before copying/launching
+                if (length < 28) continue
+                val versionIhl = buffer[0].toInt() and 0xFF
+                if (versionIhl shr 4 != 4) continue // Only IPv4
+                val ihl = (versionIhl and 0x0F) * 4
+                if (length < ihl + 8) continue
+                val protocol = buffer[9].toInt() and 0xFF
+                if (protocol != 17) continue // 17 = UDP
+                val destPort = ((buffer[ihl + 2].toInt() and 0xFF) shl 8) or (buffer[ihl + 3].toInt() and 0xFF)
+                if (destPort != 53) continue
+
+                // Copy buffer so next read doesn't overwrite it while processing
+                val packetCopy = acquirePacketBuffer()
+                System.arraycopy(buffer, 0, packetCopy, 0, length)
+
+                // Process packet asynchronously via channel
+                val packetData = PacketData(packetCopy, length, ihl)
+                val result = packetChannel.trySend(packetData)
+                if (!result.isSuccess) {
+                    releasePacketBuffer(packetCopy) // Drop if channel is full
                 }
             }
         } catch (e: Exception) {
@@ -217,27 +318,7 @@ class AnvilVpnService : VpnService() {
         }
     }
 
-    private fun processPacket(buffer: ByteArray, length: Int, outputStream: FileOutputStream) {
-        if (length < 28) return // Too small for IP + UDP
-
-        val packet = ByteBuffer.wrap(buffer, 0, length)
-        
-        // Check IP version
-        val versionIhl = packet.get(0).toInt() and 0xFF
-        val version = versionIhl shr 4
-        if (version != 4) return // Only IPv4
-
-        val ihl = (versionIhl and 0x0F) * 4
-        if (length < ihl + 8) return
-
-        // Check protocol - 17 = UDP
-        val protocol = packet.get(9).toInt() and 0xFF
-        if (protocol != 17) return
-
-        // Check if it's DNS (port 53)
-        val destPort = ((packet.get(ihl + 2).toInt() and 0xFF) shl 8) or (packet.get(ihl + 3).toInt() and 0xFF)
-        if (destPort != 53) return
-
+    private fun processPacket(buffer: ByteArray, length: Int, ihl: Int, outputStream: FileOutputStream) {
         // Extract DNS query
         val dnsStart = ihl + 8
         if (length < dnsStart + 12) return
@@ -278,16 +359,15 @@ class AnvilVpnService : VpnService() {
     }
 
     private fun shouldBlockDomain(domain: String): Boolean {
+        if (isPauseModeActive) return false
+
         val normalizedDomain = normalizeDomain(domain)
+        val activePatterns = activeBlockedPatterns // Keep local reference for thread-safety
 
-        for ((pattern, blockedLink) in blockedLinksMap) {
-            if (!blockedLink.isBlockingActiveNow()) continue
-
-            val normalizedPattern = normalizeDomain(pattern)
-
-            if (normalizedDomain == normalizedPattern ||
-                normalizedDomain.endsWith(".$normalizedPattern") ||
-                normalizedDomain.contains(normalizedPattern)) {
+        for (pattern in activePatterns) {
+            if (normalizedDomain == pattern ||
+                normalizedDomain.endsWith(".$pattern") ||
+                normalizedDomain.contains(pattern)) {
                 return true
             }
         }
@@ -367,13 +447,13 @@ class AnvilVpnService : VpnService() {
         dnsStart: Int,
         outputStream: FileOutputStream
     ) {
+        var socket: DatagramSocket? = null
+        var receiveSuccess = false
         try {
             val dnsLength = length - dnsStart
             val dnsData = buffer.copyOfRange(dnsStart, length)
 
-            // Create protected socket for upstream DNS
-            val socket = DatagramSocket()
-            protect(socket)
+            socket = acquireSocket()
 
             val dnsServer = InetAddress.getByName(upstreamDns)
             socket.send(DatagramPacket(dnsData, dnsData.size, dnsServer, 53))
@@ -381,9 +461,8 @@ class AnvilVpnService : VpnService() {
             // Receive response
             val responseBuffer = ByteArray(512)
             val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size)
-            socket.soTimeout = 3000
             socket.receive(responsePacket)
-            socket.close()
+            receiveSuccess = true
 
             // Build response packet
             val responseLen = ihl + 8 + responsePacket.length
@@ -448,6 +527,11 @@ class AnvilVpnService : VpnService() {
 
         } catch (e: Exception) {
             // Timeout or error - drop packet
+        } finally {
+            socket?.let {
+                if (receiveSuccess) releaseSocket(it)
+                else it.close()
+            }
         }
     }
 
@@ -493,6 +577,9 @@ class AnvilVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (::appPrefs.isInitialized) {
+            appPrefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+        }
         shouldRun = false
         _isRunning.set(false)
         serviceScope.cancel()
@@ -500,6 +587,11 @@ class AnvilVpnService : VpnService() {
             vpnInterface?.close()
         } catch (e: Exception) {
             // Ignore
+        }
+        var s = socketPool.poll()
+        while (s != null) {
+            s.close()
+            s = socketPool.poll()
         }
     }
 
