@@ -21,4 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "ANVIL"
 include(":app")
- 
+include(":data")
+include(":core")
+include(":feature")

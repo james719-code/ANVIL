@@ -1,0 +1,168 @@
+<resources>
+    <string name="app_name">ANVIL</string>
+    <string name="widget_description">View your ANVIL productivity stats at a glance</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_budget">Budget</string>
+    <string name="nav_blocked">Blocked</string>
+    <string name="nav_bonus">Bonus</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Permission Dialogs -->
+    <string name="permission_notification_title">Enable Notifications</string>
+    <string name="permission_notification_message">Anvil needs notification permission to remind you about upcoming task deadlines.</string>
+    <string name="permission_usage_title">Permit Usage Access</string>
+    <string name="permission_usage_message">Anvil needs usage access permission to track app usage and improve blocking accuracy.</string>
+    <string name="permission_battery_title">Disable Battery Optimization</string>
+    <string name="permission_battery_message">To ensure Anvil works correctly (especially Accessibility Services after restart), please tap \'Battery\' and select \'Unrestricted\' (or \'Don\'t optimize\').</string>
+    <string name="permission_enable">Enable</string>
+    <string name="permission_fix">Fix</string>
+    <string name="permission_later">Later</string>
+    <string name="permission_cancel">Cancel</string>
+    <string name="permission_dont_show_again">Don\'t show again</string>
+    <string name="permission_cant_enable_accessibility">Can\'t enable Accessibility?</string>
+    
+    <!-- Restricted Settings Guide -->
+    <string name="restricted_settings_guide_title">Restricted Settings Guide</string>
+    <string name="restricted_settings_guide_intro">Starting with Android 13, Google introduced \'Restricted Settings\' for sideloaded apps. If you cannot enable Accessibility for Anvil, follow these steps:</string>
+    <string name="guide_step1_title">Trigger the error</string>
+    <string name="guide_step1_desc">Try to enable the Accessibility setting for Anvil. You\'ll get a \'Restricted Setting\' popup. Tap OK. (This is required).</string>
+    <string name="guide_step2_title">Go to App Info</string>
+    <string name="guide_step2_desc">Open Settings → Apps → Anvil.</string>
+    <string name="guide_step3_title">Unlock the setting</string>
+    <string name="guide_step3_desc">Tap the three dots (⋮) in the top-right corner. Tap \'Allow restricted settings\'. Confirm with your PIN/Password.</string>
+    <string name="guide_step4_title">Enable Accessibility</string>
+    <string name="guide_step4_desc">Go back to Settings → Accessibility → Anvil. You can now enable it.</string>
+    <string name="got_it">Got it</string>
+    
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_greeting_morning">Good Morning</string>
+    <string name="dashboard_greeting_afternoon">Good Afternoon</string>
+    <string name="dashboard_greeting_evening">Good Evening</string>
+    <string name="dashboard_tasks_pending">Tasks Pending</string>
+    <string name="dashboard_tasks_completed">Tasks Completed</string>
+    <string name="dashboard_progress">Progress</string>
+    <string name="dashboard_quick_actions">Quick Actions</string>
+    
+    <!-- Tasks -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_add">Add Task</string>
+    <string name="tasks_edit">Edit Task</string>
+    <string name="tasks_delete">Delete Task</string>
+    <string name="tasks_complete">Complete</string>
+    <string name="tasks_undo">Undo</string>
+    <string name="tasks_deleted">Task deleted</string>
+    <string name="tasks_empty_title">No tasks yet</string>
+    <string name="tasks_empty_message">Add your first task to get started</string>
+    <string name="tasks_daily">Daily Tasks</string>
+    <string name="tasks_all">All Tasks</string>
+    <string name="tasks_completed">Completed</string>
+    
+    <!-- Budget -->
+    <string name="budget_title">Budget</string>
+    <string name="budget_add_expense">Add Expense</string>
+    <string name="budget_add_income">Add Income</string>
+    <string name="budget_cash">Cash</string>
+    <string name="budget_gcash">GCash</string>
+    <string name="budget_total_balance">Total Balance</string>
+    <string name="budget_recent_transactions">Recent Transactions</string>
+    <string name="budget_no_transactions">No transactions yet</string>
+    
+    <!-- Loans -->
+    <string name="loans_title">Loans</string>
+    <string name="loans_add">Add Loan</string>
+    <string name="loans_active">Active Loans</string>
+    <string name="loans_repaid">Repaid Loans</string>
+    <string name="loans_total_loaned">Total Loaned</string>
+    <string name="loans_remaining">Remaining</string>
+    <string name="loans_add_repayment">Add Repayment</string>
+    
+    <!-- Blocklist -->
+    <string name="blocklist_title">Blocklist</string>
+    <string name="blocklist_apps">Apps</string>
+    <string name="blocklist_links">Links</string>
+    <string name="blocklist_add_app">Block App</string>
+    <string name="blocklist_add_link">Block Link</string>
+    <string name="blocklist_empty_apps">No blocked apps</string>
+    <string name="blocklist_empty_links">No blocked links</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dark_mode_desc">Switch between light and dark theme</string>
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_accessibility">Accessibility Service</string>
+    <string name="settings_accessibility_desc">Required for app blocking</string>
+    <string name="settings_notification">Notifications</string>
+    <string name="settings_notification_desc">Task reminders and alerts</string>
+    <string name="settings_usage_access">Usage Access</string>
+    <string name="settings_usage_access_desc">Track app usage statistics</string>
+    <string name="settings_battery">Battery Optimization</string>
+    <string name="settings_battery_desc">Ensure reliable background operation</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_developer">Developer</string>
+    <string name="settings_rate">Rate App</string>
+    <string name="settings_feedback">Send Feedback</string>
+    
+    <!-- Common Actions -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add">Add</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_search">Search</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_sort">Sort</string>
+    
+    <!-- Form Labels -->
+    <string name="label_title">Title</string>
+    <string name="label_description">Description</string>
+    <string name="label_category">Category</string>
+    <string name="label_amount">Amount</string>
+    <string name="label_date">Date</string>
+    <string name="label_time">Time</string>
+    <string name="label_deadline">Deadline</string>
+    <string name="label_name">Name</string>
+    <string name="label_note">Note</string>
+    
+    <!-- Shortcuts -->
+    <string name="shortcut_add_expense">Add Expense</string>
+    <string name="shortcut_add_expense_long">Record a new expense</string>
+    <string name="shortcut_add_income">Add Income</string>
+    <string name="shortcut_add_income_long">Record a new income</string>
+    <string name="shortcut_add_loan">Add Loan</string>
+    <string name="shortcut_add_loan_long">Record a new loan</string>
+    
+    <!-- Accessibility -->
+    <string name="cd_navigation_icon">Navigation icon</string>
+    <string name="cd_add_button">Add button</string>
+    <string name="cd_delete_button">Delete button</string>
+    <string name="cd_edit_button">Edit button</string>
+    <string name="cd_back_button">Go back</string>
+    <string name="cd_settings_button">Open settings</string>
+    <string name="cd_close_button">Close</string>
+    <string name="cd_app_icon">App icon</string>
+    <string name="cd_task_checkbox">Task completion checkbox</string>
+    <string name="cd_theme_toggle">Theme toggle</string>
+    
+    <!-- Error Messages -->
+    <string name="error_empty_title">Title cannot be empty</string>
+    <string name="error_invalid_amount">Please enter a valid amount</string>
+    <string name="error_network">Network error. Please try again.</string>
+    <string name="error_unknown">Something went wrong</string>
+    
+    <!-- Success Messages -->
+    <string name="success_task_added">Task added successfully</string>
+    <string name="success_task_completed">Task completed!</string>
+    <string name="success_entry_added">Entry added successfully</string>
+    <string name="success_saved">Saved successfully</string>
+</resources>
