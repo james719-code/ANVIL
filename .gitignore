@@ -22,3 +22,6 @@ local.properties
 /build_output.txt
 /keystore_base64.txt
 /.kotlin/sessions/kotlin-compiler-491532689527502300.salive
+/feature/build/
+/data/build/
+/core/build/
