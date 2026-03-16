@@ -29,6 +29,7 @@ fun ScreenScaffold(
         floatingActionButton = floatingActionButton,
         snackbarHost = snackbarHost,
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         content = content
     )
 }
@@ -51,7 +52,8 @@ fun SecondaryScreenScaffold(
         modifier = modifier,
         floatingActionButton = floatingActionButton,
         snackbarHost = snackbarHost,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -112,6 +114,7 @@ fun ScreenHeader(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
@@ -174,7 +177,8 @@ fun CollapsibleScreenScaffold(
             modifier = modifier,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
             Column(
                 modifier = Modifier
@@ -219,7 +223,8 @@ fun CollapsibleScreenScaffold(
             modifier = modifier,
             floatingActionButton = floatingActionButton,
             snackbarHost = snackbarHost,
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
             Column(
                 modifier = Modifier

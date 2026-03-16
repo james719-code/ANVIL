@@ -26,6 +26,9 @@ object SettingsRoute
 @Serializable
 object BonusTasksRoute
 
+@Serializable
+object AboutRoute
+
 // ============================================
 // SECONDARY DESTINATIONS (From Dashboard)
 // ============================================

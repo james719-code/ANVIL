@@ -1,91 +1,60 @@
 package com.james.anvil
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.core.tween
-import kotlin.math.roundToInt
-
-
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.rememberNavController
 import com.james.anvil.ui.TaskViewModel
+import com.james.anvil.ui.components.AnvilOnboardingSteps
+import com.james.anvil.ui.components.OnboardingOverlay
+import com.james.anvil.ui.components.PermissionCheckManager
+import com.james.anvil.ui.navigation.BlocklistRoute
+import com.james.anvil.ui.navigation.BonusTasksRoute
 import com.james.anvil.ui.navigation.NavItem
-import com.james.anvil.ui.DashboardScreen
-import com.james.anvil.ui.TasksScreen
-import com.james.anvil.ui.BudgetScreen
-import com.james.anvil.ui.BlocklistScreen
-import com.james.anvil.ui.SettingsScreen
-import com.james.anvil.ui.SplashScreen
-import com.james.anvil.ui.AboutScreen
-import com.james.anvil.ui.ForgeProfileScreen
-import com.james.anvil.ui.FocusSessionScreen
-import com.james.anvil.ui.SavingsGoalsScreen
-import com.james.anvil.ui.ForgeShopScreen
-import com.james.anvil.ui.QuestLogScreen
-import com.james.anvil.ui.MonsterCombatScreen
-import com.james.anvil.ui.SkillTreeScreen
-import com.james.anvil.ui.GearEquipmentScreen
-import android.content.Intent
+import com.james.anvil.ui.navigation.NavigationGraph
+import com.james.anvil.ui.navigation.TasksRoute
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.ProvideWindowInfo
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dagger.hilt.android.AndroidEntryPoint
-import com.james.anvil.ui.components.AnvilOnboardingSteps
-import com.james.anvil.ui.components.OnboardingOverlay
-import com.james.anvil.ui.components.PermissionCheckManager
 import com.james.anvil.util.ShortcutProvider
 import com.james.anvil.util.WorkerScheduler
+import dagger.hilt.android.AndroidEntryPoint
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -94,306 +63,43 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
-        // Use centralized utilities
+
         WorkerScheduler.scheduleAllWorkers(this)
         ShortcutProvider.setupShortcuts(this)
         handleIntent(intent)
-        
+
         setContent {
             ProvideWindowInfo(activity = this) {
                 val isDarkTheme by viewModel.isDarkTheme.collectAsState()
                 val showOnboarding by viewModel.showOnboarding.collectAsState()
                 val onboardingStep by viewModel.onboardingStep.collectAsState()
-                
+
                 ANVILTheme(darkTheme = isDarkTheme) {
-                    var showSettings by remember { mutableStateOf(false) }
-                    var showAbout by remember { mutableStateOf(false) }
-                    var showForgeProfile by remember { mutableStateOf(false) }
-                    var showFocusSession by remember { mutableStateOf(false) }
-                    var showSavingsGoals by remember { mutableStateOf(false) }
-                    var showForgeShop by remember { mutableStateOf(false) }
-                    var showQuestLog by remember { mutableStateOf(false) }
-                    var showMonsterCombat by remember { mutableStateOf(false) }
-                    var combatMonsterId by remember { mutableStateOf(0L) }
-                    var showSkillTree by remember { mutableStateOf(false) }
-                    var showGearEquipment by remember { mutableStateOf(false) }
-                    var showSplash by remember { mutableStateOf(false) }
-                    var loadingProgress by remember { mutableFloatStateOf(100f) }
-                    var isLoading by remember { mutableStateOf(false) }
-                    val scope = rememberCoroutineScope()
-                    val windowInfo = LocalWindowInfo.current
-                    
-                    
-                    // Handle back button when settings or about is open
-                BackHandler(enabled = showGearEquipment) {
-                    showGearEquipment = false
-                }
-                BackHandler(enabled = showSkillTree) {
-                    showSkillTree = false
-                }
-                BackHandler(enabled = showMonsterCombat) {
-                    showMonsterCombat = false
-                }
-                BackHandler(enabled = showQuestLog) {
-                    showQuestLog = false
-                }
-                BackHandler(enabled = showForgeShop) {
-                    showForgeShop = false
-                }
-                BackHandler(enabled = showSavingsGoals) {
-                    showSavingsGoals = false
-                }
-                BackHandler(enabled = showFocusSession) {
-                    showFocusSession = false
-                }
-                BackHandler(enabled = showForgeProfile) {
-                    showForgeProfile = false
-                }
-                BackHandler(enabled = showAbout) {
-                    showAbout = false
-                }
-                BackHandler(enabled = showSettings && !showAbout) {
-                    showSettings = false
-                }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AnvilAppShell(viewModel = viewModel)
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // Main App Content - Always composed to enable preloading
-                        // It stays underneath the Splash screen while loading
-                        MainScreen(
-                            viewModel = viewModel,
-                            onNavigateToSettings = { showSettings = true },
-                            onNavigateToForge = { showForgeProfile = true },
-                            onNavigateToFocus = { showFocusSession = true },
-                            onNavigateToSavings = { showSavingsGoals = true },
-                            onNavigateToShop = { showForgeShop = true },
-                            onNavigateToQuests = { showQuestLog = true },
-                            onNavigateToMonsterCombat = { monsterId ->
-                                combatMonsterId = monsterId
-                                showMonsterCombat = true
-                            },
-                            onPagesPreloaded = {
-                                if (isLoading) {
-                                    scope.launch {
-                                        isLoading = false
-                                    }
-                                }
+                            if (showOnboarding) {
+                                OnboardingOverlay(
+                                    isVisible = true,
+                                    steps = AnvilOnboardingSteps.getFullOnboarding(),
+                                    currentStep = onboardingStep,
+                                    onStepComplete = { viewModel.nextOnboardingStep() },
+                                    onSkip = { viewModel.skipOnboarding() },
+                                    onComplete = { viewModel.completeOnboarding() }
+                                )
+                            } else {
+                                PermissionCheckManager()
                             }
-                        )
-                        
-                        // Settings Overlay - Slides over the main content
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showSettings,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            SettingsScreen(
-                                viewModel = viewModel,
-                                onBack = { showSettings = false },
-                                onNavigateToAbout = { showAbout = true }
-                            )
                         }
-                        
-                        // About Overlay - Slides over settings
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showAbout,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            AboutScreen(
-                                onBack = { showAbout = false }
-                            )
-                        }
-
-                        // Forge Profile Overlay - Slides over the main content
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showForgeProfile,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            ForgeProfileScreen(
-                                onNavigateBack = { showForgeProfile = false },
-                                onNavigateToSkillTree = { showSkillTree = true },
-                                onNavigateToGear = { showGearEquipment = true }
-                            )
-                        }
-
-                        // Focus Session Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showFocusSession,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            FocusSessionScreen(
-                                onNavigateBack = { showFocusSession = false }
-                            )
-                        }
-
-                        // Savings Goals Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showSavingsGoals,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            SavingsGoalsScreen(
-                                onBack = { showSavingsGoals = false }
-                            )
-                        }
-
-                        // Forge Shop Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showForgeShop,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            ForgeShopScreen(
-                                onBack = { showForgeShop = false }
-                            )
-                        }
-
-                        // Quest Log Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showQuestLog,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            QuestLogScreen(
-                                onBack = { showQuestLog = false }
-                            )
-                        }
-
-                        // Monster Combat Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showMonsterCombat,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            MonsterCombatScreen(
-                                monsterId = combatMonsterId,
-                                onBack = { showMonsterCombat = false }
-                            )
-                        }
-
-                        // Skill Tree Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showSkillTree,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            SkillTreeScreen(
-                                onBack = { showSkillTree = false }
-                            )
-                        }
-
-                        // Gear Equipment Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showGearEquipment,
-                            enter = slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            ),
-                            exit = slideOutHorizontally(
-                                targetOffsetX = { it },
-                                animationSpec = tween(DesignTokens.AnimDurationSlow)
-                            )
-                        ) {
-                            GearEquipmentScreen(
-                                onBack = { showGearEquipment = false }
-                            )
-                        }
-
-                        // Splash Screen Overlay
-                        if (showSplash) {
-                            SplashScreen(
-                                progress = loadingProgress,
-                                isLoading = isLoading,
-                                onSplashComplete = {
-                                    showSplash = false
-                                }
-                            )
-                        }
-                        
-                        // Onboarding Overlay - Show after splash is complete
-                        if (!showSplash && showOnboarding) {
-                            OnboardingOverlay(
-                                isVisible = true,
-                                steps = AnvilOnboardingSteps.getFullOnboarding(),
-                                currentStep = onboardingStep,
-                                onStepComplete = { viewModel.nextOnboardingStep() },
-                                onSkip = { viewModel.skipOnboarding() },
-                                onComplete = { viewModel.completeOnboarding() }
-                            )
-                        }
-                    }
-                }
-
-                    // Consolidated permission check manager (show after splash and onboarding)
-                    if (!showSplash && !showOnboarding) {
-                        PermissionCheckManager()
                     }
                 }
             }
         }
     }
-
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -401,354 +107,132 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        // Handle other intents if any
+        // Reserved for future deep-link and shortcut handling.
     }
 }
 
 @Composable
-fun MainScreen(
-    viewModel: TaskViewModel,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToForge: () -> Unit = {},
-    onNavigateToFocus: () -> Unit = {},
-    onNavigateToSavings: () -> Unit = {},
-    onNavigateToShop: () -> Unit = {},
-    onNavigateToQuests: () -> Unit = {},
-    onNavigateToMonsterCombat: (Long) -> Unit = {},
-    onPagesPreloaded: () -> Unit = {}
-) {
+private fun AnvilAppShell(viewModel: TaskViewModel) {
+    val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val navItems = NavItem.bottomNavItems
-    val pagerState = rememberPagerState(pageCount = { 4 }) // Home, Tasks, Budget, Blocklist
-    val scope = rememberCoroutineScope()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = currentBackStackEntry?.destination
     val windowInfo = LocalWindowInfo.current
-    
-    // Notify parent when this composable is first composed (pages are being preloaded)
-    LaunchedEffect(Unit) {
-        // Small delay to ensure Compose has started laying out pages
 
-        onPagesPreloaded()
-    }
-    
-    // Use NavigationRail for expanded screens (tablets in landscape, desktop)
     if (windowInfo.shouldShowNavRail) {
         Row(modifier = Modifier.fillMaxSize()) {
-            AdaptiveNavigationRail(
-                pagerState = pagerState,
-                navItems = navItems,
-                onItemClick = { index ->
-                    scope.launch {
-                        pagerState.animateScrollToPage(index)
-                    }
-                },
-                onSettingsClick = onNavigateToSettings
-            )
-            
-            Box(modifier = Modifier.weight(1f)) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 3,
-                    userScrollEnabled = false // Disable swipe on larger screens - use rail
-                ) { page ->
-                    ScreenContent(
-                        page = page,
-                        viewModel = viewModel,
-                        snackbarHostState = snackbarHostState,
-                        onNavigateToPage = { targetPage ->
-                            handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
+            NavigationRail(
+                modifier = Modifier.fillMaxHeight(),
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                navItems.forEach { navItem ->
+                    val selected = currentDestination.isTopLevelSelected(navItem)
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = { navController.navigateToTopLevel(navItem) },
+                        icon = {
+                            Icon(
+                                imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
+                                contentDescription = navItem.title
+                            )
                         },
-                        onNavigateToForge = onNavigateToForge,
-                        onNavigateToFocus = onNavigateToFocus,
-                        onNavigateToSavings = onNavigateToSavings,
-                        onNavigateToShop = onNavigateToShop,
-                        onNavigateToQuests = onNavigateToQuests,
-                        onNavigateToMonsterCombat = onNavigateToMonsterCombat
+                        label = { Text(navItem.title) }
                     )
                 }
-                
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.BottomCenter)
-                        .padding(bottom = DesignTokens.SpacingMd)
-                )
             }
+
+            ShellContent(
+                modifier = Modifier.weight(1f),
+                navController = navController,
+                viewModel = viewModel,
+                snackbarHostState = snackbarHostState
+            )
         }
     } else {
-        // Compact/Medium screens - use bottom navigation
-        Box(modifier = Modifier.fillMaxSize()) {
-            Scaffold(
-                bottomBar = {
-                    SlidingNavigationBar(
-                        pagerState = pagerState,
-                        navItems = navItems,
-                        onItemClick = { index ->
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        }
-                    )
-                }
-            ) { innerPadding ->
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = innerPadding.calculateBottomPadding()),
-                    beyondViewportPageCount = 3
-                ) { page ->
-                    ScreenContent(
-                        page = page,
-                        viewModel = viewModel,
-                        snackbarHostState = snackbarHostState,
-                        onNavigateToPage = { targetPage ->
-                            handleNavigation(targetPage, onNavigateToSettings, scope, pagerState)
-                        },
-                        onNavigateToForge = onNavigateToForge,
-                        onNavigateToFocus = onNavigateToFocus,
-                        onNavigateToSavings = onNavigateToSavings,
-                        onNavigateToShop = onNavigateToShop,
-                        onNavigateToQuests = onNavigateToQuests,
-                        onNavigateToMonsterCombat = onNavigateToMonsterCombat
-                    )
-                }
-            }
-
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.BottomCenter)
-                    .padding(bottom = 100.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ScreenContent(
-    page: Int,
-    viewModel: TaskViewModel,
-    snackbarHostState: SnackbarHostState,
-    onNavigateToPage: (Int) -> Unit,
-    onNavigateToForge: () -> Unit = {},
-    onNavigateToFocus: () -> Unit = {},
-    onNavigateToSavings: () -> Unit = {},
-    onNavigateToShop: () -> Unit = {},
-    onNavigateToQuests: () -> Unit = {},
-    onNavigateToMonsterCombat: (Long) -> Unit = {}
-) {
-    when (page) {
-        0 -> DashboardScreen(
-            viewModel = viewModel,
-            onNavigateToPage = onNavigateToPage,
-            onNavigateToForge = onNavigateToForge,
-            onNavigateToFocus = onNavigateToFocus,
-            onNavigateToSavings = onNavigateToSavings,
-            onNavigateToShop = onNavigateToShop,
-            onNavigateToQuests = onNavigateToQuests
-        )
-        1 -> TasksScreen(viewModel = viewModel, snackbarHostState = snackbarHostState)
-        2 -> BudgetScreen()
-        3 -> BlocklistScreen(onNavigateToMonsterCombat = onNavigateToMonsterCombat)
-    }
-}
-
-private fun handleNavigation(
-    targetPage: Int,
-    onNavigateToSettings: () -> Unit,
-    scope: kotlinx.coroutines.CoroutineScope,
-    pagerState: PagerState
-) {
-    when (targetPage) {
-        5 -> onNavigateToSettings()
-        4 -> scope.launch { pagerState.animateScrollToPage(1) } // Bonus tasks tab
-        else -> scope.launch { pagerState.animateScrollToPage(targetPage) }
-    }
-}
-
-@Composable
-fun SlidingNavigationBar(
-    pagerState: PagerState,
-    navItems: List<NavItem<*>>,
-    onItemClick: (Int) -> Unit
-) {
-    val density = LocalDensity.current
-    var itemWidth by remember { mutableStateOf(0.dp) }
-    var barWidth by remember { mutableStateOf(0.dp) }
-    val primaryColor = MaterialTheme.colorScheme.primary
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DesignTokens.SpacingMd, vertical = DesignTokens.SpacingMd)
-            .navigationBarsPadding()
-    ) {
-        // Main navigation surface
-        Surface(
-            modifier = Modifier
-                .clip(RoundedCornerShape(DesignTokens.RadiusLarge))
-                .onGloballyPositioned { coordinates ->
-                    barWidth = with(density) { coordinates.size.width.toDp() }
-                    itemWidth = barWidth / navItems.size
-                },
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = DesignTokens.ElevationMedium,
-            shadowElevation = DesignTokens.ElevationMedium
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(68.dp)
-            ) {
-                // Direct offset calculation for smooth 1:1 gesture tracking
-                val indicatorOffset = with(density) {
-                    val currentPage = pagerState.currentPage
-                    val offset = pagerState.currentPageOffsetFraction
-                    ((currentPage + offset) * itemWidth.toPx()).roundToInt()
-                }
-                
-                // Full-height pill background for selected item
-                Box(
-                    modifier = Modifier
-                        .offset { IntOffset(indicatorOffset, 0) }
-                        .width(itemWidth)
-                        .fillMaxHeight()
-                        .background(
-                            color = primaryColor,
-                            shape = RoundedCornerShape(DesignTokens.RadiusMedium)
-                        )
-                )
-                
-                // Navigation items
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    navItems.forEachIndexed { index, item ->
-                        val isSelected = pagerState.currentPage == index
-                        
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxSize()
-                                .clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null
-                                ) { onItemClick(index) },
-                            contentAlignment = androidx.compose.ui.Alignment.Center
-                        ) {
-                            // Animate icon/text color
-                            val tint by androidx.compose.animation.animateColorAsState(
-                                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                animationSpec = tween(DesignTokens.AnimDurationMedium),
-                                label = "navTint"
-                            )
-
-                            Column(
-                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                NavigationBar {
+                    navItems.forEach { navItem ->
+                        val selected = currentDestination.isTopLevelSelected(navItem)
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { navController.navigateToTopLevel(navItem) },
+                            icon = {
                                 Icon(
-                                    imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = item.title,
-                                    tint = tint,
-                                    modifier = Modifier.size(22.dp)
+                                    imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
+                                    contentDescription = navItem.title
                                 )
-                                Spacer(modifier = Modifier.height(DesignTokens.SpacingXxs))
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        fontSize = 11.sp
-                                    ),
-                                    color = tint
-                                )
-                            }
-                        }
+                            },
+                            label = { Text(navItem.title) }
+                        )
                     }
                 }
             }
+        ) { innerPadding ->
+            ShellContent(
+                modifier = Modifier.padding(innerPadding),
+                navController = navController,
+                viewModel = viewModel,
+                snackbarHostState = snackbarHostState
+            )
         }
     }
 }
 
-/**
- * Navigation Rail for expanded screens (tablets in landscape, desktop)
- * Provides a vertical navigation pattern with icons and labels
- */
 @Composable
-fun AdaptiveNavigationRail(
-    pagerState: PagerState,
-    navItems: List<NavItem<*>>,
-    onItemClick: (Int) -> Unit,
-    onSettingsClick: () -> Unit
+private fun ShellContent(
+    modifier: Modifier = Modifier,
+    navController: androidx.navigation.NavHostController,
+    viewModel: TaskViewModel,
+    snackbarHostState: SnackbarHostState
 ) {
-    NavigationRail(
-        modifier = Modifier.fillMaxHeight(),
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        Spacer(Modifier.height(DesignTokens.SpacingLg))
-        
-        // Main navigation items
-        navItems.forEachIndexed { index, item ->
-            val isSelected = pagerState.currentPage == index
-            
-            NavigationRailItem(
-                selected = isSelected,
-                onClick = { onItemClick(index) },
-                icon = {
-                    Icon(
-                        imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.title,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                },
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-        }
-        
-        Spacer(Modifier.weight(1f))
-        
-        // Settings at bottom
-        NavigationRailItem(
-            selected = false,
-            onClick = onSettingsClick,
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.labelSmall
-                )
-            },
-            colors = NavigationRailItemDefaults.colors(
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        NavigationGraph(
+            navController = navController,
+            viewModel = viewModel,
+            snackbarHostState = snackbarHostState
         )
-        
-        Spacer(Modifier.height(DesignTokens.SpacingLg))
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(
+                    horizontal = DesignTokens.PaddingScreen,
+                    vertical = DesignTokens.SpacingMd
+                )
+        )
+    }
+}
+
+private fun androidx.navigation.NavHostController.navigateToTopLevel(item: NavItem<*>) {
+    navigate(item.route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+private fun NavDestination?.isTopLevelSelected(item: NavItem<*>): Boolean {
+    if (this == null) return false
+
+    val matchesPrimary = hierarchy.any { destination ->
+        destination.hasRoute(item.routeClass)
+    }
+    if (matchesPrimary) return true
+
+    return item == NavItem.Tasks && hierarchy.any { destination ->
+        destination.hasRoute(BonusTasksRoute::class) || destination.hasRoute(TasksRoute::class)
+    } || item == NavItem.Blocklist && hierarchy.any { destination ->
+        destination.hasRoute(BlocklistRoute::class)
     }
 }
 

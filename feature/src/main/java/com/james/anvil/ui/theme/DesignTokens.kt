@@ -19,10 +19,10 @@ object DesignTokens {
     val SpacingXs = 4.dp       // Tight spacing (icon-text)
     val SpacingSm = 8.dp       // Small spacing (list items)
     val SpacingMd = 12.dp      // Medium spacing (card content)
-    val SpacingLg = 16.dp      // Large spacing (sections)
-    val SpacingXl = 20.dp      // Screen padding
-    val SpacingXxl = 24.dp     // Between major sections
-    val SpacingXxxl = 32.dp    // Large section gaps
+    val SpacingLg = 18.dp      // Large spacing (sections)
+    val SpacingXl = 24.dp      // Screen padding
+    val SpacingXxl = 28.dp     // Between major sections
+    val SpacingXxxl = 36.dp    // Large section gaps
     val Spacing40 = 40.dp      // Hero spacing
     val Spacing48 = 48.dp      // Maximum spacing
     val Spacing56 = 56.dp      // Extra large
@@ -32,9 +32,9 @@ object DesignTokens {
     // SEMANTIC SPACING
     // Named values for specific use cases
     // ============================================
-    val PaddingScreen = SpacingXl        // 20dp - Default screen padding
-    val PaddingCard = SpacingLg          // 16dp - Inside cards
-    val PaddingCardLarge = SpacingXxl    // 24dp - Large card content
+    val PaddingScreen = SpacingXl        // Default screen padding
+    val PaddingCard = SpacingLg          // Inside cards
+    val PaddingCardLarge = 24.dp         // Large card content
     val PaddingList = SpacingMd          // 12dp - List item padding
     val PaddingButton = SpacingMd        // 12dp - Button content padding
     val SectionSpacing = SpacingXxl      // 24dp - Between sections
@@ -46,10 +46,10 @@ object DesignTokens {
     // ============================================
     val RadiusNone = 0.dp
     val RadiusSmall = 8.dp     // Chips, small buttons
-    val RadiusMedium = 12.dp   // Cards, inputs
-    val RadiusLarge = 16.dp    // Dialogs, large cards
-    val RadiusXLarge = 24.dp   // Bottom sheets
-    val RadiusRound = 28.dp    // FAB, rounded buttons
+    val RadiusMedium = 14.dp   // Cards, inputs
+    val RadiusLarge = 20.dp    // Dialogs, large cards
+    val RadiusXLarge = 28.dp   // Bottom sheets
+    val RadiusRound = 32.dp    // FAB, rounded buttons
     val RadiusFull = 100.dp    // Pills, circles
     
     // ============================================
@@ -57,7 +57,7 @@ object DesignTokens {
     // ============================================
     val ElevationNone = 0.dp
     val ElevationLow = 1.dp    // Subtle lift
-    val ElevationMedium = 4.dp // Cards
+    val ElevationMedium = 3.dp // Cards
     val ElevationHigh = 8.dp   // Dialogs, popovers
     val ElevationHighest = 16.dp // Modal sheets
     

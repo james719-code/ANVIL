@@ -20,26 +20,28 @@ import androidx.compose.ui.graphics.Color
 // PRIMARY BRAND COLORS
 // Core brand identity colors used throughout the app
 // ============================================
-val ElectricBlue = Color(0xFF3B82F6)      // Primary actions, buttons, links
-val ElectricTeal = Color(0xFF14B8A6)      // Secondary accent, success indicators
-val ForgedGold = Color(0xFFD4A853)        // Financial highlights, rewards, premium
+val EmberOrange = Color(0xFFE06C3C)       // Primary actions and emphasis
+val EmberSoft = Color(0xFFF3A07C)         // Warm highlight for hero elements
+val SteelBlue = Color(0xFF7B899A)         // Cool structural accent
+val ElectricBlue = Color(0xFF6C7A8F)      // Info states and secondary emphasis
+val ElectricTeal = Color(0xFF9C6445)      // Warm bronze secondary accent
+val ForgedGold = Color(0xFFD0A662)        // Financial highlights, rewards, premium
 
 // ============================================
 // EXTENDED BRAND PALETTE
 // Variations for subtle backgrounds and states
 // ============================================
-val ForgedGoldDark = Color(0xFFB8923A)    // Pressed/active gold states
-val ForgedGoldLight = Color(0xFFE8C878)   // Gold highlights, badges
-val SteelBlue = Color(0xFF4A90A4)         // Alternative accent for variety
+val ForgedGoldDark = Color(0xFFB0843F)    // Pressed/active gold states
+val ForgedGoldLight = Color(0xFFE6C17A)   // Gold highlights, badges
 
 // ============================================
 // SEMANTIC COLORS
 // Universal feedback colors
 // ============================================
-val SuccessGreen = Color(0xFF10B981)      // Success, completion, positive
-val ErrorRed = Color(0xFFEF4444)          // Errors, deletion, negative
-val WarningOrange = Color(0xFFF59E0B)     // Warnings, attention needed
-val InfoBlue = Color(0xFF3B82F6)          // Information, tips (same as primary)
+val SuccessGreen = Color(0xFF4CAF87)      // Success, completion, positive
+val ErrorRed = Color(0xFFE45F5F)          // Errors, deletion, negative
+val WarningOrange = Color(0xFFD88A4B)     // Warnings, attention needed
+val InfoBlue = Color(0xFF8095B4)          // Information, tips
 
 // ============================================
 // FINANCIAL SEMANTIC COLORS
@@ -54,30 +56,30 @@ val HighPriority = Color(0xFFE53935)      // High priority tasks/items
 // DARK THEME SURFACE COLORS
 // Slate-based palette for dark mode
 // ============================================
-val BackgroundDark = Color(0xFF0F172A)    // Main background (Slate 900)
-val SurfaceDark = Color(0xFF1E293B)       // Card/container surfaces (Slate 800)
-val SurfaceElevatedDark = Color(0xFF334155) // Elevated surfaces (Slate 700)
-val TextPrimaryDark = Color(0xFFF1F5F9)   // Primary text (Slate 100)
-val TextSecondaryDark = Color(0xFF94A3B8) // Secondary text (Slate 400)
-val BorderDark = Color(0xFF334155)        // Borders/dividers (Slate 700)
+val BackgroundDark = Color(0xFF111315)    // Main background
+val SurfaceDark = Color(0xFF191C20)       // Card/container surfaces
+val SurfaceElevatedDark = Color(0xFF23282E) // Elevated surfaces
+val TextPrimaryDark = Color(0xFFF3F2EF)   // Primary text
+val TextSecondaryDark = Color(0xFFA19D95) // Secondary text
+val BorderDark = Color(0xFF2C3138)        // Borders/dividers
 
 // ============================================
 // LIGHT THEME SURFACE COLORS
 // Clean, professional light mode palette
 // ============================================
-val BackgroundLight = Color(0xFFF8FAFC)   // Main background (Slate 50)
-val SurfaceLight = Color(0xFFFFFFFF)      // Card/container surfaces (White)
-val SurfaceElevatedLight = Color(0xFFF1F5F9) // Elevated surfaces (Slate 100)
-val TextPrimaryLight = Color(0xFF0F172A)  // Primary text (Slate 900)
-val TextSecondaryLight = Color(0xFF64748B) // Secondary text (Slate 500)
-val BorderLight = Color(0xFFE2E8F0)       // Borders/dividers (Slate 200)
+val BackgroundLight = Color(0xFFF4F1EB)   // Main background
+val SurfaceLight = Color(0xFFFFFCF7)      // Card/container surfaces
+val SurfaceElevatedLight = Color(0xFFEDE7DE) // Elevated surfaces
+val TextPrimaryLight = Color(0xFF201D19)  // Primary text
+val TextSecondaryLight = Color(0xFF6C665D) // Secondary text
+val BorderLight = Color(0xFFDCD2C4)       // Borders/dividers
 
 // ============================================
 // GRADIENT COLORS
 // For special visual effects
 // ============================================
-val GradientStart = Color(0xFF2563EB)     // Blue 600
-val GradientEnd = Color(0xFF0D9488)       // Teal 600
+val GradientStart = Color(0xFF34251D)     // Warm graphite
+val GradientEnd = Color(0xFF1E2228)       // Steel slate
 val ProgressTrackLight = Color(0x80FFFFFF)
 
 // ============================================

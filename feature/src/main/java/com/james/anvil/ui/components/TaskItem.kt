@@ -1,28 +1,48 @@
 package com.james.anvil.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.james.anvil.data.Task
-import com.james.anvil.ui.theme.DeepTeal
-import com.james.anvil.ui.theme.MutedTeal
+import com.james.anvil.ui.theme.ForgedGold
+import com.james.anvil.ui.theme.InfoBlue
+import com.james.anvil.ui.theme.SuccessGreen
+import com.james.anvil.ui.theme.WarningOrange
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.ui.tooling.preview.Preview
-import com.james.anvil.data.TaskStep
 
 @Composable
 fun TaskItem(
@@ -33,174 +53,127 @@ fun TaskItem(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    SectionCard(
+        modifier = modifier,
+        accentColor = urgencyColor(task),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            // Left accent border
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(
-                        if (task.isDaily) MutedTeal else MaterialTheme.colorScheme.primary
-                    )
-            )
-            
-            Row(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Completion radio button
-                RadioButton(
-                    selected = task.isCompleted,
-                    onClick = onComplete,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = DeepTeal,
-                        unselectedColor = MaterialTheme.colorScheme.outline
-                    )
+            RadioButton(
+                selected = task.isCompleted,
+                onClick = onComplete,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = SuccessGreen,
+                    unselectedColor = MaterialTheme.colorScheme.outline
                 )
+            )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = task.title,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Daily indicator
-                        if (task.isDaily) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Daily Task",
-                                modifier = Modifier.size(14.dp),
-                                tint = MutedTeal
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = task.category,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
+                            text = task.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (!task.isDaily) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TaskMetaPill(text = task.category, tint = InfoBlue)
+                            if (task.isDaily) {
+                                TaskMetaPill(
+                                    text = "Daily",
+                                    tint = SuccessGreen,
+                                    icon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = "Daily task",
+                                            tint = SuccessGreen,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
                                 )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = timeFormat.format(Date(task.deadline)),
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                TaskMetaPill(
+                                    text = timeFormat.format(Date(task.deadline)),
+                                    tint = MaterialTheme.colorScheme.secondary
                                 )
-                            )
-                        }
-                        // Hardness level indicator
-                        if (task.hardnessLevel > 1 && !task.isDaily) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(
-                                        when (task.hardnessLevel) {
-                                            5 -> Color(0xFFE53935)
-                                            4 -> Color(0xFFFF9800)
-                                            3 -> Color(0xFFFFC107)
-                                            else -> DeepTeal.copy(alpha = 0.7f)
-                                        }
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
+                            }
+                            if (task.hardnessLevel > 1 && !task.isDaily) {
+                                TaskMetaPill(
                                     text = "H${task.hardnessLevel}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
+                                    tint = urgencyColor(task)
                                 )
                             }
                         }
                     }
-                    
-                    // Steps progress bar
-                    if (task.steps.isNotEmpty()) {
-                        val completedSteps = task.steps.count { it.isCompleted }
-                        val totalSteps = task.steps.size
-                        val progress = completedSteps.toFloat() / totalSteps
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = DeepTeal,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "$completedSteps/$totalSteps",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit") },
+                                onClick = {
+                                    showMenu = false
+                                    onEdit()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    showMenu = false
+                                    onDelete()
+                                }
                             )
                         }
                     }
                 }
 
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                if (task.steps.isNotEmpty()) {
+                    val completedSteps = task.steps.count { it.isCompleted }
+                    val totalSteps = task.steps.size
+                    val progress = completedSteps.toFloat() / totalSteps.toFloat()
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Edit") },
-                            onClick = {
-                                showMenu = false
-                                onEdit()
-                            }
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(8.dp),
+                            color = urgencyColor(task),
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
-                        DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            }
+                        Text(
+                            text = "$completedSteps/$totalSteps",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -209,69 +182,35 @@ fun TaskItem(
     }
 }
 
-// =============================================
-// Preview Functions (Removed in Release Builds)
-// =============================================
-
-@Preview(name = "Task Item - Pending", showBackground = true)
 @Composable
-private fun TaskItemPendingPreview() {
-    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
-        TaskItem(
-            task = Task(
-                id = 1,
-                title = "Complete project report",
-                category = "Work",
-                deadline = System.currentTimeMillis() + 86400000,
-                isCompleted = false,
-                isDaily = false,
-                steps = emptyList()
-            ),
-            onComplete = {},
-            onDelete = {},
-            onEdit = {}
-        )
+private fun TaskMetaPill(
+    text: String,
+    tint: Color,
+    icon: (@Composable () -> Unit)? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = tint.copy(alpha = 0.12f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            icon?.invoke()
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = tint
+            )
+        }
     }
 }
 
-@Preview(name = "Task Item - Daily", showBackground = true)
 @Composable
-private fun TaskItemDailyPreview() {
-    com.james.anvil.ui.theme.ANVILTheme(darkTheme = false) {
-        TaskItem(
-            task = Task(
-                id = 2,
-                title = "Morning exercise",
-                category = "Health",
-                deadline = System.currentTimeMillis(),
-                isCompleted = false,
-                isDaily = true,
-                steps = emptyList()
-            ),
-            onComplete = {},
-            onDelete = {},
-            onEdit = {}
-        )
-    }
-}
-
-@Preview(name = "Task Item - Dark", showBackground = true)
-@Composable
-private fun TaskItemDarkPreview() {
-    com.james.anvil.ui.theme.ANVILTheme(darkTheme = true) {
-        TaskItem(
-            task = Task(
-                id = 3,
-                title = "Read documentation",
-                category = "Education",
-                deadline = System.currentTimeMillis() + 3600000,
-                isCompleted = false,
-                isDaily = false,
-                steps = listOf(TaskStep(id = "1", title = "Chapter 1"))
-            ),
-            onComplete = {},
-            onDelete = {},
-            onEdit = {}
-        )
-    }
+private fun urgencyColor(task: Task): Color = when {
+    task.hardnessLevel >= 5 -> MaterialTheme.colorScheme.error
+    task.hardnessLevel >= 4 -> WarningOrange
+    task.hardnessLevel >= 3 -> ForgedGold
+    else -> MaterialTheme.colorScheme.primary
 }

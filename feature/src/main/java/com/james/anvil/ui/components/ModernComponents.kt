@@ -20,8 +20,8 @@ fun AnvilCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
-    shape: Shape = RoundedCornerShape(16.dp),
-    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+    shape: Shape = RoundedCornerShape(22.dp),
+    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
