@@ -102,11 +102,7 @@ fun MonsterCombatScreen(
                 eyebrow = "Challenge",
                 title = "Monster Combat",
                 subtitle = "Earn your unblock by dealing damage through productive actions.",
-                trailing = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                }
+                onBack = onBack
             )
 
             // Monster Display

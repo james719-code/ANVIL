@@ -34,6 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.feature.R
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
+import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.InfoBlue
 import com.james.anvil.ui.theme.SuccessGreen
@@ -46,32 +49,22 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                )
-            )
-        }
-    ) { innerPadding ->
+    TopLevelPageScaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
+            PageHeader(
+                eyebrow = "Information",
+                title = "About",
+                subtitle = "App goals, tech details, values, and credit.",
+                onBack = onBack
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Hero Section with App Logo
             Box(
                 modifier = Modifier
@@ -473,7 +466,7 @@ private fun GlassCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
         tonalElevation = 0.dp,
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,

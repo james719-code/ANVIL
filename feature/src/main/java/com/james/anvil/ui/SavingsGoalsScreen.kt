@@ -93,11 +93,7 @@ fun SavingsGoalsScreen(
                     eyebrow = "Treasure",
                     title = "Savings Goals",
                     subtitle = "Turn progress into visible milestones and funded rewards.",
-                    trailing = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                        }
-                    }
+                    onBack = onBack
                 )
             }
 

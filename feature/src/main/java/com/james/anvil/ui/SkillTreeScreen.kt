@@ -69,11 +69,7 @@ fun SkillTreeScreen(
                 eyebrow = "Build",
                 title = "Skill Tree",
                 subtitle = "Spend skill points on upgrades that make ANVIL stronger.",
-                trailing = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                }
+                onBack = onBack
             )
 
             // Available Points Header

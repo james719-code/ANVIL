@@ -2,6 +2,9 @@ package com.james.anvil.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
@@ -168,6 +171,7 @@ fun PageHeader(
     subtitle: String,
     modifier: Modifier = Modifier,
     eyebrow: String? = null,
+    onBack: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
     Row(
@@ -177,6 +181,21 @@ fun PageHeader(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
     ) {
+        if (onBack != null) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
+
         Column(modifier = Modifier.weight(1f)) {
             if (eyebrow != null) {
                 Text(
@@ -211,6 +230,7 @@ fun AnvilPageHeader(
     subtitle: String,
     modifier: Modifier = Modifier,
     eyebrow: String? = null,
+    onBack: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
     PageHeader(
@@ -218,6 +238,7 @@ fun AnvilPageHeader(
         subtitle = subtitle,
         modifier = modifier,
         eyebrow = eyebrow,
+        onBack = onBack,
         trailing = trailing
     )
 }

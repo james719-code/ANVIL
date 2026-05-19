@@ -64,11 +64,7 @@ fun GearEquipmentScreen(
                     eyebrow = "Loadout",
                     title = "Equipment",
                     subtitle = "Equip gear earned from combat and keep bonuses visible.",
-                    trailing = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                        }
-                    }
+                    onBack = onBack
                 )
             }
 

@@ -61,21 +61,7 @@ fun FocusSessionScreen(
     val totalSessionCount by viewModel.totalSessionCount.collectAsState()
     val recentSessions by viewModel.recentSessions.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Forge Session", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
-        }
-    ) { padding ->
+    TopLevelPageScaffold { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,6 +70,14 @@ fun FocusSessionScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
+            item {
+                PageHeader(
+                    eyebrow = "Focus",
+                    title = "Forge Session",
+                    subtitle = "Work or break interval timer designed to keep focus high.",
+                    onBack = onNavigateBack
+                )
+            }
             // Timer card
             item {
                 TimerCard(

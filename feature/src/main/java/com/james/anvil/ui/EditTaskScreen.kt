@@ -21,7 +21,8 @@ import androidx.navigation.NavController
 import com.james.anvil.data.Task
 import com.james.anvil.data.TaskStep
 import com.james.anvil.formatDate
-import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,36 +44,18 @@ fun EditTaskScreen(
         (incompleteTasks + completedTasks).map { it.category }.distinct().filter { it != "General" }.sorted()
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
+    TopLevelPageScaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Inline header with back button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Edit Task",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
+            PageHeader(
+                eyebrow = "Modification",
+                title = "Edit Task",
+                subtitle = "Refine objectives, steps, hardness, and deadlines.",
+                onBack = { navController.popBackStack() }
+            )
             
             if (task == null) {
                 Box(

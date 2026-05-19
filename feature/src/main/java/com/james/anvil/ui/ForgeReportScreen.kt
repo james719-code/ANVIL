@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.james.anvil.data.XpSource
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.DailyStat
 import com.james.anvil.ui.viewmodel.ForgeReportState
@@ -51,21 +53,7 @@ fun ForgeReportScreen(
     val state by viewModel.state.collectAsState()
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH")) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Forge Report", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
+    TopLevelPageScaffold { paddingValues ->
         if (state.isLoading) {
             Box(
                 modifier = Modifier
@@ -83,6 +71,15 @@ fun ForgeReportScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    PageHeader(
+                        eyebrow = "Analytics",
+                        title = "Forge Report",
+                        subtitle = "Review productivity, consistency, task history, and budget patterns.",
+                        onBack = onBack
+                    )
+                }
+
                 // ── Time Range Selector ──
                 item {
                     RangeSelector(

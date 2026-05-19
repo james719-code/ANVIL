@@ -174,11 +174,7 @@ fun ForgeProfileScreen(
                     eyebrow = "Progression",
                     title = "The Forge",
                     subtitle = "Level, achievements, gear, and skill upgrades tied to your output.",
-                    trailing = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
+                    onBack = onNavigateBack
                 )
             }
 

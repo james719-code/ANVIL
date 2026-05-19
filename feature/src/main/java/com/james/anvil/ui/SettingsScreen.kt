@@ -116,12 +116,8 @@ fun SettingsScreen(
                 eyebrow = "Controls",
                 title = "Settings",
                 subtitle = "Tune blocking, reminders, permissions, and the forge interface.",
-                trailing = if (onBack != null || navController != null) {
-                    {
-                        IconButton(onClick = { onBack?.invoke() ?: navController?.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
+                onBack = if (onBack != null || navController != null) {
+                    { onBack?.invoke() ?: navController?.popBackStack() }
                 } else {
                     null
                 }

@@ -30,7 +30,8 @@ import com.james.anvil.data.BalanceType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
-import com.james.anvil.ui.components.SecondaryScreenScaffold
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.GcashBlue
 import com.james.anvil.ui.theme.CashTeal
 import com.james.anvil.ui.theme.ErrorRed
@@ -58,10 +59,7 @@ fun LoansScreen(
     val tabs = listOf("Active (${activeLoans.size})", "Repaid (${repaidLoans.size})")
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH"))
 
-    SecondaryScreenScaffold(
-        title = "Loans",
-        subtitle = "Track what you owe",
-        onNavigateBack = onNavigateBack,
+    TopLevelPageScaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddLoanSheet = true },
@@ -76,6 +74,14 @@ fun LoansScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            PageHeader(
+                eyebrow = "Lending",
+                title = "Loans",
+                subtitle = "Track what you owe or are owed.",
+                onBack = onNavigateBack
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
             // Animated Tab Row
             TabRow(
                 selectedTabIndex = pagerState.currentPage,

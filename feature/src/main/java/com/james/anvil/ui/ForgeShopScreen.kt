@@ -121,11 +121,7 @@ fun ForgeShopScreen(
                     eyebrow = "Rewards",
                     title = "Forge Shop",
                     subtitle = "Spend earned coins on passes, boosts, and streak protection.",
-                    trailing = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                        }
-                    }
+                    onBack = onBack
                 )
             }
 

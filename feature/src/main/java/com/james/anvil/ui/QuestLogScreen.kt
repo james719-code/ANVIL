@@ -67,11 +67,7 @@ fun QuestLogScreen(
                 eyebrow = "Quests",
                 title = "Quest Log",
                 subtitle = "Track daily contracts, weekly chains, XP, and coin rewards.",
-                trailing = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                }
+                onBack = onBack
             )
 
             Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
