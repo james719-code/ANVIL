@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -30,6 +31,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.james.anvil.data.BalanceType
 import com.james.anvil.data.SavingsGoal
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.SavingsViewModel
 import java.text.NumberFormat
@@ -49,8 +53,6 @@ fun SavingsGoalsScreen(
 
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH")) }
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
     // Goal completed snackbar
     LaunchedEffect(goalCompleted) {
         goalCompleted?.let {
@@ -58,21 +60,9 @@ fun SavingsGoalsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Savings Goals", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                ),
-                scrollBehavior = scrollBehavior
-            )
-        },
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
@@ -83,41 +73,46 @@ fun SavingsGoalsScreen(
             }
         }
     ) { paddingValues ->
-        if (allGoals.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Outlined.Savings,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = TextSecondaryDark
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "No savings goals yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        "Tap + to set your first treasure goal",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding),
+            contentPadding = PaddingValues(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                PageHeader(
+                    eyebrow = "Treasure",
+                    title = "Savings Goals",
+                    subtitle = "Turn progress into visible milestones and funded rewards.",
+                    trailing = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    }
+                )
+            }
+
+            if (allGoals.isEmpty()) {
+                item {
+                    EmptyState(
+                        message = "No savings goals yet",
+                        subtitle = "Create your first treasure goal from the add button.",
+                        icon = Icons.Outlined.Savings,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp)
                     )
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            } else {
                 items(allGoals, key = { it.id }) { goal ->
                     TreasureChestCard(
                         goal = goal,

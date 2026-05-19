@@ -16,8 +16,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,6 +49,7 @@ import com.james.anvil.ui.navigation.NavigationGraph
 import com.james.anvil.ui.navigation.TasksRoute
 import com.james.anvil.ui.theme.ANVILTheme
 import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.ProvideWindowInfo
 import com.james.anvil.util.ShortcutProvider
@@ -124,7 +127,8 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
         Row(modifier = Modifier.fillMaxSize()) {
             NavigationRail(
                 modifier = Modifier.fillMaxHeight(),
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 navItems.forEach { navItem ->
                     val selected = currentDestination.isTopLevelSelected(navItem)
@@ -137,7 +141,14 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
                                 contentDescription = navItem.title
                             )
                         },
-                        label = { Text(navItem.title) }
+                        label = { Text(navItem.title) },
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = ForgedGold.copy(alpha = 0.22f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
@@ -154,7 +165,10 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = DesignTokens.ElevationMedium
+                ) {
                     navItems.forEach { navItem ->
                         val selected = currentDestination.isTopLevelSelected(navItem)
                         NavigationBarItem(
@@ -166,7 +180,14 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
                                     contentDescription = navItem.title
                                 )
                             },
-                            label = { Text(navItem.title) }
+                            label = { Text(navItem.title) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                indicatorColor = ForgedGold.copy(alpha = 0.22f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         )
                     }
                 }

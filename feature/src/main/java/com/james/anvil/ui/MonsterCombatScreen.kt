@@ -30,6 +30,9 @@ import com.james.anvil.core.DamageSource
 import com.james.anvil.data.GearRarity
 import com.james.anvil.data.MonsterType
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.StatusPill
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.CombatViewModel
 import com.james.anvil.ui.viewmodel.LootReveal
@@ -65,21 +68,9 @@ fun MonsterCombatScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Monster Combat", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { paddingValues ->
         val currentMonster = monster
         if (currentMonster == null) {
             Box(
@@ -90,16 +81,34 @@ fun MonsterCombatScreen(
             ) {
                 CircularProgressIndicator()
             }
-            return@Scaffold
+            return@TopLevelPageScaffold
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            PageHeader(
+                eyebrow = "Challenge",
+                title = "Monster Combat",
+                subtitle = "Earn your unblock by dealing damage through productive actions.",
+                trailing = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
+            )
+
             // Monster Display
             MonsterDisplay(
                 monster = currentMonster,
@@ -132,7 +141,12 @@ fun MonsterCombatScreen(
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("\u2694\uFE0F", fontSize = 40.sp)
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = SuccessGreen,
+                            modifier = Modifier.size(44.dp)
+                        )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             "Monster Defeated!",
@@ -195,18 +209,26 @@ private fun MonsterDisplay(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Monster emoji/icon
-            Text(
-                text = when {
-                    monster.isDefeated -> "\uD83D\uDC80"
-                    monster.monsterType == MonsterType.BOSS -> "\uD83D\uDC32"
-                    monster.difficulty >= 3 -> "\uD83D\uDC79"
-                    monster.difficulty >= 2 -> "\uD83D\uDC7E"
-                    else -> "\uD83D\uDC7B"
-                },
-                fontSize = 64.sp,
-                textAlign = TextAlign.Center
-            )
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .background(
+                        color = if (monster.isDefeated) SuccessGreen.copy(alpha = 0.14f) else ErrorRed.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(24.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when {
+                        monster.isDefeated -> Icons.Outlined.CheckCircle
+                        monster.monsterType == MonsterType.BOSS -> Icons.Outlined.Bolt
+                        else -> Icons.Outlined.Quiz
+                    },
+                    contentDescription = null,
+                    tint = if (monster.isDefeated) SuccessGreen else ErrorRed,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -222,18 +244,7 @@ private fun MonsterDisplay(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (monster.monsterType == MonsterType.BOSS) {
-                    Surface(
-                        color = ErrorRed.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "BOSS",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = ErrorRed
-                        )
-                    }
+                    StatusPill(text = "Boss", tint = ErrorRed)
                 }
                 Text(
                     "Difficulty: ${"★".repeat(monster.difficulty)}${"☆".repeat((5 - monster.difficulty).coerceAtLeast(0))}",

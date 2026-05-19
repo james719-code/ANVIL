@@ -6,10 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +24,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.james.anvil.core.ForgeCoinManager
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.AnvilSurfaceCard
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.RewardChip
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.ForgeCoinViewModel
 
@@ -86,46 +91,57 @@ fun ForgeShopScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Forge Shop", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
+                .padding(paddingValues)
+        ) {
+        LazyColumn(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding),
+            contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                PageHeader(
+                    eyebrow = "Rewards",
+                    title = "Forge Shop",
+                    subtitle = "Spend earned coins on passes, boosts, and streak protection.",
+                    trailing = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    }
+                )
+            }
+
             // Coin balance header
             item {
-                AnvilCard(
-                    modifier = Modifier.fillMaxWidth()
+                AnvilSurfaceCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    accentColor = ForgedGold
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.Center,
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "\uD83D\uDCB0",
-                            fontSize = 32.sp
-                        )
-                        Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
                                 text = "$coinBalance",
@@ -139,6 +155,11 @@ fun ForgeShopScreen(
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
+                        RewardChip(
+                            label = "$coinBalance coins",
+                            icon = Icons.Filled.Star,
+                            tint = ForgedGold
+                        )
                     }
                 }
             }
@@ -160,6 +181,7 @@ fun ForgeShopScreen(
                 )
             }
         }
+        }
     }
 }
 
@@ -168,13 +190,13 @@ private fun ShopItemCard(
     item: ShopItem,
     canAfford: Boolean
 ) {
-    AnvilCard(
-        modifier = Modifier.fillMaxWidth()
+    AnvilSurfaceCard(
+        modifier = Modifier.fillMaxWidth(),
+        accentColor = if (canAfford) item.iconTint else MaterialTheme.colorScheme.outline
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon
@@ -222,11 +244,9 @@ private fun ShopItemCard(
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text(
-                    "\uD83D\uDCB0 ${item.cost}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("${item.cost}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }

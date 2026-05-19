@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,9 @@ import com.james.anvil.data.GearRarity
 import com.james.anvil.data.GearSlot
 import com.james.anvil.data.StatType
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.GearViewModel
 
@@ -37,28 +41,37 @@ fun GearEquipmentScreen(
     val equippedMap = equippedGear.associateBy { it.slot }
     val inventory = allGear.filter { !it.isEquipped }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Equipment", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
+                .padding(paddingValues)
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding),
+            contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                PageHeader(
+                    eyebrow = "Loadout",
+                    title = "Equipment",
+                    subtitle = "Equip gear earned from combat and keep bonuses visible.",
+                    trailing = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    }
+                )
+            }
+
             // Equipped Slots
             item {
                 Text(
@@ -96,27 +109,12 @@ fun GearEquipmentScreen(
 
             if (inventory.isEmpty()) {
                 item {
-                    AnvilCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("\uD83C\uDFF0", fontSize = 40.sp)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "No gear in inventory",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                            Text(
-                                "Defeat monsters to earn gear drops!",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                            )
-                        }
-                    }
+                    EmptyState(
+                        message = "No gear in inventory",
+                        subtitle = "Defeat monsters to earn gear drops.",
+                        icon = Icons.Outlined.Inventory2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             } else {
                 items(inventory, key = { it.id }) { item ->

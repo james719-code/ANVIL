@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -40,6 +41,8 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material.icons.outlined.MilitaryTech
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -73,6 +76,9 @@ import com.james.anvil.core.LevelManager
 import com.james.anvil.data.Achievement
 import com.james.anvil.data.XpSource
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.ForgeActionTile
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ErrorRed
@@ -82,6 +88,7 @@ import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.ForgedGoldDark
 import com.james.anvil.ui.theme.ForgedGoldLight
 import com.james.anvil.ui.theme.LevelBadgeBg
+import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.SuccessGreen
 import com.james.anvil.ui.theme.XpBarFill
 import com.james.anvil.ui.theme.XpBarTrack
@@ -139,35 +146,42 @@ fun ForgeProfileScreen(
     }
     val unlockedCount = achievements.count { it.isUnlocked }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("The Forge", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
-                )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { innerPadding ->
         LazyColumn(
             modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
                 .fillMaxSize()
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLg),
             contentPadding = PaddingValues(
-                start = DesignTokens.SpacingMd,
-                end = DesignTokens.SpacingMd,
+                start = windowInfo.contentPadding,
+                end = windowInfo.contentPadding,
                 top = DesignTokens.SpacingMd,
                 bottom = DesignTokens.SpacingXl
             )
         ) {
+            item {
+                PageHeader(
+                    eyebrow = "Progression",
+                    title = "The Forge",
+                    subtitle = "Level, achievements, gear, and skill upgrades tied to your output.",
+                    trailing = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+
             // Level Badge Section
             item {
                 LevelHeroCard(
@@ -191,18 +205,22 @@ fun ForgeProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingSm)
                 ) {
-                    androidx.compose.material3.OutlinedButton(
+                    ForgeActionTile(
+                        label = "Skill Tree",
+                        supporting = "Invest points and shape your build",
+                        icon = Icons.Outlined.AccountTree,
+                        tint = ElectricBlue,
                         onClick = onNavigateToSkillTree,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text("\uD83C\uDF32 Skill Tree")
-                    }
-                    androidx.compose.material3.OutlinedButton(
+                    )
+                    ForgeActionTile(
+                        label = "Equipment",
+                        supporting = "Review gear and active bonuses",
+                        icon = Icons.Outlined.MilitaryTech,
+                        tint = ForgedGold,
                         onClick = onNavigateToGear,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text("\u2694\uFE0F Equipment")
-                    }
+                    )
                 }
             }
 

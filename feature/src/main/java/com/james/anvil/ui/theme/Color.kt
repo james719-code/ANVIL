@@ -20,28 +20,28 @@ import androidx.compose.ui.graphics.Color
 // PRIMARY BRAND COLORS
 // Core brand identity colors used throughout the app
 // ============================================
-val EmberOrange = Color(0xFFE06C3C)       // Primary actions and emphasis
-val EmberSoft = Color(0xFFF3A07C)         // Warm highlight for hero elements
-val SteelBlue = Color(0xFF7B899A)         // Cool structural accent
-val ElectricBlue = Color(0xFF6C7A8F)      // Info states and secondary emphasis
-val ElectricTeal = Color(0xFF9C6445)      // Warm bronze secondary accent
-val ForgedGold = Color(0xFFD0A662)        // Financial highlights, rewards, premium
+val EmberOrange = Color(0xFFF25C19)       // Primary actions and emphasis (vibrant forge ember)
+val EmberSoft = Color(0xFFFFA27A)         // Warm highlight for hero elements
+val SteelBlue = Color(0xFF5F758E)         // Cool structural accent
+val ElectricBlue = Color(0xFF2563EB)      // Info states and secondary emphasis (vibrant electric blue)
+val ElectricTeal = Color(0xFFBD7447)      // Warm bronze secondary accent
+val ForgedGold = Color(0xFFE5A93C)        // Financial highlights, rewards, premium
 
 // ============================================
 // EXTENDED BRAND PALETTE
 // Variations for subtle backgrounds and states
 // ============================================
-val ForgedGoldDark = Color(0xFFB0843F)    // Pressed/active gold states
-val ForgedGoldLight = Color(0xFFE6C17A)   // Gold highlights, badges
+val ForgedGoldDark = Color(0xFFC28725)    // Pressed/active gold states
+val ForgedGoldLight = Color(0xFFF3C775)   // Gold highlights, badges
 
 // ============================================
 // SEMANTIC COLORS
 // Universal feedback colors
 // ============================================
-val SuccessGreen = Color(0xFF4CAF87)      // Success, completion, positive
-val ErrorRed = Color(0xFFE45F5F)          // Errors, deletion, negative
-val WarningOrange = Color(0xFFD88A4B)     // Warnings, attention needed
-val InfoBlue = Color(0xFF8095B4)          // Information, tips
+val SuccessGreen = Color(0xFF10B981)      // Success, completion, positive (emerald green)
+val ErrorRed = Color(0xFFEF4444)          // Errors, deletion, negative (vibrant red)
+val WarningOrange = Color(0xFFF97316)     // Warnings, attention needed (vibrant orange)
+val InfoBlue = Color(0xFF3B82F6)          // Information, tips (vibrant blue)
 
 // ============================================
 // FINANCIAL SEMANTIC COLORS

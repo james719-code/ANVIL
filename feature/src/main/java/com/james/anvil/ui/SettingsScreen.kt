@@ -38,8 +38,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.james.anvil.service.ServiceBridge
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.SectionCard
+import com.james.anvil.ui.components.StatusPill
+import com.james.anvil.ui.components.TopLevelPageScaffold
+import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.ElectricTeal
 import com.james.anvil.ui.theme.InfoBlue
+import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.SuccessGreen
 import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.util.PermissionUtils
@@ -88,45 +94,82 @@ fun SettingsScreen(
         }
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = { 
-                        onBack?.invoke() ?: navController?.popBackStack() 
-                    }) {
-                        Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+    val windowInfo = LocalWindowInfo.current
 
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                )
-            )
-        }
-    ) { innerPadding ->
+    TopLevelPageScaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = windowInfo.contentPadding)
         ) {
 
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Customize your experience",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            PageHeader(
+                eyebrow = "Controls",
+                title = "Settings",
+                subtitle = "Tune blocking, reminders, permissions, and the forge interface.",
+                trailing = if (onBack != null || navController != null) {
+                    {
+                        IconButton(onClick = { onBack?.invoke() ?: navController?.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                } else {
+                    null
+                }
             )
 
-            
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+
+            SectionCard(accentColor = if (isPauseModeActive) WarningOrange else SuccessGreen) {
+                Text(
+                    text = "Shield status",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(DesignTokens.SpacingMd))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingSm)
+                ) {
+                    StatusPill(
+                        text = if (hasOverlayPermission) "Overlay ready" else "Overlay needed",
+                        tint = if (hasOverlayPermission) SuccessGreen else WarningOrange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatusPill(
+                        text = if (hasAccessibilityPermission) "Access ready" else "Access needed",
+                        tint = if (hasAccessibilityPermission) SuccessGreen else WarningOrange,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(DesignTokens.SpacingSm))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingSm)
+                ) {
+                    StatusPill(
+                        text = if (isVpnRunning) "VPN active" else "VPN off",
+                        tint = if (isVpnRunning) SuccessGreen else InfoBlue,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatusPill(
+                        text = if (isPauseModeActive) "Paused" else "Blocking live",
+                        tint = if (isPauseModeActive) WarningOrange else SuccessGreen,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
             
             // Appearance Section
             SettingsSectionHeader(title = "APPEARANCE")

@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +29,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.james.anvil.data.Quest
 import com.james.anvil.data.QuestType
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.RewardChip
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.QuestViewModel
 
@@ -41,26 +47,35 @@ fun QuestLogScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Quest Log", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding)
         ) {
+            PageHeader(
+                eyebrow = "Quests",
+                title = "Quest Log",
+                subtitle = "Track daily contracts, weekly chains, XP, and coin rewards.",
+                trailing = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+
             // Tab selector
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -93,27 +108,15 @@ private fun DailyQuestsTab(quests: List<Quest>) {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "\u2694\uFE0F",
-                    fontSize = 48.sp
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "No active quests",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Text(
-                    "New quests appear at midnight",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                )
-            }
+            EmptyState(
+                message = "No active quests",
+                subtitle = "New quests appear at midnight.",
+                icon = Icons.Outlined.Flag
+            )
         }
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(quests, key = { it.id }) { quest ->
@@ -130,27 +133,15 @@ private fun WeeklyChainTab(quests: List<Quest>) {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "\uD83D\uDDE1\uFE0F",
-                    fontSize = 48.sp
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "No weekly chain active",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Text(
-                    "New chains start on Monday",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                )
-            }
+            EmptyState(
+                message = "No weekly chain active",
+                subtitle = "New chains start on Monday.",
+                icon = Icons.Outlined.Bolt
+            )
         }
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
@@ -246,19 +237,17 @@ private fun QuestCard(quest: Quest) {
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (quest.rewardCoins > 0) {
-                        Text(
-                            "\uD83D\uDCB0 ${quest.rewardCoins}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ForgedGold,
-                            fontWeight = FontWeight.Bold
+                        RewardChip(
+                            label = "${quest.rewardCoins}",
+                            icon = Icons.Outlined.Star,
+                            tint = ForgedGold
                         )
                     }
                     if (quest.rewardXp > 0) {
-                        Text(
-                            "+${quest.rewardXp} XP",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = XpGold,
-                            fontWeight = FontWeight.Bold
+                        RewardChip(
+                            label = "+${quest.rewardXp} XP",
+                            icon = Icons.Outlined.Bolt,
+                            tint = XpGold
                         )
                     }
                 }

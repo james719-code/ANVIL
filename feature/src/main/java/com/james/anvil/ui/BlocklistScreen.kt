@@ -17,13 +17,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.james.anvil.ui.components.BlocklistItem
-import com.james.anvil.ui.components.ScreenScaffold
-import com.james.anvil.ui.components.ScreenHeader
 import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.SearchField
+import com.james.anvil.ui.components.SectionCard
+import com.james.anvil.ui.components.StatusPill
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.ForgedGold
+import com.james.anvil.ui.theme.LocalWindowInfo
+import com.james.anvil.ui.theme.SuccessGreen
+import com.james.anvil.ui.theme.WarningOrange
 import com.james.anvil.ui.viewmodel.CombatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,15 +44,29 @@ fun BlocklistScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Apps", "Links")
 
-    ScreenScaffold { innerPadding ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .fillMaxWidth()
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding)
         ) {
-            ScreenHeader(
+            PageHeader(
+                eyebrow = "Shield",
                 title = "Blocklist",
-                subtitle = "Shield yourself from distractions"
+                subtitle = "Control distractions, schedules, and unlock challenges from one place."
             )
+
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
 
             TabRow(
                 selectedTabIndex = selectedTabIndex,
@@ -60,6 +82,8 @@ fun BlocklistScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingSm))
 
             Box(modifier = Modifier.fillMaxSize()) {
                 when (selectedTabIndex) {
@@ -96,16 +120,14 @@ fun BlockedAppsTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
+        SearchField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search apps...") },
+            placeholder = "Search apps",
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search apps") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+                .padding(vertical = DesignTokens.SpacingMd)
         )
 
         if (appListWithCategories.isEmpty()) {
@@ -115,9 +137,35 @@ fun BlockedAppsTab(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingSm)
             ) {
+                item {
+                    SectionCard(accentColor = SuccessGreen) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "${filteredApps.count { it.blockedApp != null }} blocked apps",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${filteredApps.size} apps available for rules",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            StatusPill(
+                                text = "Combat unlock",
+                                tint = ForgedGold
+                            )
+                        }
+                    }
+                }
                 items(filteredApps, key = { it.appInfo.packageName }) { app ->
                     BlocklistItem(
                         app = app,
@@ -243,43 +291,55 @@ fun BlockedLinksTab(viewModel: BlocklistViewModel) {
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp),
+                contentPadding = PaddingValues(top = DesignTokens.SpacingMd, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    Text(
-                        text = "Blocked URLs",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    SectionCard(accentColor = WarningOrange) {
+                        Text(
+                            text = "${blockedLinks.size} blocked links",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Tap a link to tune its schedule or remove rules from the action button.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 items(blockedLinks) { link ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedLinkForSchedule = link
-                                showScheduleDialog = true
-                            },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    SectionCard(
+                        onClick = {
+                            selectedLinkForSchedule = link
+                            showScheduleDialog = true
+                        },
+                        accentColor = if (link.isEncrypted) ForgedGold else MaterialTheme.colorScheme.primary
                     ) {
                         val displayText = if (link.isEncrypted) "****** (Hidden)" else link.pattern
-                        ListItem(
-                            headlineContent = { Text(displayText) },
-                            supportingContent = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = displayText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = link.getScheduleDescription(),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            },
-                            trailingContent = {
-                                IconButton(onClick = { viewModel.unblockLink(link.pattern) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Remove")
-                                }
                             }
-                        )
+                            IconButton(onClick = { viewModel.unblockLink(link.pattern) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Remove")
+                            }
+                        }
                     }
                 }
             }

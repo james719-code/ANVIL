@@ -13,15 +13,16 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.james.anvil.ui.theme.DesignTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnvilCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    shape: Shape = RoundedCornerShape(22.dp),
-    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
+    containerColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
+    shape: Shape = RoundedCornerShape(DesignTokens.RadiusLarge),
+    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
@@ -31,7 +32,7 @@ fun AnvilCard(
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
             border = border,
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             content = content
         )
     } else {
@@ -40,7 +41,7 @@ fun AnvilCard(
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
             border = border,
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             content = content
         )
     }

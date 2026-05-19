@@ -1,5 +1,10 @@
 package com.james.anvil.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +28,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Schedule
@@ -455,55 +462,114 @@ private fun TodayHeroCard(
     streak: Int,
     quote: String
 ) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1000),
+        label = "hero_progress"
+    )
+
     SectionCard(
         accentColor = MaterialTheme.colorScheme.primary,
         contentPadding = PaddingValues(24.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
-                        )
-                    ),
-                    RoundedCornerShape(24.dp)
-                )
-                .padding(24.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Text(
-                    text = "Today at a glance",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Text(
-                    text = "${(progress * 100).toInt()}% complete",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = quote,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 24.sp
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    HeroMetric("Pending", "$pendingCount", InfoBlue, Modifier.weight(1f))
-                    HeroMetric("Done today", "$completedTodayCount", SuccessGreen, Modifier.weight(1f))
-                    HeroMetric("Streak", "$streak", WarningOrange, Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "TODAY'S FORGE STATUS",
+                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (progress >= 1f) "Objectives Cleared" else "Forging Objectives",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
+
+                // Beautiful premium progress gauge
+                Box(
+                    modifier = Modifier.size(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val primaryColor = MaterialTheme.colorScheme.primary
+                    val secondaryColor = MaterialTheme.colorScheme.secondary
+                    Canvas(modifier = Modifier.size(64.dp)) {
+                        drawCircle(
+                            color = primaryColor.copy(alpha = 0.08f),
+                            style = Stroke(width = 6.dp.toPx())
+                        )
+                        drawArc(
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    primaryColor,
+                                    secondaryColor,
+                                    primaryColor
+                                )
+                            ),
+                            startAngle = -90f,
+                            sweepAngle = animatedProgress * 360f,
+                            useCenter = false,
+                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            // Beautiful quote block with side accent line
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
+                        RoundedCornerShape(DesignTokens.RadiusMedium)
+                    )
+                    .border(
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        ),
+                        shape = RoundedCornerShape(DesignTokens.RadiusMedium)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(36.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "\"$quote\"",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                HeroMetric("Pending", "$pendingCount", InfoBlue, Modifier.weight(1f))
+                HeroMetric("Completed", "$completedTodayCount", SuccessGreen, Modifier.weight(1f))
+                HeroMetric("Streak", "$streak Days", WarningOrange, Modifier.weight(1f))
             }
         }
     }
@@ -519,10 +585,17 @@ private fun HeroMetric(
     Column(
         modifier = modifier
             .background(
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-                RoundedCornerShape(18.dp)
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
+                RoundedCornerShape(16.dp)
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .border(
+                BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                ),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Text(
             text = label,

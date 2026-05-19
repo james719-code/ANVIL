@@ -1,9 +1,13 @@
 package com.james.anvil.ui
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.james.anvil.data.FocusSession
+import com.james.anvil.ui.components.AnvilSurfaceCard
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.FocusPhase
 import com.james.anvil.ui.viewmodel.FocusSessionViewModel
@@ -162,22 +169,92 @@ private fun TimerCard(
         FocusPhase.FINISHED -> ForgedGold
     }
 
-    val phaseGradient = when (phase) {
-        FocusPhase.WORK -> Brush.linearGradient(listOf(ElectricBlue, Color(0xFF7C4DFF)))
-        FocusPhase.BREAK -> Brush.linearGradient(listOf(Color(0xFF4CAF50), Color(0xFF81C784)))
-        FocusPhase.FINISHED -> Brush.linearGradient(listOf(ForgedGold, ForgedGoldLight))
-        FocusPhase.IDLE -> Brush.linearGradient(listOf(
-            MaterialTheme.colorScheme.onSurfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant
-        ))
+    val sweepGradient = remember(phase, phaseColor) {
+        when (phase) {
+            FocusPhase.WORK -> Brush.sweepGradient(
+                colors = listOf(
+                    ElectricBlue,
+                    Color(0xFF8B5CF6),
+                    Color(0xFFEC4899),
+                    ElectricBlue
+                )
+            )
+            FocusPhase.BREAK -> Brush.sweepGradient(
+                colors = listOf(
+                    Color(0xFF10B981),
+                    Color(0xFF34D399),
+                    Color(0xFF059669),
+                    Color(0xFF10B981)
+                )
+            )
+            FocusPhase.FINISHED -> Brush.sweepGradient(
+                colors = listOf(
+                    ForgedGold,
+                    ForgedGoldLight,
+                    ForgedGold
+                )
+            )
+            FocusPhase.IDLE -> Brush.sweepGradient(
+                colors = listOf(
+                    phaseColor.copy(alpha = 0.4f),
+                    phaseColor.copy(alpha = 0.4f)
+                )
+            )
+        }
     }
 
-    Card(
+    val infiniteTransition = rememberInfiniteTransition(label = "timer_pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.06f,
+        targetValue = 0.20f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_alpha"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+
+    val shouldPulse = isRunning && (phase == FocusPhase.WORK || phase == FocusPhase.BREAK)
+    val activePulseAlpha = if (shouldPulse) pulseAlpha else 0f
+    val activePulseScale = if (shouldPulse) pulseScale else 1.0f
+
+    val startInteractionSource = remember { MutableInteractionSource() }
+    val isStartPressed by startInteractionSource.collectIsPressedAsState()
+    val startScale by animateFloatAsState(
+        targetValue = if (isStartPressed) 0.94f else 1.0f,
+        animationSpec = tween(100),
+        label = "start_btn_scale"
+    )
+
+    val stopInteractionSource = remember { MutableInteractionSource() }
+    val isStopPressed by stopInteractionSource.collectIsPressedAsState()
+    val stopScale by animateFloatAsState(
+        targetValue = if (isStopPressed) 0.94f else 1.0f,
+        animationSpec = tween(100),
+        label = "stop_btn_scale"
+    )
+
+    val resetInteractionSource = remember { MutableInteractionSource() }
+    val isResetPressed by resetInteractionSource.collectIsPressedAsState()
+    val resetScale by animateFloatAsState(
+        targetValue = if (isResetPressed) 0.94f else 1.0f,
+        animationSpec = tween(100),
+        label = "reset_btn_scale"
+    )
+
+    AnvilSurfaceCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
+        accentColor = phaseColor,
+        contentPadding = PaddingValues(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -205,6 +282,28 @@ private fun TimerCard(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(220.dp)
             ) {
+                // Breathing glow animation core
+                if (shouldPulse) {
+                    Box(
+                        modifier = Modifier
+                            .size(190.dp)
+                            .graphicsLayer {
+                                scaleX = activePulseScale
+                                scaleY = activePulseScale
+                                alpha = activePulseAlpha
+                            }
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        phaseColor,
+                                        Color.Transparent
+                                    )
+                                ),
+                                shape = CircleShape
+                            )
+                    )
+                }
+
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val strokeWidth = 12.dp.toPx()
                     val arcSize = size.minDimension - strokeWidth
@@ -224,7 +323,7 @@ private fun TimerCard(
                     // Progress ring
                     if (totalSeconds > 0) {
                         drawArc(
-                            brush = phaseGradient,
+                            brush = sweepGradient,
                             startAngle = -90f,
                             sweepAngle = 360f * animatedProgress,
                             useCenter = false,
@@ -274,7 +373,13 @@ private fun TimerCard(
                     FocusPhase.IDLE -> {
                         Button(
                             onClick = onStart,
-                            modifier = Modifier.height(56.dp),
+                            interactionSource = startInteractionSource,
+                            modifier = Modifier
+                                .height(56.dp)
+                                .graphicsLayer {
+                                    scaleX = startScale
+                                    scaleY = startScale
+                                },
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = ElectricBlue
@@ -288,7 +393,13 @@ private fun TimerCard(
                     FocusPhase.WORK, FocusPhase.BREAK -> {
                         FilledTonalButton(
                             onClick = onStop,
-                            modifier = Modifier.height(56.dp),
+                            interactionSource = stopInteractionSource,
+                            modifier = Modifier
+                                .height(56.dp)
+                                .graphicsLayer {
+                                    scaleX = stopScale
+                                    scaleY = stopScale
+                                },
                             shape = CircleShape
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Stop")
@@ -299,7 +410,13 @@ private fun TimerCard(
                     FocusPhase.FINISHED -> {
                         Button(
                             onClick = onReset,
-                            modifier = Modifier.height(56.dp),
+                            interactionSource = resetInteractionSource,
+                            modifier = Modifier
+                                .height(56.dp)
+                                .graphicsLayer {
+                                    scaleX = resetScale
+                                    scaleY = resetScale
+                                },
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = ForgedGold
@@ -329,8 +446,9 @@ private fun SettingsCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -436,8 +554,9 @@ private fun FocusStatChip(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -468,8 +587,9 @@ private fun SessionHistoryItem(session: FocusSession) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier

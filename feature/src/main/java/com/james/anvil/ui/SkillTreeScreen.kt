@@ -29,6 +29,8 @@ import com.james.anvil.core.SkillTreeManager
 import com.james.anvil.data.SkillBranch
 import com.james.anvil.data.SkillNode
 import com.james.anvil.ui.components.AnvilCard
+import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.SkillTreeViewModel
 
@@ -47,30 +49,37 @@ fun SkillTreeScreen(
 
     LaunchedEffect(Unit) { viewModel.refreshPoints() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Skill Tree", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { paddingValues ->
+    val windowInfo = LocalWindowInfo.current
+
+    TopLevelPageScaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .then(
+                    if (windowInfo.maxContentWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                        Modifier.widthIn(max = windowInfo.maxContentWidth)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = windowInfo.contentPadding)
         ) {
+            PageHeader(
+                eyebrow = "Build",
+                title = "Skill Tree",
+                subtitle = "Spend skill points on upgrades that make ANVIL stronger.",
+                trailing = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                }
+            )
+
             // Available Points Header
             AnvilCard(modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(vertical = 8.dp)
             ) {
                 Row(
                     modifier = Modifier
