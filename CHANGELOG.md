@@ -5,6 +5,37 @@ All notable changes to the ANVIL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-20
+
+### Added
+- **Weekly Activity Chart Widget**
+  - Designed and integrated a dynamic weekly task completions bar chart (`WeeklyActivityChart`) directly inside the home screen stats widget.
+  - Replaced the large 4-card grid layout in the widget with a compact, modern horizontal `QuickStatsRow` for a more premium look.
+  - Standardized all widget colors to follow the light/dark Material 3 themes.
+  - Resolved `IllegalArgumentException` layout crashes in Android Glance by grouping components into nested columns (staying under the 10-child container limit).
+- **Auto-Fill & Suggestion Recovery**
+  - Passed `pastEntries` database states into `AddBudgetEntrySheet` and `EditBudgetEntrySheet` so suggestion chips and auto-fills render correctly when launching sheets from both the Budget and Vault Overview pages.
+
+### Changed
+- **Bottom Sheet Behavior**
+  - Configured `skipPartiallyExpanded = true` on transaction and loan bottom sheets to prevent them from auto-dismissing when the software keyboard appears or when layout sizes change dynamically.
+- **Vault FAB Positioning**
+  - Removed custom bottom margin padding on the Vault overview FAB to align its location consistently with the Tasks page FAB.
+  - Explicitly mapped the FAB colors to solid primary brand colors to prevent fading gray visual overlays.
+- **Motivational Quotes Display**
+  - Cleaned redundant surrounding double quotation marks wrapper from the daily quote text inside both the Hero Status Card and the Motivation Card.
+
+## [1.4.0] - 2026-07-19
+
+### Added
+- **Dedicated About Screen**
+  - Introduced a clean "About" screen detailing the application developer, open-source attributes, and project details.
+
+### Changed
+- **Overall UI & Navigation Upgrade**
+  - Re-themed overall application colors to map to the new modern slate-blue and elevated surface neutral design tokens.
+  - Refactored back-navigation behavior across all feature modules to support seamless page exits.
+
 ## [1.3.0] - 2026-02-01
 
 ### Added

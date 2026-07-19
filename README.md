@@ -3,7 +3,7 @@
 
 **ANVIL** is a lightweight, high-performance productivity tool designed to help you reclaim your focus. Unlike mainstream blocking apps that are cluttered with ads and subscriptions, ANVIL provides a clean, "no-nonsense" environment to manage tasks, eliminate digital distractions, and build disciplined habits.
 
-> **Current Version**: 1.3.0 · **Min SDK**: 24 (Android 7.0) · **Target SDK**: 36
+> **Current Version**: 1.5.0 · **Min SDK**: 24 (Android 7.0) · **Target SDK**: 36
 
 ## Why I Built This
 
