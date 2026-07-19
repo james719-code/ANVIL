@@ -13,10 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Clean screen scaffold with inline header. No AppBar.
- * Use this for main screens accessible via bottom navigation.
- */
 @Composable
 fun ScreenScaffold(
     modifier: Modifier = Modifier,
@@ -32,16 +28,11 @@ fun ScreenScaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            AmbientMeshBackground()
             content(paddingValues)
         }
     }
 }
 
-/**
- * Screen scaffold with back navigation for secondary screens.
- * Displays a back button and title in a clean header row.
- */
 @Composable
 fun SecondaryScreenScaffold(
     title: String,
@@ -59,53 +50,48 @@ fun SecondaryScreenScaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            AmbientMeshBackground()
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Inline header with back button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    if (subtitle != null) {
                         Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (subtitle != null) {
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
-
-                // Pass remaining content
-                Box(modifier = Modifier.fillMaxSize()) {
-                    content(PaddingValues(0.dp))
-                }
+            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                content(PaddingValues(0.dp))
             }
         }
     }
 }
+
 @Composable
 fun ScreenHeader(
     title: String,
@@ -135,9 +121,6 @@ fun ScreenHeader(
     }
 }
 
-/**
- * Animated bottom bar that hides on scroll down and shows on scroll up.
- */
 @Composable
 fun AnimatedBottomBar(
     visible: Boolean,
@@ -152,14 +135,6 @@ fun AnimatedBottomBar(
     }
 }
 
-// ============================================
-// DEPRECATED - Keep for backward compatibility
-// These will be phased out
-// ============================================
-
-/**
- * @deprecated Use ScreenScaffold with ScreenHeader instead
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollapsibleScreenScaffold(
@@ -172,7 +147,6 @@ fun CollapsibleScreenScaffold(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
-    // If there's a navigation icon (back button), treat as secondary screen
     if (navigationIcon != null) {
         Scaffold(
             modifier = modifier,
@@ -186,7 +160,6 @@ fun CollapsibleScreenScaffold(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -212,14 +185,12 @@ fun CollapsibleScreenScaffold(
                     }
                     Row(content = actions)
                 }
-                
                 Box(modifier = Modifier.fillMaxSize()) {
                     content(PaddingValues(0.dp))
                 }
             }
         }
     } else {
-        // Main screen - simple scaffold with inline header
         Scaffold(
             modifier = modifier,
             floatingActionButton = floatingActionButton,
@@ -232,12 +203,7 @@ fun CollapsibleScreenScaffold(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-
-                ScreenHeader(
-                    title = title,
-                    subtitle = subtitle
-                )
-                
+                ScreenHeader(title = title, subtitle = subtitle)
                 Box(modifier = Modifier.fillMaxSize()) {
                     content(PaddingValues(0.dp))
                 }
@@ -246,9 +212,6 @@ fun CollapsibleScreenScaffold(
     }
 }
 
-/**
- * @deprecated Use ScreenScaffold with ScreenHeader instead
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleScreenScaffold(

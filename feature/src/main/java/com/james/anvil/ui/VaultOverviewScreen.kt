@@ -112,7 +112,9 @@ fun VaultOverviewScreen(
             FloatingActionButton(
                 onClick = {
                     if (selectedFilter == BudgetFilter.LOANS) showAddLoanSheet = true else showAddEntrySheet = BudgetType.EXPENSE
-                }
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = "Add")
             }
@@ -135,7 +137,7 @@ fun VaultOverviewScreen(
                         }
                     )
                     .padding(horizontal = windowInfo.contentPadding),
-                contentPadding = PaddingValues(bottom = 24.dp, top = DesignTokens.SpacingSm),
+                contentPadding = PaddingValues(bottom = 100.dp, top = DesignTokens.SpacingSm),
                 verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLg)
             ) {
                 item {
@@ -371,6 +373,7 @@ fun VaultOverviewScreen(
     showAddEntrySheet?.let { initialType ->
         AddBudgetEntrySheet(
             initialType = initialType,
+            pastEntries = budgetEntries,
             onDismiss = { showAddEntrySheet = null },
             onSave = { type, balanceType, amount, description, category, categoryType ->
                 viewModel.addBudgetEntry(type, balanceType, amount, description, category, categoryType)
@@ -398,6 +401,7 @@ fun VaultOverviewScreen(
     showEditEntrySheet?.let { entry ->
         EditBudgetEntrySheet(
             entry = entry,
+            pastEntries = budgetEntries,
             onDismiss = { showEditEntrySheet = null },
             onSave = { type, balanceType, amount, description, categoryType ->
                 viewModel.updateBudgetEntry(

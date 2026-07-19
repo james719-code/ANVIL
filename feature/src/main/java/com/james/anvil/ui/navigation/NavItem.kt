@@ -61,6 +61,14 @@ sealed class NavItem<T : Any>(
         unselectedIcon = Icons.Outlined.Block
     )
     
+    data object ForgeHub : NavItem<ForgeHubRoute>(
+        route = ForgeHubRoute,
+        routeClass = ForgeHubRoute::class,
+        title = "Forge",
+        selectedIcon = Icons.Filled.Star,
+        unselectedIcon = Icons.Outlined.Star
+    )
+    
     data object BonusTasks : NavItem<BonusTasksRoute>(
         route = BonusTasksRoute,
         routeClass = BonusTasksRoute::class,
@@ -79,7 +87,7 @@ sealed class NavItem<T : Any>(
     )
     
     companion object {
-        val bottomNavItems = listOf(Dashboard, Tasks, Budget, Blocklist)
+        val bottomNavItems = listOf(Dashboard, Tasks, Budget, ForgeHub)
     }
 
 }

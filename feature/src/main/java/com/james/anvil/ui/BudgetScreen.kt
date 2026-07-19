@@ -551,6 +551,7 @@ fun BudgetScreen(
     showAddEntrySheet?.let { initialType ->
         AddBudgetEntrySheet(
             initialType = initialType,
+            pastEntries = budgetEntries,
             onDismiss = { showAddEntrySheet = null },
             onSave = { type, balanceType, amount, description, category, categoryType ->
                 viewModel.addBudgetEntry(type, balanceType, amount, description, category, categoryType)
@@ -570,8 +571,9 @@ fun BudgetScreen(
     showEditEntrySheet?.let { entry ->
         EditBudgetEntrySheet(
             entry = entry,
+            pastEntries = budgetEntries,
             onDismiss = { showEditEntrySheet = null },
-                onSave = { type, balanceType, amount, description, categoryType ->
+            onSave = { type, balanceType, amount, description, categoryType ->
                 viewModel.updateBudgetEntry(entry.copy(
                     type = type,
                     balanceType = balanceType,

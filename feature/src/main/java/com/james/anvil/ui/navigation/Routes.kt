@@ -21,6 +21,9 @@ object TasksRoute
 object BlocklistRoute
 
 @Serializable
+object ForgeHubRoute
+
+@Serializable
 object SettingsRoute
 
 @Serializable

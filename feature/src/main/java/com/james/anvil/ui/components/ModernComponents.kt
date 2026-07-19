@@ -1,7 +1,6 @@
 package com.james.anvil.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -20,9 +19,9 @@ import com.james.anvil.ui.theme.DesignTokens
 fun AnvilCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     shape: Shape = RoundedCornerShape(DesignTokens.RadiusLarge),
-    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
+    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {

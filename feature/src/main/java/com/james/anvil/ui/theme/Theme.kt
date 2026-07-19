@@ -1,7 +1,6 @@
 package com.james.anvil.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -14,16 +13,16 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = EmberOrange,
-    onPrimary = BackgroundDark,
-    primaryContainer = EmberSoft.copy(alpha = 0.18f),
-    onPrimaryContainer = TextPrimaryDark,
-    secondary = SteelBlue,
-    onSecondary = TextPrimaryDark,
+    primary = PrimaryAccent,
+    onPrimary = Color.White,
+    primaryContainer = PrimaryAccent.copy(alpha = 0.18f),
+    onPrimaryContainer = PrimaryAccentLight,
+    secondary = PrimaryAccentLight,
+    onSecondary = Color.White,
     secondaryContainer = SurfaceElevatedDark,
     onSecondaryContainer = TextPrimaryDark,
-    tertiary = WarningOrange,
-    onTertiary = BackgroundDark,
+    tertiary = PrimaryAccentDark,
+    onTertiary = Color.White,
     background = BackgroundDark,
     onBackground = TextPrimaryDark,
     surface = SurfaceDark,
@@ -36,16 +35,16 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = EmberOrange,
+    primary = PrimaryAccent,
     onPrimary = Color.White,
-    primaryContainer = EmberSoft.copy(alpha = 0.22f),
-    onPrimaryContainer = TextPrimaryLight,
-    secondary = SteelBlue,
+    primaryContainer = PrimaryAccent.copy(alpha = 0.14f),
+    onPrimaryContainer = PrimaryAccentDark,
+    secondary = PrimaryAccentLight,
     onSecondary = Color.White,
     secondaryContainer = SurfaceElevatedLight,
     onSecondaryContainer = TextPrimaryLight,
-    tertiary = WarningOrange,
-    onTertiary = TextPrimaryLight,
+    tertiary = PrimaryAccentDark,
+    onTertiary = Color.White,
     background = BackgroundLight,
     onBackground = TextPrimaryLight,
     surface = SurfaceLight,
@@ -60,7 +59,6 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun ANVILTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is disabled to enforce our custom branding
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -69,7 +67,6 @@ fun ANVILTheme(
         else -> LightColorScheme
     }
 
-    // Update status bar color
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

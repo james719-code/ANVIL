@@ -1,34 +1,39 @@
 package com.james.anvil.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,73 +43,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.james.anvil.ui.theme.DesignTokens
-import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.SuccessGreen
-
-@Composable
-fun AmbientMeshBackground(modifier: Modifier = Modifier) {
-    val isDark = isSystemInDarkTheme()
-    val color1 = if (isDark) Color(0xFFF25C19).copy(alpha = 0.08f) else Color(0xFFF25C19).copy(alpha = 0.04f)
-    val color2 = if (isDark) Color(0xFF2563EB).copy(alpha = 0.07f) else Color(0xFF2563EB).copy(alpha = 0.03f)
-    val color3 = if (isDark) Color(0xFFE5A93C).copy(alpha = 0.06f) else Color(0xFFE5A93C).copy(alpha = 0.03f)
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(color1, Color.Transparent),
-                center = Offset(width * 0.1f, height * 0.05f),
-                radius = width * 0.8f
-            ),
-            center = Offset(width * 0.1f, height * 0.05f),
-            radius = width * 0.8f
-        )
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(color2, Color.Transparent),
-                center = Offset(width * 0.9f, height * 0.15f),
-                radius = width * 0.7f
-            ),
-            center = Offset(width * 0.9f, height * 0.15f),
-            radius = width * 0.7f
-        )
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(color3, Color.Transparent),
-                center = Offset(width * 0.5f, height * 0.4f),
-                radius = width * 0.6f
-            ),
-            center = Offset(width * 0.5f, height * 0.4f),
-            radius = width * 0.6f
-        )
-    }
-}
 
 @Composable
 fun AnvilScreenScaffold(
@@ -121,7 +73,6 @@ fun AnvilScreenScaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            AmbientMeshBackground()
             content(paddingValues)
         }
     }
@@ -154,7 +105,7 @@ fun ContentFrame(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (maxWidth != androidx.compose.ui.unit.Dp.Unspecified) {
+                if (maxWidth != Dp.Unspecified) {
                     Modifier.widthIn(max = maxWidth)
                 } else {
                     Modifier
@@ -202,7 +153,7 @@ fun PageHeader(
                     text = eyebrow.uppercase(),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
             }
@@ -222,25 +173,6 @@ fun PageHeader(
 
         trailing?.invoke()
     }
-}
-
-@Composable
-fun AnvilPageHeader(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    eyebrow: String? = null,
-    onBack: (() -> Unit)? = null,
-    trailing: @Composable (() -> Unit)? = null
-) {
-    PageHeader(
-        title = title,
-        subtitle = subtitle,
-        modifier = modifier,
-        eyebrow = eyebrow,
-        onBack = onBack,
-        trailing = trailing
-    )
 }
 
 @Composable
@@ -269,26 +201,17 @@ fun SectionTitle(
     }
 }
 
+
 @Composable
 fun SectionCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary,
-    gradient: Brush? = null,
     contentPadding: PaddingValues = PaddingValues(20.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(DesignTokens.RadiusLarge)
-    val contentModifier = Modifier
-        .fillMaxWidth()
-        .padding(contentPadding)
-
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            accentColor.copy(alpha = 0.28f),
-            accentColor.copy(alpha = 0.06f)
-        )
-    )
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
 
     if (onClick != null) {
         val interactionSource = remember { MutableInteractionSource() }
@@ -298,7 +221,6 @@ fun SectionCard(
             animationSpec = tween(120),
             label = "card_press_scale"
         )
-
         Card(
             onClick = onClick,
             interactionSource = interactionSource,
@@ -310,18 +232,15 @@ fun SectionCard(
                 },
             shape = shape,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                brush = borderBrush
-            ),
+            border = border,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
-                modifier = contentModifier.then(
-                    if (gradient != null) Modifier.background(gradient, shape) else Modifier
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(contentPadding),
                 content = content
             )
         }
@@ -330,16 +249,15 @@ fun SectionCard(
             modifier = modifier.fillMaxWidth(),
             shape = shape,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                brush = borderBrush
-            ),
+            border = border,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
-                modifier = contentModifier,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(contentPadding),
                 content = content
             )
         }
@@ -371,16 +289,14 @@ fun MetricPill(
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.primary
 ) {
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            tint.copy(alpha = 0.24f),
-            tint.copy(alpha = 0.05f)
-        )
-    )
     Surface(
-        modifier = modifier.border(1.dp, borderBrush, RoundedCornerShape(20.dp)),
+        modifier = modifier.border(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
+            RoundedCornerShape(20.dp)
+        ),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
         Row(
@@ -391,7 +307,10 @@ fun MetricPill(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(tint.copy(alpha = 0.12f), CircleShape),
+                    .background(
+                        tint.copy(alpha = 0.10f),
+                        CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -431,8 +350,8 @@ fun ForgeActionTile(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(DesignTokens.RadiusMedium),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, tint.copy(alpha = 0.18f))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -442,7 +361,10 @@ fun ForgeActionTile(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(tint.copy(alpha = 0.16f), RoundedCornerShape(DesignTokens.RadiusMedium)),
+                    .background(
+                        tint.copy(alpha = 0.10f),
+                        RoundedCornerShape(DesignTokens.RadiusMedium)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -497,7 +419,7 @@ fun RewardChip(
     label: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    tint: Color = ForgedGold
+    tint: Color = MaterialTheme.colorScheme.primary
 ) {
     AssistChip(
         onClick = {},
@@ -521,14 +443,14 @@ fun RewardChip(
             }
         },
         colors = AssistChipDefaults.assistChipColors(
-            disabledContainerColor = tint.copy(alpha = 0.14f),
+            disabledContainerColor = tint.copy(alpha = 0.10f),
             disabledLabelColor = tint,
             disabledLeadingIconContentColor = tint
         ),
         border = AssistChipDefaults.assistChipBorder(
             enabled = false,
-            borderColor = tint.copy(alpha = 0.22f),
-            disabledBorderColor = tint.copy(alpha = 0.22f)
+            borderColor = tint.copy(alpha = 0.18f),
+            disabledBorderColor = tint.copy(alpha = 0.18f)
         )
     )
 }
@@ -543,8 +465,8 @@ fun StatusPill(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(DesignTokens.RadiusFull),
-        color = tint.copy(alpha = 0.13f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, tint.copy(alpha = 0.16f))
+        color = tint.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, tint.copy(alpha = 0.14f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -635,7 +557,7 @@ fun SearchField(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
         )
     )
 }
@@ -652,9 +574,9 @@ fun FilterPill(
         onClick = onClick,
         modifier = modifier,
         label = { Text(text) },
-        border = if (selected) null else androidx.compose.foundation.BorderStroke(
+        border = if (selected) null else BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
         )
     )
 }

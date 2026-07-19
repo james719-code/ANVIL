@@ -16,7 +16,8 @@ data class WidgetStats(
     val totalXp: Int,
     val currentLevel: Int,
     val levelTitle: String,
-    val xpProgress: Float
+    val xpProgress: Float,
+    val weeklyCompletionHistory: List<Int>
 )
 
 class WidgetRepository(context: Context) {
@@ -48,6 +49,32 @@ class WidgetRepository(context: Context) {
         
         val total = pendingTasks.size + completedTasks.size
         val progress = if (total == 0) 0f else completedTasks.size.toFloat() / total
+
+        // Calculate 7-day weekly activity history
+        val weeklyHistory = IntArray(7)
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        completedTasks.forEach { task ->
+            task.completedAt?.let { completedAt ->
+                val taskCal = Calendar.getInstance().apply {
+                    timeInMillis = completedAt
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val taskDayStart = taskCal.timeInMillis
+                val diffDays = ((todayStart - taskDayStart) / (24 * 60 * 60 * 1000)).toInt()
+                if (diffDays in 0..6) {
+                    weeklyHistory[6 - diffDays]++
+                }
+            }
+        }
         
         // ── Blocklist ─────────────────────────────────
         val blockedApps = blocklistDao.observeEnabledBlockedAppPackages().first()
@@ -81,7 +108,8 @@ class WidgetRepository(context: Context) {
             totalXp = totalXp,
             currentLevel = currentLevel,
             levelTitle = levelTitle,
-            xpProgress = xpProgress
+            xpProgress = xpProgress,
+            weeklyCompletionHistory = weeklyHistory.toList()
         )
     }
 

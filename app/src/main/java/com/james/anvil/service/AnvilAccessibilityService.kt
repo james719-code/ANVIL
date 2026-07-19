@@ -16,7 +16,6 @@ import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
 import com.james.anvil.data.VisitedLink
-import com.james.anvil.ui.LockActivity
 import com.james.anvil.util.PrefsKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -170,17 +169,12 @@ class AnvilAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // 2. Blocking Logic - prioritize penalty UI when tasks are pending
-            // Penalty-based blocking: Only triggered when user has overdue tasks (isBlocked = true)
-            // This handles YouTube Shorts and other penalty-specific enforcement
+            // 2. Blocking Logic — VPN handles link blocking, no screen overlays needed
+            // (LockActivity removed to avoid SYSTEM_ALERT_WINDOW conflicts with GCash)
             if (isBlocked && shouldEnforcePenaltyBlocking(packageName, currentUrl, rootNode)) {
-                enforce(BlockType.PENALTY, getBlockedTarget(packageName, currentUrl, rootNode))
-            }
-            
-            // Schedule-based blocking: Apps/Links are blocked based on their individual schedules
-            // Only used when there are no pending task blocks
-            else if (shouldEnforceScheduleBlocking(packageName, currentUrl, rootNode)) {
-                enforce(BlockType.SCHEDULE, getBlockedTarget(packageName, currentUrl, rootNode))
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            } else if (shouldEnforceScheduleBlocking(packageName, currentUrl, rootNode)) {
+                performGlobalAction(GLOBAL_ACTION_BACK)
             }
 
         } catch (e: Exception) {
@@ -435,15 +429,7 @@ class AnvilAccessibilityService : AccessibilityService() {
     }
 
     private fun enforce(blockType: BlockType, blockedTarget: String) {
-        // 1. Try to go back
         performGlobalAction(GLOBAL_ACTION_BACK)
-
-        // 2. Immediately launch the Lock Screen Activity with block type and target
-        val intent = Intent(this, LockActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        intent.putExtra(LockActivity.EXTRA_BLOCK_TYPE, blockType.name)
-        intent.putExtra(LockActivity.EXTRA_BLOCKED_TARGET, blockedTarget)
-        startActivity(intent)
     }
     
     /**

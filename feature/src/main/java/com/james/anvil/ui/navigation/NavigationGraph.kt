@@ -21,6 +21,7 @@ import com.james.anvil.ui.VaultOverviewScreen
 import com.james.anvil.ui.DashboardScreen
 import com.james.anvil.ui.EditTaskScreen
 import com.james.anvil.ui.FocusSessionScreen
+import com.james.anvil.ui.ForgeHubScreen
 import com.james.anvil.ui.ForgeProfileScreen
 import com.james.anvil.ui.ForgeReportScreen
 import com.james.anvil.ui.ForgeShopScreen
@@ -73,7 +74,6 @@ fun NavigationGraph(
             )
         }
     ) {
-        // Bottom Navigation Destinations
         composable<DashboardRoute> {
             DashboardScreen(
                 viewModel = viewModel,
@@ -82,7 +82,7 @@ fun NavigationGraph(
                 onNavigateToBudget = { navController.navigate(BudgetRoute) },
                 onNavigateToBlocklist = { navController.navigate(BlocklistRoute) },
                 onNavigateToSettings = { navController.navigate(SettingsRoute) },
-                onNavigateToForge = { navController.navigate(ForgeProfileRoute) },
+                onNavigateToForge = { navController.navigate(ForgeHubRoute) },
                 onNavigateToFocus = { navController.navigate(FocusSessionRoute) },
                 onNavigateToSavings = { navController.navigate(SavingsGoalsRoute) },
                 onNavigateToShop = { navController.navigate(ForgeShopRoute) },
@@ -111,6 +111,19 @@ fun NavigationGraph(
             VaultOverviewScreen()
         }
         
+        composable<ForgeHubRoute> {
+            ForgeHubScreen(
+                onNavigateToForgeProfile = { navController.navigate(ForgeProfileRoute) },
+                onNavigateToSkillTree = { navController.navigate(SkillTreeRoute) },
+                onNavigateToGearEquipment = { navController.navigate(GearEquipmentRoute) },
+                onNavigateToForgeReport = { navController.navigate(ForgeReportRoute) },
+                onNavigateToForgeShop = { navController.navigate(ForgeShopRoute) },
+                onNavigateToQuestLog = { navController.navigate(QuestLogRoute) },
+                onNavigateToFocusSession = { navController.navigate(FocusSessionRoute) },
+                onNavigateToSavingsGoals = { navController.navigate(SavingsGoalsRoute) }
+            )
+        }
+        
         composable<BlocklistRoute> {
             BlocklistScreen()
         }
@@ -129,7 +142,6 @@ fun NavigationGraph(
             )
         }
         
-        // Detail Destinations (with arguments)
         composable<EditTaskRoute> { backStackEntry ->
             val route: EditTaskRoute = backStackEntry.toRoute()
             EditTaskScreen(viewModel, route.taskId, navController)
@@ -149,7 +161,6 @@ fun NavigationGraph(
             )
         }
 
-        // Gamification Destinations
         composable<SavingsGoalsRoute> {
             SavingsGoalsScreen(
                 onBack = { navController.popBackStack() }

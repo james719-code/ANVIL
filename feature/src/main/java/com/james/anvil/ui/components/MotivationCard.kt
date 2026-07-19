@@ -115,7 +115,7 @@ fun MotivationCard(
             // Quote Section
             // Using a slightly smaller font for the quote to ensuring it fits
             Text(
-                text = "\"$quote\"",
+                text = quote,
                 style = MaterialTheme.typography.titleMedium.copy(
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,

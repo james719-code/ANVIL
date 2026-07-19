@@ -29,6 +29,7 @@ class QuickAddBudgetEntryActivity : ComponentActivity() {
 
         setContent {
             ANVILTheme {
+                val budgetEntries by viewModel.budgetEntries.collectAsState(initial = emptyList())
                 AddBudgetEntrySheet(
                     onDismiss = { finish() },
                     onSave = { type, balanceType, amount, description, category, categoryType ->
@@ -42,7 +43,8 @@ class QuickAddBudgetEntryActivity : ComponentActivity() {
                         )
                         finish()
                     },
-                    initialType = initialType
+                    initialType = initialType,
+                    pastEntries = budgetEntries
                 )
             }
         }

@@ -127,7 +127,8 @@ private fun QuickSuggestionChip(
 fun AddBudgetEntrySheet(
     onDismiss: () -> Unit,
     onSave: (BudgetType, BalanceType, Double, String, String, CategoryType) -> Unit,
-    initialType: BudgetType = BudgetType.EXPENSE
+    initialType: BudgetType = BudgetType.EXPENSE,
+    pastEntries: List<BudgetEntry> = emptyList()
 ) {
     var type by remember { mutableStateOf(initialType) }
     var balanceType by remember { mutableStateOf(BalanceType.CASH) }
@@ -141,6 +142,24 @@ fun AddBudgetEntrySheet(
     
     val maxDescriptionLength = 50
     val currentSuggestions = if (type == BudgetType.INCOME) incomeSuggestions else expenseSuggestions
+
+    val pastDescriptions = remember(pastEntries, type) {
+        pastEntries
+            .filter { it.type == type }
+            .map { it.description.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+
+    val autoCompleteSuggestions = remember(description, pastDescriptions, currentSuggestions) {
+        if (description.length >= 2) {
+            val q = description.lowercase()
+            pastDescriptions.filter { it.lowercase().contains(q) }.take(6)
+        } else {
+            currentSuggestions
+        }
+    }
     
     // Animated colors based on type
     val typeAccentColor by animateColorAsState(
@@ -149,8 +168,11 @@ fun AddBudgetEntrySheet(
         label = "typeColor"
     )
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -591,14 +613,14 @@ fun AddBudgetEntrySheet(
             
             // Quick Suggestions - Animated based on focus
             AnimatedVisibility(
-                visible = description.isEmpty() || isDescriptionFocused,
+                visible = description.length < 2 || isDescriptionFocused,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Quick Suggestions",
+                        if (description.length >= 2) "Past Entries" else "Quick Suggestions",
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
@@ -606,10 +628,25 @@ fun AddBudgetEntrySheet(
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(currentSuggestions) { suggestion ->
+                        items(autoCompleteSuggestions) { suggestion ->
                             QuickSuggestionChip(
                                 text = suggestion,
-                                onClick = { description = suggestion },
+                                onClick = {
+                                    description = suggestion
+                                    val matchedEntry = pastEntries
+                                        .filter { it.type == type && it.description.trim().lowercase() == suggestion.trim().lowercase() }
+                                        .maxByOrNull { it.timestamp }
+                                    if (matchedEntry != null) {
+                                        amount = if (matchedEntry.amount % 1.0 == 0.0) {
+                                            matchedEntry.amount.toInt().toString()
+                                        } else {
+                                            String.format(Locale.US, "%.2f", matchedEntry.amount)
+                                        }
+                                        categoryType = matchedEntry.categoryType
+                                        balanceType = matchedEntry.balanceType
+                                        category = matchedEntry.category
+                                    }
+                                },
                                 accentColor = typeAccentColor
                             )
                         }
@@ -671,8 +708,11 @@ fun AddLoanSheet(
     var borrowerError by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -858,8 +898,11 @@ fun AddRepaymentSheet(
     var note by remember { mutableStateOf("") }
     var amountError by remember { mutableStateOf(false) }
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -973,7 +1016,8 @@ fun EditBudgetEntrySheet(
     entry: BudgetEntry,
     onDismiss: () -> Unit,
     onSave: (BudgetType, BalanceType, Double, String, CategoryType) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    pastEntries: List<BudgetEntry> = emptyList()
 ) {
     var type by remember(entry.id) { mutableStateOf(entry.type) }
     var balanceType by remember(entry.id) { mutableStateOf(entry.balanceType) }
@@ -987,6 +1031,26 @@ fun EditBudgetEntrySheet(
     
     val maxDescriptionLength = 50
     val currentSuggestions = if (type == BudgetType.INCOME || type == BudgetType.LOAN_REPAYMENT) incomeSuggestions else expenseSuggestions
+
+    val pastDescriptions = remember(pastEntries, type) {
+        pastEntries
+            .filter { it.type == type }
+            .map { it.description.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+
+    val autoCompleteSuggestions = remember(description, pastDescriptions, currentSuggestions) {
+        if (description.length >= 2 && description != entry.description) {
+            val q = description.lowercase()
+            pastDescriptions.filter { it.lowercase().contains(q) && it != entry.description }.take(6)
+        } else if (description.isEmpty()) {
+            currentSuggestions
+        } else {
+            emptyList()
+        }
+    }
     
     // Animated colors based on type
     val typeAccentColor by animateColorAsState(
@@ -1016,8 +1080,11 @@ fun EditBudgetEntrySheet(
         )
     }
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
@@ -1486,7 +1553,7 @@ fun EditBudgetEntrySheet(
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Quick Suggestions",
+                        if (description.length >= 2 && autoCompleteSuggestions.isNotEmpty()) "Past Entries" else "Quick Suggestions",
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
@@ -1494,10 +1561,24 @@ fun EditBudgetEntrySheet(
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(currentSuggestions) { suggestion ->
+                        items(autoCompleteSuggestions.ifEmpty { currentSuggestions }) { suggestion ->
                             QuickSuggestionChip(
                                 text = suggestion,
-                                onClick = { description = suggestion },
+                                onClick = {
+                                    description = suggestion
+                                    val matchedEntry = pastEntries
+                                        .filter { it.type == type && it.description.trim().lowercase() == suggestion.trim().lowercase() }
+                                        .maxByOrNull { it.timestamp }
+                                    if (matchedEntry != null) {
+                                        amount = if (matchedEntry.amount % 1.0 == 0.0) {
+                                            matchedEntry.amount.toInt().toString()
+                                        } else {
+                                            String.format(Locale.US, "%.2f", matchedEntry.amount)
+                                        }
+                                        categoryType = matchedEntry.categoryType
+                                        balanceType = matchedEntry.balanceType
+                                    }
+                                },
                                 accentColor = typeAccentColor
                             )
                         }
