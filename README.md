@@ -116,6 +116,86 @@ I relied on apps like *StayFocused* to manage my digital habits, but I found mys
 
 The app follows modern Android development practices to ensure performance and reliability:
 
+```mermaid
+graph TD
+    %% Define Styles
+    classDef ui fill:#D0E1F9,stroke:#4D648D,stroke-width:2px;
+    classDef vm fill:#E3E2B4,stroke:#9C9B7A,stroke-width:2px;
+    classDef repo fill:#F1D3B2,stroke:#C08A5E,stroke-width:2px;
+    classDef data fill:#CBE6C8,stroke:#8FA88B,stroke-width:2px;
+    classDef service fill:#E8D3FC,stroke:#B294D1,stroke-width:2px;
+
+    %% UI Layer
+    subgraph UI ["UI Layer (Jetpack Compose / Glance)"]
+        Activity["MainActivity / QuickAddActivity"]
+        Screens["Compose Screens (Dashboard, Vault, Tasks, Focus)"]
+        Widget["StatsWidget (Jetpack Glance)"]
+    end
+    class Activity,Screens,Widget ui;
+
+    %% ViewModel Layer
+    subgraph VM ["ViewModel Layer (MVVM)"]
+        DashboardVM["DashboardViewModel"]
+        BudgetVM["BudgetViewModel"]
+        TaskVM["TaskViewModel"]
+        FocusVM["FocusViewModel"]
+    end
+    class DashboardVM,BudgetVM,TaskVM,FocusVM vm;
+
+    %% Repository / Logic Layer
+    subgraph Repositories ["Repository & Manager Layer"]
+        TaskRepo["TaskRepository"]
+        BudgetRepo["BudgetRepository"]
+        BlockRepo["BlocklistRepository"]
+        WidgetRepo["WidgetRepository"]
+        LevelMgr["LevelManager"]
+    end
+    class TaskRepo,BudgetRepo,BlockRepo,WidgetRepo,LevelMgr repo;
+
+    %% System Services
+    subgraph Services ["Background Services & Enforcement"]
+        AccessSvc["Accessibility Service (Overlay enforcement)"]
+        VpnSvc["VPN Service (Local DNS sinkhole)"]
+        Workers["WorkManager Workers (Midnight sync, notifications)"]
+    end
+    class AccessSvc,VpnSvc,Workers service;
+
+    %% Data Layer
+    subgraph Data ["Data Storage Layer"]
+        RoomDB[("Room Database (Tasks, Transactions, Sessions)")]
+        EncryptedPrefs["EncryptedSharedPreferences (Streak, Penalty lock)"]
+    end
+    class RoomDB,EncryptedPrefs data;
+
+    %% Relationships
+    Activity --> Screens
+    Screens --> DashboardVM
+    Screens --> BudgetVM
+    Screens --> TaskVM
+    Screens --> FocusVM
+
+    DashboardVM --> TaskRepo
+    DashboardVM --> LevelMgr
+    BudgetVM --> BudgetRepo
+    TaskVM --> TaskRepo
+    FocusVM --> LevelMgr
+
+    TaskRepo --> RoomDB
+    BudgetRepo --> RoomDB
+    BlockRepo --> RoomDB
+    WidgetRepo --> RoomDB
+
+    LevelMgr --> EncryptedPrefs
+
+    Widget --> WidgetRepo
+
+    AccessSvc -. Enforces overlay .-> Screens
+    AccessSvc --> BlockRepo
+    VpnSvc --> BlockRepo
+    Workers --> TaskRepo
+    Workers --> RoomDB
+```
+
 | Layer | Technology |
 |---|---|
 | **Language** | Kotlin (100%) |
