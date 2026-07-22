@@ -5,7 +5,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +39,7 @@ fun SecondaryScreenScaffold(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    actions: @Composable (RowScope.() -> Unit) = {},
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
@@ -58,18 +59,19 @@ fun SecondaryScreenScaffold(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,
@@ -84,6 +86,7 @@ fun SecondaryScreenScaffold(
                         )
                     }
                 }
+                Row(content = actions)
             }
             Box(modifier = Modifier.fillMaxSize()) {
                 content(PaddingValues(0.dp))

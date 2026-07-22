@@ -39,11 +39,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.rememberNavController
 import com.james.anvil.ui.TaskViewModel
+import com.james.anvil.ui.components.AnimatedBottomBar
 import com.james.anvil.ui.components.AnvilOnboardingSteps
 import com.james.anvil.ui.components.OnboardingOverlay
 import com.james.anvil.ui.components.PermissionCheckManager
 import com.james.anvil.ui.navigation.BlocklistRoute
 import com.james.anvil.ui.navigation.BonusTasksRoute
+import com.james.anvil.ui.navigation.BudgetRoute
+import com.james.anvil.ui.navigation.DashboardRoute
+import com.james.anvil.ui.navigation.ForgeHubRoute
 import com.james.anvil.ui.navigation.NavItem
 import com.james.anvil.ui.navigation.NavigationGraph
 import com.james.anvil.ui.navigation.TasksRoute
@@ -122,34 +126,41 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination
     val windowInfo = LocalWindowInfo.current
+    val shouldShowBottomBar = currentDestination.shouldShowBottomBar()
 
     if (windowInfo.shouldShowNavRail) {
         Row(modifier = Modifier.fillMaxSize()) {
-            NavigationRail(
-                modifier = Modifier.fillMaxHeight(),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+            androidx.compose.animation.AnimatedVisibility(
+                visible = shouldShowBottomBar,
+                enter = androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }) + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }) + androidx.compose.animation.fadeOut()
             ) {
-                navItems.forEach { navItem ->
-                    val selected = currentDestination.isTopLevelSelected(navItem)
-                    NavigationRailItem(
-                        selected = selected,
-                        onClick = { navController.navigateToTopLevel(navItem) },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
-                                contentDescription = navItem.title
+                NavigationRail(
+                    modifier = Modifier.fillMaxHeight(),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    navItems.forEach { navItem ->
+                        val selected = currentDestination.isTopLevelSelected(navItem)
+                        NavigationRailItem(
+                            selected = selected,
+                            onClick = { navController.navigateToTopLevel(navItem) },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
+                                    contentDescription = navItem.title
+                                )
+                            },
+                            label = { Text(navItem.title) },
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                indicatorColor = ForgedGold.copy(alpha = 0.35f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        label = { Text(navItem.title) },
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = ForgedGold.copy(alpha = 0.22f),
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    )
+                    }
                 }
             }
 
@@ -165,30 +176,32 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = DesignTokens.ElevationMedium
-                ) {
-                    navItems.forEach { navItem ->
-                        val selected = currentDestination.isTopLevelSelected(navItem)
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { navController.navigateToTopLevel(navItem) },
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
-                                    contentDescription = navItem.title
+                AnimatedBottomBar(visible = shouldShowBottomBar) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = DesignTokens.ElevationMedium
+                    ) {
+                        navItems.forEach { navItem ->
+                            val selected = currentDestination.isTopLevelSelected(navItem)
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = { navController.navigateToTopLevel(navItem) },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
+                                        contentDescription = navItem.title
+                                    )
+                                },
+                                label = { Text(navItem.title) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    indicatorColor = ForgedGold.copy(alpha = 0.35f),
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            },
-                            label = { Text(navItem.title) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                indicatorColor = ForgedGold.copy(alpha = 0.22f),
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -239,6 +252,17 @@ private fun androidx.navigation.NavHostController.navigateToTopLevel(item: NavIt
         }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+private fun NavDestination?.shouldShowBottomBar(): Boolean {
+    if (this == null) return false
+    return hierarchy.any { destination ->
+        destination.hasRoute(DashboardRoute::class) ||
+        destination.hasRoute(TasksRoute::class) ||
+        destination.hasRoute(BonusTasksRoute::class) ||
+        destination.hasRoute(BudgetRoute::class) ||
+        destination.hasRoute(ForgeHubRoute::class)
     }
 }
 

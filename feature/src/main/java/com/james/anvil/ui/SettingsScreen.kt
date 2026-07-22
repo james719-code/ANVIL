@@ -116,11 +116,7 @@ fun SettingsScreen(
                 eyebrow = "Controls",
                 title = "Settings",
                 subtitle = "Tune blocking, reminders, permissions, and the forge interface.",
-                onBack = if (onBack != null || navController != null) {
-                    { onBack?.invoke() ?: navController?.popBackStack() }
-                } else {
-                    null
-                }
+                onBack = onBack ?: navController?.let { { it.popBackStack() } }
             )
 
             Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
@@ -385,7 +381,6 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
             // About Section
             SettingsSectionHeader(title = "ABOUT")
             Spacer(modifier = Modifier.height(8.dp))
@@ -406,6 +401,35 @@ fun SettingsScreen(
                         )
                     }
                 )
+            }
+
+            if (com.james.anvil.feature.BuildConfig.DEBUG) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Developer Tools Section
+                SettingsSectionHeader(title = "DEVELOPER TOOLS")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsCard {
+                    SettingsRow(
+                        icon = Icons.Outlined.Layers,
+                        iconTint = ElectricTeal,
+                        title = "Populate Dev Mock Data",
+                        subtitle = "Seed realistic tasks, budget entries, loans & RPG stats",
+                        onClick = {
+                            viewModel.seedMockData(clearExisting = false)
+                            android.widget.Toast.makeText(context, "Mock data populated successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                                contentDescription = "Seed",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))

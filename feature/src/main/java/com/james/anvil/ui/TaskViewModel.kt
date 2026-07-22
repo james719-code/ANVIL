@@ -367,4 +367,11 @@ class TaskViewModel @Inject constructor(
             result
         }
     }
+
+    fun seedMockData(clearExisting: Boolean = false) {
+        viewModelScope.launch {
+            com.james.anvil.data.MockDataSeeder.seedMockData(db, clearExisting)
+            WidgetRefresher.refreshAll(getApplication())
+        }
+    }
 }

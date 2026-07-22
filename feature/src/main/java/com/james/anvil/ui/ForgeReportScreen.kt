@@ -358,7 +358,9 @@ private fun MetricCard(
 ) {
     AnvilCard(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(

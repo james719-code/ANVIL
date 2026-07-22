@@ -30,7 +30,7 @@ import java.util.Calendar
 fun EditTaskScreen(
     viewModel: TaskViewModel,
     taskId: Long,
-    navController: NavController
+    onNavigateBack: () -> Unit
 ) {
     val incompleteTasks by viewModel.tasks.collectAsState(initial = emptyList())
     val completedTasks by viewModel.completedTasks.collectAsState(initial = emptyList())
@@ -54,7 +54,7 @@ fun EditTaskScreen(
                 eyebrow = "Modification",
                 title = "Edit Task",
                 subtitle = "Refine objectives, steps, hardness, and deadlines.",
-                onBack = { navController.popBackStack() }
+                onBack = onNavigateBack
             )
             
             if (task == null) {
@@ -70,7 +70,7 @@ fun EditTaskScreen(
                     existingCategories = existingCategories,
                     onSave = { updatedTask ->
                         viewModel.updateTask(updatedTask)
-                        navController.popBackStack()
+                        onNavigateBack()
                     },
                     modifier = Modifier.fillMaxSize()
                 )

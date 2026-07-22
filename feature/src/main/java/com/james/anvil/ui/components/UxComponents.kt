@@ -117,6 +117,29 @@ fun ContentFrame(
 }
 
 @Composable
+fun AnvilBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Back"
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(40.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                shape = CircleShape
+            )
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
 fun PageHeader(
     title: String,
     subtitle: String,
@@ -133,18 +156,10 @@ fun PageHeader(
         horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
     ) {
         if (onBack != null) {
-            IconButton(
+            AnvilBackButton(
                 onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
         }
 
         Column(modifier = Modifier.weight(1f)) {
@@ -163,12 +178,14 @@ fun PageHeader(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (subtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         trailing?.invoke()

@@ -131,7 +131,7 @@ fun NavigationGraph(
         composable<SettingsRoute> {
             SettingsScreen(
                 viewModel = viewModel,
-                navController = navController,
+                onBack = { navController.popBackStack() },
                 onNavigateToAbout = { navController.navigate(AboutRoute) }
             )
         }
@@ -144,7 +144,11 @@ fun NavigationGraph(
         
         composable<EditTaskRoute> { backStackEntry ->
             val route: EditTaskRoute = backStackEntry.toRoute()
-            EditTaskScreen(viewModel, route.taskId, navController)
+            EditTaskScreen(
+                viewModel = viewModel,
+                taskId = route.taskId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable<ForgeProfileRoute> {

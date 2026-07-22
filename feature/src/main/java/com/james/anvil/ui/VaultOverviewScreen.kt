@@ -31,6 +31,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -107,16 +111,21 @@ fun VaultOverviewScreen(
     val totalBalance = cashBalance + gcashBalance
     val totalLoaned = totalCashLoaned + totalGcashLoaned
 
+    val listState = rememberLazyListState()
+    val isScrolled by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 40
+        }
+    }
+
     TopLevelPageScaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    if (selectedFilter == BudgetFilter.LOANS) showAddLoanSheet = true else showAddEntrySheet = BudgetType.EXPENSE
-                },
+                onClick = { showAddEntrySheet = BudgetType.EXPENSE },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Add")
+                Icon(Icons.Default.Add, contentDescription = "Add Budget Entry")
             }
         }
     ) { innerPadding ->
@@ -126,6 +135,7 @@ fun VaultOverviewScreen(
                 .fillMaxSize()
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
@@ -144,7 +154,7 @@ fun VaultOverviewScreen(
                     PageHeader(
                         eyebrow = "Finance",
                         title = "Vault",
-                        subtitle = "See balances first, then move into transactions and loans."
+                        subtitle = if (isScrolled) "" else "See balances first, then move into transactions and loans."
                     )
                 }
 
@@ -155,59 +165,92 @@ fun VaultOverviewScreen(
                                 .fillMaxWidth()
                                 .padding(4.dp)
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                                Text(
-                                    text = "Available now",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = currencyFormat.format(totalBalance),
-                                    style = MaterialTheme.typography.displaySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (totalLoaned > 0) {
-                                        "${currencyFormat.format(totalLoaned)} currently loaned out"
-                                    } else {
-                                        "No active liabilities."
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    ActionTile(
-                                        label = "Add expense",
-                                        supporting = "Record an outgoing transaction",
-                                        icon = Icons.Outlined.ArrowUpward,
-                                        tint = WarningOrange,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { showAddEntrySheet = BudgetType.EXPENSE }
-                                    )
-                                    ActionTile(
-                                        label = "Add income",
-                                        supporting = "Log money coming in",
-                                        icon = Icons.Outlined.ArrowDownward,
-                                        tint = SuccessGreen,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { showAddEntrySheet = BudgetType.INCOME }
-                                    )
-                                }
-                                ActionTile(
-                                    label = "Manage loans",
-                                    supporting = "Track people, repayments, and outstanding balances",
-                                    icon = Icons.Outlined.Payments,
-                                    tint = ForgedGold,
-                                    onClick = {
-                                        selectedFilter = BudgetFilter.LOANS
-                                        showAddLoanSheet = true
+                                    Column {
+                                        Text(
+                                            text = "Available now",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = currencyFormat.format(totalBalance),
+                                            style = if (isScrolled) MaterialTheme.typography.titleLarge else MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
                                     }
-                                )
+                                    if (isScrolled) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            IconButton(
+                                                onClick = { showAddEntrySheet = BudgetType.EXPENSE },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(Icons.Outlined.ArrowUpward, "Expense", tint = WarningOrange)
+                                            }
+                                            IconButton(
+                                                onClick = { showAddEntrySheet = BudgetType.INCOME },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(Icons.Outlined.ArrowDownward, "Income", tint = SuccessGreen)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = !isScrolled,
+                                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        Text(
+                                            text = if (totalLoaned > 0) {
+                                                "${currencyFormat.format(totalLoaned)} currently loaned out"
+                                            } else {
+                                                "No active liabilities."
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            ActionTile(
+                                                label = "Add expense",
+                                                supporting = "Record an outgoing transaction",
+                                                icon = Icons.Outlined.ArrowUpward,
+                                                tint = WarningOrange,
+                                                modifier = Modifier.weight(1f),
+                                                onClick = { showAddEntrySheet = BudgetType.EXPENSE }
+                                            )
+                                            ActionTile(
+                                                label = "Add income",
+                                                supporting = "Log money coming in",
+                                                icon = Icons.Outlined.ArrowDownward,
+                                                tint = SuccessGreen,
+                                                modifier = Modifier.weight(1f),
+                                                onClick = { showAddEntrySheet = BudgetType.INCOME }
+                                            )
+                                        }
+                                        ActionTile(
+                                            label = "Manage loans",
+                                            supporting = "Track people, repayments, and outstanding balances",
+                                            icon = Icons.Outlined.Payments,
+                                            tint = ForgedGold,
+                                            onClick = {
+                                                selectedFilter = BudgetFilter.LOANS
+                                                showAddLoanSheet = true
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

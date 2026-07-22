@@ -127,6 +127,15 @@ fun TaskWorkspaceScreen(
         }
     }
 
+    val standardListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val bonusListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val activeListState = if (selectedTabIndex == 0) standardListState else bonusListState
+    val isScrolled by remember {
+        androidx.compose.runtime.derivedStateOf {
+            activeListState.firstVisibleItemIndex > 0 || activeListState.firstVisibleItemScrollOffset > 40
+        }
+    }
+
     TopLevelPageScaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -161,26 +170,34 @@ fun TaskWorkspaceScreen(
                 PageHeader(
                     eyebrow = "Execution",
                     title = "Tasks",
-                    subtitle = "Keep the next action obvious and the interaction path short."
+                    subtitle = if (isScrolled) "" else "Keep the next action obvious and the interaction path short."
                 )
 
-                Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !isScrolled,
+                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
 
-                SectionCard(accentColor = MaterialTheme.colorScheme.primary) {
-                    Text(
-                        text = "${tasks.size} active tasks in focus",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "${filteredCompletedTasks.size} completed, ${bonusTasks.size} bonus logged",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        SectionCard(accentColor = MaterialTheme.colorScheme.primary) {
+                            Text(
+                                text = "${tasks.size} active tasks in focus",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "${filteredCompletedTasks.size} completed, ${bonusTasks.size} bonus logged",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+                Spacer(modifier = Modifier.height(if (isScrolled) DesignTokens.SpacingSm else DesignTokens.SpacingLg))
 
                 TabRow(
                     selectedTabIndex = selectedTabIndex,
@@ -226,6 +243,7 @@ fun TaskWorkspaceScreen(
 
                 if (selectedTabIndex == 0) {
                     LazyColumn(
+                        state = standardListState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -299,6 +317,7 @@ fun TaskWorkspaceScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = bonusListState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)

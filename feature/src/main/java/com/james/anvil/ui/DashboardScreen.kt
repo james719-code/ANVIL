@@ -66,6 +66,9 @@ import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
 
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Lightbulb
+
 @Composable
 fun DashboardScreen(
     viewModel: TaskViewModel,
@@ -104,6 +107,7 @@ fun DashboardScreen(
     val currentStreak by streakViewModel.currentStreak.collectAsState(initial = 0)
     val graceDays = viewModel.getGraceDaysCount()
     var showGraceExchangeDialog by remember { mutableStateOf(false) }
+    var isSuggestionDismissed by remember { mutableStateOf(false) }
 
     val completedTodayCount = remember(completedTasks) {
         val now = Calendar.getInstance().apply {
@@ -158,6 +162,20 @@ fun DashboardScreen(
             }
 
             item { HeroStatusCard(dailyProgress, totalPendingCount, completedTodayCount, currentStreak, quote) }
+
+            if (!isSuggestionDismissed) {
+                item {
+                    SmartSuggestionsCard(
+                        pendingCount = totalPendingCount,
+                        dailyProgress = dailyProgress,
+                        streak = currentStreak,
+                        onDismiss = { isSuggestionDismissed = true },
+                        onNavigateToTasks = onNavigateToTasks,
+                        onNavigateToFocus = onNavigateToFocus,
+                        onNavigateToForge = onNavigateToForge
+                    )
+                }
+            }
 
             item {
                 SectionTitle("Quick actions")
@@ -301,5 +319,120 @@ private fun MiniStat(label: String, value: String, modifier: Modifier = Modifier
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(4.dp))
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+private data class DashboardSuggestion(
+    val title: String,
+    val description: String,
+    val actionText: String,
+    val actionClick: () -> Unit
+)
+
+@Composable
+private fun SmartSuggestionsCard(
+    pendingCount: Int,
+    dailyProgress: Float,
+    streak: Int,
+    onDismiss: () -> Unit,
+    onNavigateToTasks: () -> Unit,
+    onNavigateToFocus: () -> Unit,
+    onNavigateToForge: () -> Unit
+) {
+    val suggestion = when {
+        pendingCount > 0 -> DashboardSuggestion(
+            title = "Tasks awaiting focus",
+            description = "You have $pendingCount task${if (pendingCount != 1) "s" else ""} waiting. Start a focus session to power through them efficiently.",
+            actionText = "Start Focus",
+            actionClick = onNavigateToFocus
+        )
+        dailyProgress >= 1f -> DashboardSuggestion(
+            title = "Daily goal reached!",
+            description = "Awesome job! All daily objectives complete. Check out the Forge for shop items and quests.",
+            actionText = "Visit Forge",
+            actionClick = onNavigateToForge
+        )
+        streak == 0 -> DashboardSuggestion(
+            title = "Start your streak",
+            description = "Complete at least one task today to ignite your daily consistency streak.",
+            actionText = "View Tasks",
+            actionClick = onNavigateToTasks
+        )
+        else -> DashboardSuggestion(
+            title = "Keep the momentum",
+            description = "Stay consistent! Track your tasks and maintain your active $streak-day streak.",
+            actionText = "View Tasks",
+            actionClick = onNavigateToTasks
+        )
+    }
+
+    SectionCard(
+        accentColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lightbulb,
+                        contentDescription = "Suggestion",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = suggestion.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = suggestion.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = suggestion.actionClick,
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = suggestion.actionText,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Dismiss suggestion",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
