@@ -1,0 +1,78 @@
+# Baseline Profile for ANVIL
+# Precompiles critical execution paths into native code on installation.
+
+# Application & Lifecycle
+Lcom/james/anvil/AnvilApplication;
+Lcom/james/anvil/MainActivity;
+Lcom/james/anvil/MainActivityKt;
+Lcom/james/anvil/receiver/BootReceiver;
+
+# ViewModels & Business Logic
+Lcom/james/anvil/ui/TaskViewModel;
+Lcom/james/anvil/ui/TaskViewModel$*;
+Lcom/james/anvil/ui/BlocklistViewModel;
+Lcom/james/anvil/ui/BlocklistViewModel$*;
+Lcom/james/anvil/core/LevelManager;
+Lcom/james/anvil/core/BonusManager;
+Lcom/james/anvil/core/CombatManager;
+Lcom/james/anvil/core/QuestManager;
+
+# Database & Workers
+Lcom/james/anvil/data/AnvilDatabase;
+Lcom/james/anvil/data/AnvilDatabase_Impl;
+Lcom/james/anvil/data/TaskDao;
+Lcom/james/anvil/data/TaskDao_Impl;
+Lcom/james/anvil/data/Task;
+Lcom/james/anvil/data/BlockedApp;
+Lcom/james/anvil/data/BlockedLink;
+Lcom/james/anvil/data/BonusTask;
+Lcom/james/anvil/worker/ReminderWorker;
+Lcom/james/anvil/worker/DailyTaskResetWorker;
+Lcom/james/anvil/worker/MidnightContributionWorker;
+Lcom/james/anvil/util/WorkerScheduler;
+Lcom/james/anvil/util/AnvilTrace;
+
+# Compose Core & Rendering
+Landroidx/compose/runtime/Composer;
+Landroidx/compose/runtime/ComposerImpl;
+Landroidx/compose/runtime/Recomposer;
+Landroidx/compose/runtime/internal/ComposableLambda;
+Landroidx/compose/runtime/internal/ComposableLambdaImpl;
+Landroidx/compose/ui/platform/AndroidComposeView;
+Landroidx/compose/ui/node/LayoutNode;
+Landroidx/compose/ui/node/MeasureAndLayoutDelegate;
+Landroidx/compose/ui/node/InnerNodeCoordinator;
+Landroidx/compose/material3/MaterialTheme;
+Landroidx/compose/material3/SurfaceKt;
+Landroidx/compose/material3/CardKt;
+Landroidx/compose/material3/NavigationBarKt;
+Landroidx/compose/material3/NavigationRailKt;
+Landroidx/compose/material3/ScaffoldKt;
+Landroidx/compose/material3/TextKt;
+Landroidx/compose/material3/IconKt;
+Landroidx/compose/foundation/lazy/LazyListState;
+Landroidx/compose/foundation/lazy/LazyColumnKt;
+Landroidx/compose/foundation/lazy/LazyRowKt;
+
+# Navigation & Type-Safe Routes
+Landroidx/navigation/NavController;
+Landroidx/navigation/NavHostKt;
+Landroidx/navigation/compose/NavHostKt;
+Landroidx/navigation/compose/NavHostController;
+Landroidx/navigation/NavDestination;
+Landroidx/navigation/NavGraph;
+Lcom/james/anvil/ui/navigation/NavigationGraphKt;
+Lcom/james/anvil/ui/navigation/NavItem;
+Lcom/james/anvil/ui/navigation/DashboardRoute;
+Lcom/james/anvil/ui/navigation/TasksRoute;
+Lcom/james/anvil/ui/navigation/BlocklistRoute;
+Lcom/james/anvil/ui/navigation/BudgetRoute;
+Lcom/james/anvil/ui/navigation/ForgeHubRoute;
+Lkotlinx/serialization/json/Json;
+
+# Coroutines Dispatching
+Lkotlinx/coroutines/Dispatchers;
+Lkotlinx/coroutines/android/HandlerContext;
+Lkotlinx/coroutines/flow/StateFlow;
+Lkotlinx/coroutines/flow/SharedFlow;
+Lkotlinx/coroutines/flow/FlowKt;

@@ -44,6 +44,7 @@ dependencies {
 
     // Core
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.tracing.ktx)
     implementation(libs.gson)
 
     // Testing

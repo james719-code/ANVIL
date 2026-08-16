@@ -107,6 +107,10 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
 
+    // Tracing
+    implementation(libs.androidx.tracing.ktx)
+    debugImplementation(libs.androidx.compose.runtime.tracing)
+
     testImplementation(libs.junit)
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("org.mockito:mockito-core:5.11.0")

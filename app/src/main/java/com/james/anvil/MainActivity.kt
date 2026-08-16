@@ -58,6 +58,7 @@ import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.ProvideWindowInfo
 import com.james.anvil.util.ShortcutProvider
 import com.james.anvil.util.WorkerScheduler
+import com.james.anvil.util.traceSection
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -69,11 +70,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        traceSection("MainActivity:onCreate") {
+            enableEdgeToEdge()
 
-        WorkerScheduler.scheduleAllWorkers(this)
-        ShortcutProvider.setupShortcuts(this)
-        handleIntent(intent)
+            WorkerScheduler.scheduleAllWorkers(this)
+            ShortcutProvider.setupShortcuts(this)
+            handleIntent(intent)
+        }
 
         setContent {
             ProvideWindowInfo(activity = this) {

@@ -16,14 +16,18 @@ class TimeIntegrityGuard {
         val elapsedDiff = currentElapsed - lastKnownElapsed
         
         
+        // Detect system time set backward
         if (currentSystem < lastKnownSystemTime) {
             return true
         }
         
-        
-        
-        
+        // Detect system time set backward beyond threshold
         if (elapsedDiff > systemDiff + 60000) { 
+            return true
+        }
+        
+        // Detect system time set forward beyond threshold (anti-cheat)
+        if (systemDiff > elapsedDiff + 60000) {
             return true
         }
         

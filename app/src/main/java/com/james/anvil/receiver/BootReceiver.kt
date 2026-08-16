@@ -16,73 +16,16 @@ import com.james.anvil.worker.ReminderWorker
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
+import com.james.anvil.widget.WidgetRefresher
+
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val workManager = WorkManager.getInstance(context)
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // Schedule all background workers (including WidgetRefreshWorker)
+            WorkerScheduler.scheduleAllWorkers(context)
             
-            // Schedule AnvilWorker for hourly state checking
-            val anvilRequest = PeriodicWorkRequestBuilder<AnvilWorker>(1, TimeUnit.HOURS)
-                .build()
-            workManager.enqueueUniquePeriodicWork(
-                "AnvilHourlyCheck",
-                ExistingPeriodicWorkPolicy.KEEP,
-                anvilRequest
-            )
-            
-            // Schedule ReminderWorker for task reminders every 15 minutes
-            val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
-                .build()
-            workManager.enqueueUniquePeriodicWork(
-                "AnvilReminderCheck",
-                ExistingPeriodicWorkPolicy.KEEP,
-                reminderRequest
-            )
-            
-            // Schedule DailyTaskResetWorker to run every 12 hours (catches midnight reset)
-            val dailyResetRequest = PeriodicWorkRequestBuilder<DailyTaskResetWorker>(12, TimeUnit.HOURS)
-                .build()
-            workManager.enqueueUniquePeriodicWork(
-                "AnvilDailyReset",
-                ExistingPeriodicWorkPolicy.KEEP,
-                dailyResetRequest
-            )
-            
-            // Schedule MidnightContributionWorker to check habit contributions at midnight
-            val currentTime = Calendar.getInstance()
-            val targetTime = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 5)
-                set(Calendar.SECOND, 0)
-                if (before(currentTime)) {
-                    add(Calendar.DAY_OF_YEAR, 1)
-                }
-            }
-            val initialDelayMs = targetTime.timeInMillis - currentTime.timeInMillis
-            
-            val midnightRequest = PeriodicWorkRequestBuilder<MidnightContributionWorker>(24, TimeUnit.HOURS)
-                .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
-                .build()
-            workManager.enqueueUniquePeriodicWork(
-                MidnightContributionWorker.WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                midnightRequest
-            )
-            
-            // Schedule HistoryCleanupWorker to prune old visited links daily
-            val cleanupRequest = PeriodicWorkRequestBuilder<HistoryCleanupWorker>(24, TimeUnit.HOURS)
-                .build()
-            workManager.enqueueUniquePeriodicWork(
-                "AnvilHistoryCleanup",
-                ExistingPeriodicWorkPolicy.KEEP,
-                cleanupRequest
-            )
-
-            // Re-schedule expense/income reminder workers (12 PM & 6 PM) if enabled
-            val prefs = context.getSharedPreferences(PrefsKeys.ANVIL_SETTINGS, Context.MODE_PRIVATE)
-            if (prefs.getBoolean(PrefsKeys.EXPENSE_REMINDER_ENABLED, true)) {
-                WorkerScheduler.scheduleExpenseReminderWorkers(context)
-            }
+            // Refresh widget content on boot
+            WidgetRefresher.refreshAll(context)
         }
     }
 }

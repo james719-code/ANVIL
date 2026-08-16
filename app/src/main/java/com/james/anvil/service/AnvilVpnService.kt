@@ -91,14 +91,21 @@ class AnvilVpnService : VpnService() {
     }
 
     private val packetBufferPool = ConcurrentLinkedQueue<ByteArray>()
+    private val poolSize = java.util.concurrent.atomic.AtomicInteger(0)
     
     private fun acquirePacketBuffer(): ByteArray {
-        return packetBufferPool.poll() ?: ByteArray(VPN_MTU)
+        val buf = packetBufferPool.poll()
+        if (buf != null) {
+            poolSize.decrementAndGet()
+            return buf
+        }
+        return ByteArray(VPN_MTU)
     }
 
     private fun releasePacketBuffer(buffer: ByteArray) {
-        if (packetBufferPool.size < 64) {
+        if (poolSize.get() < 64) {
             packetBufferPool.offer(buffer)
+            poolSize.incrementAndGet()
         }
     }
 

@@ -16,6 +16,7 @@ import com.james.anvil.core.QuestManager
 import com.james.anvil.data.QuestCategory
 import com.james.anvil.util.PrefsKeys
 import com.james.anvil.util.WorkerScheduler
+import com.james.anvil.util.traceSection
 import com.james.anvil.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -99,7 +100,7 @@ class TaskViewModel @Inject constructor(
     val bonusTasks: Flow<List<BonusTask>> = bonusTaskDao.observeAllBonusTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
-    val bonusTaskCount: Flow<Int> = bonusTaskDao.countBonusTasks()
+    val bonusTaskCount: Flow<Int> = bonusTasks.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
     private val _dailyQuote = MutableStateFlow("")
@@ -215,39 +216,43 @@ class TaskViewModel @Inject constructor(
 
     fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1, notes: String = "") {
         viewModelScope.launch {
-            val task = Task(
-                title = title,
-                deadline = deadlineTimestamp,
-                category = category,
-                steps = steps,
-                createdAt = System.currentTimeMillis(),
-                isDaily = isDaily,
-                hardnessLevel = hardnessLevel.coerceIn(1, 5),
-                notes = notes
-            )
-            taskDao.insert(task)
-            WidgetRefresher.refreshAll(getApplication())
+            traceSection("TaskViewModel:addTask") {
+                val task = Task(
+                    title = title,
+                    deadline = deadlineTimestamp,
+                    category = category,
+                    steps = steps,
+                    createdAt = System.currentTimeMillis(),
+                    isDaily = isDaily,
+                    hardnessLevel = hardnessLevel.coerceIn(1, 5),
+                    notes = notes
+                )
+                taskDao.insert(task)
+                WidgetRefresher.refreshAll(getApplication())
+            }
         }
     }
 
     fun completeTask(task: Task) {
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val completedTask = if (task.isDaily) {
-                task.copy(
-                    isCompleted = true,
-                    completedAt = now,
-                    lastCompletedDate = now
-                )
-            } else {
-                task.copy(isCompleted = true, completedAt = now)
+            traceSection("TaskViewModel:completeTask") {
+                val now = System.currentTimeMillis()
+                val completedTask = if (task.isDaily) {
+                    task.copy(
+                        isCompleted = true,
+                        completedAt = now,
+                        lastCompletedDate = now
+                    )
+                } else {
+                    task.copy(isCompleted = true, completedAt = now)
+                }
+                taskDao.update(completedTask)
+                levelManager.awardTaskXp(task.title, task.hardnessLevel)
+                questManager.updateQuestProgress(QuestCategory.TASK)
+                // Deal damage to all active monsters
+                dealDamageToActiveMonsters(10 * task.hardnessLevel, DamageSource.TASK)
+                WidgetRefresher.refreshAll(getApplication())
             }
-            taskDao.update(completedTask)
-            levelManager.awardTaskXp(task.title, task.hardnessLevel)
-            questManager.updateQuestProgress(QuestCategory.TASK)
-            // Deal damage to all active monsters
-            dealDamageToActiveMonsters(10 * task.hardnessLevel, DamageSource.TASK)
-            WidgetRefresher.refreshAll(getApplication())
         }
     }
 
@@ -279,31 +284,37 @@ class TaskViewModel @Inject constructor(
 
     fun deleteTask(task: Task) {
         viewModelScope.launch {
-            taskDao.delete(task)
-            WidgetRefresher.refreshAll(getApplication())
+            traceSection("TaskViewModel:deleteTask") {
+                taskDao.delete(task)
+                WidgetRefresher.refreshAll(getApplication())
+            }
         }
     }
 
     fun undoDeleteTask(task: Task) {
         viewModelScope.launch {
-            taskDao.insert(task)
+            traceSection("TaskViewModel:undoDeleteTask") {
+                taskDao.insert(task)
+            }
         }
     }
 
     // Bonus Task Functions
     fun addBonusTask(title: String, description: String? = null, category: String = "Bonus") {
         viewModelScope.launch {
-            val bonusTask = BonusTask(
-                title = title,
-                description = description,
-                category = category,
-                completedAt = System.currentTimeMillis()
-            )
-            bonusTaskDao.insert(bonusTask)
-            bonusManager.addBonusTask()
-            levelManager.awardBonusTaskXp(title)
-            questManager.updateQuestProgress(QuestCategory.TASK)
-            WidgetRefresher.refreshAll(getApplication())
+            traceSection("TaskViewModel:addBonusTask") {
+                val bonusTask = BonusTask(
+                    title = title,
+                    description = description,
+                    category = category,
+                    completedAt = System.currentTimeMillis()
+                )
+                bonusTaskDao.insert(bonusTask)
+                bonusManager.addBonusTask()
+                levelManager.awardBonusTaskXp(title)
+                questManager.updateQuestProgress(QuestCategory.TASK)
+                WidgetRefresher.refreshAll(getApplication())
+            }
         }
     }
 
@@ -333,8 +344,8 @@ class TaskViewModel @Inject constructor(
     }
 
     // Contribution data for graph
-    suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> {
-        return withContext(Dispatchers.IO) {
+    suspend fun getContributionData(daysBack: Int = 84): Map<Long, Int> = traceSection("TaskViewModel:getContributionData") {
+        withContext(Dispatchers.IO) {
             val calendar = Calendar.getInstance()
             calendar.set(Calendar.HOUR_OF_DAY, 0)
             calendar.set(Calendar.MINUTE, 0)

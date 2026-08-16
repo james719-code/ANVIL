@@ -13,13 +13,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * Central XP engine for the Forge leveling system.
- * Manages awarding XP, calculating levels, and determining titles.
- * 
- * Follows the same SharedPreferences + Room pattern as BonusManager.
- */
 @Singleton
 class LevelManager @Inject constructor(
     private val userProgressDao: UserProgressDao,
@@ -33,6 +29,7 @@ class LevelManager @Inject constructor(
 
     private val prefs = context.getSharedPreferences("anvil_level_prefs", Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val xpMutex = Mutex()
 
     companion object {
         /** 
@@ -115,16 +112,19 @@ class LevelManager @Inject constructor(
 
     internal fun awardXp(amount: Int, source: XpSource, label: String) {
         scope.launch {
-            val entry = UserProgress(
-                xpAmount = amount,
-                source = source,
-                sourceLabel = label
-            )
-            userProgressDao.insert(entry)
+            xpMutex.withLock {
+                val entry = UserProgress(
+                    xpAmount = amount,
+                    source = source,
+                    sourceLabel = label
+                )
+                userProgressDao.insert(entry)
 
-            // Update cached total
-            val newTotal = prefs.getInt("total_xp", 0) + amount
-            prefs.edit().putInt("total_xp", newTotal).apply()
+                // Update cached total atomically
+                val currentTotal = prefs.getInt("total_xp", 0)
+                val newTotal = currentTotal + amount
+                prefs.edit().putInt("total_xp", newTotal).apply()
+            }
         }
     }
 

@@ -10,6 +10,7 @@ import com.james.anvil.data.Task
 import com.james.anvil.core.BonusManager
 import com.james.anvil.core.ForgeCoinManager
 import com.james.anvil.data.CoinSource
+import com.james.anvil.util.traceSection
 import java.util.Calendar
 
 /**
@@ -27,8 +28,8 @@ class MidnightContributionWorker(
         const val WORK_NAME = "AnvilMidnightContribution"
     }
 
-    override suspend fun doWork(): Result {
-        return try {
+    override suspend fun doWork(): Result = traceSection("MidnightContributionWorker:doWork") {
+        try {
             val db = AnvilDatabase.getDatabase(applicationContext)
             val taskDao = db.taskDao()
             val habitContributionDao = db.habitContributionDao()

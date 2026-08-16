@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.james.anvil.data.AnvilDatabase
+import com.james.anvil.util.traceSection
 import java.util.Calendar
 
 class DailyTaskResetWorker(
@@ -16,8 +17,8 @@ class DailyTaskResetWorker(
         private const val TAG = "DailyTaskResetWorker"
     }
 
-    override suspend fun doWork(): Result {
-        return try {
+    override suspend fun doWork(): Result = traceSection("DailyTaskResetWorker:doWork") {
+        try {
             val db = AnvilDatabase.getDatabase(applicationContext)
             val taskDao = db.taskDao()
 

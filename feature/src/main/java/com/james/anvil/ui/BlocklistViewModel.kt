@@ -96,6 +96,10 @@ class BlocklistViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
+    companion object {
+        private val iconCache = androidx.collection.LruCache<String, Drawable>(150)
+    }
+
     init {
         fetchInstalledApps()
     }
@@ -104,22 +108,28 @@ class BlocklistViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoadingApps.value = true
             _installedApps.value = withContext(Dispatchers.IO) {
-                val pm = getApplication<Application>().packageManager
-                val myPackageName = getApplication<Application>().packageName
-                val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-                packages.mapNotNull {
-                    val intent = pm.getLaunchIntentForPackage(it.packageName)
-                    // Exclude apps without launcher intent and exclude ANVIL itself
-                    if (intent != null && it.packageName != myPackageName) {
-                        AppInfo(
-                            name = it.applicationInfo?.loadLabel(pm)?.toString() ?: it.packageName,
-                            packageName = it.packageName,
-                            icon = it.applicationInfo?.loadIcon(pm)
-                        )
-                    } else {
-                        null
-                    }
-                }.sortedBy { it.name.lowercase() }
+                com.james.anvil.util.traceSection("BlocklistViewModel:fetchInstalledApps") {
+                    val pm = getApplication<Application>().packageManager
+                    val myPackageName = getApplication<Application>().packageName
+                    val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+                    packages.mapNotNull { pkg ->
+                        val intent = pm.getLaunchIntentForPackage(pkg.packageName)
+                        // Exclude apps without launcher intent and exclude ANVIL itself
+                        if (intent != null && pkg.packageName != myPackageName) {
+                            val cachedIcon = iconCache.get(pkg.packageName)
+                            val icon = cachedIcon ?: pkg.applicationInfo?.loadIcon(pm)?.also {
+                                iconCache.put(pkg.packageName, it)
+                            }
+                            AppInfo(
+                                name = pkg.applicationInfo?.loadLabel(pm)?.toString() ?: pkg.packageName,
+                                packageName = pkg.packageName,
+                                icon = icon
+                            )
+                        } else {
+                            null
+                        }
+                    }.sortedBy { it.name.lowercase() }
+                }
             }
             _isLoadingApps.value = false
         }

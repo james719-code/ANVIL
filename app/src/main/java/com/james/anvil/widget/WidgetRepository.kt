@@ -29,88 +29,108 @@ class WidgetRepository(context: Context) {
     private val levelManager = LevelManager(context)
 
     suspend fun getStats(): WidgetStats {
-        // ── Tasks ─────────────────────────────────────
-        val pendingTasks = taskDao.observeIncompleteTasks().first()
-        val completedTasks = taskDao.observeCompletedTasks(
-            System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000
-        ).first()
-        
-        val calendar = Calendar.getInstance()
-        val todayYear = calendar.get(Calendar.YEAR)
-        val todayDay = calendar.get(Calendar.DAY_OF_YEAR)
-        
-        val completedToday = completedTasks.count { task ->
-            task.completedAt?.let { completedAt ->
-                calendar.timeInMillis = completedAt
-                calendar.get(Calendar.YEAR) == todayYear && 
-                    calendar.get(Calendar.DAY_OF_YEAR) == todayDay
-            } ?: false
-        }
-        
-        val total = pendingTasks.size + completedTasks.size
-        val progress = if (total == 0) 0f else completedTasks.size.toFloat() / total
+        return try {
+            // ── Tasks ─────────────────────────────────────
+            val pendingTasks = try { taskDao.observeIncompleteTasks().first() } catch (_: Exception) { emptyList() }
+            val completedTasks = try {
+                taskDao.observeCompletedTasks(
+                    System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000
+                ).first()
+            } catch (_: Exception) { emptyList() }
+            
+            val todayCal = Calendar.getInstance()
+            val todayYear = todayCal.get(Calendar.YEAR)
+            val todayDay = todayCal.get(Calendar.DAY_OF_YEAR)
+            
+            val completedToday = completedTasks.count { task ->
+                task.completedAt?.let { completedAt ->
+                    val taskCal = Calendar.getInstance().apply { timeInMillis = completedAt }
+                    taskCal.get(Calendar.YEAR) == todayYear && 
+                        taskCal.get(Calendar.DAY_OF_YEAR) == todayDay
+                } ?: false
+            }
+            
+            val totalToday = pendingTasks.size + completedToday
+            val progress = if (totalToday == 0) 0f else completedToday.toFloat() / totalToday
 
-        // Calculate 7-day weekly activity history
-        val weeklyHistory = IntArray(7)
-        val todayStart = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+            // Calculate 7-day weekly activity history safely
+            val weeklyHistory = IntArray(7)
+            val todayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
 
-        completedTasks.forEach { task ->
-            task.completedAt?.let { completedAt ->
-                val taskCal = Calendar.getInstance().apply {
-                    timeInMillis = completedAt
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                val taskDayStart = taskCal.timeInMillis
-                val diffDays = ((todayStart - taskDayStart) / (24 * 60 * 60 * 1000)).toInt()
-                if (diffDays in 0..6) {
-                    weeklyHistory[6 - diffDays]++
+            completedTasks.forEach { task ->
+                task.completedAt?.let { completedAt ->
+                    val taskCal = Calendar.getInstance().apply {
+                        timeInMillis = completedAt
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    val diffDays = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(
+                        (todayStart - taskCal.timeInMillis).coerceAtLeast(0)
+                    ).toInt()
+                    if (diffDays in 0..6) {
+                        weeklyHistory[6 - diffDays]++
+                    }
                 }
             }
+            
+            // ── Blocklist ─────────────────────────────────
+            val blockedApps = try { blocklistDao.observeEnabledBlockedAppPackages().first() } catch (_: Exception) { emptyList() }
+            val blockedLinks = try { blocklistDao.observeEnabledBlockedLinkPatterns().first() } catch (_: Exception) { emptyList() }
+            
+            // ── Streak ────────────────────────────────────
+            val currentStreak = try { calculateCurrentStreak() } catch (_: Exception) { 0 }
+            
+            // ── Focus ─────────────────────────────────────
+            val startOfDay = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val focusMinutesToday = try { focusSessionDao.observeTodayFocusMinutes(startOfDay).first() } catch (_: Exception) { 0 }
+            
+            // ── XP / Level ────────────────────────────────
+            val totalXp = try { levelManager.getCachedTotalXp() } catch (_: Exception) { 0 }
+            val currentLevel = try { levelManager.getLevelForXp(totalXp) } catch (_: Exception) { 1 }
+            val levelTitle = try { levelManager.getTitleForLevel(currentLevel) } catch (_: Exception) { "Novice" }
+            val xpProgress = try { levelManager.getProgressToNextLevel(totalXp) } catch (_: Exception) { 0f }
+            
+            WidgetStats(
+                pendingTasks = pendingTasks.size,
+                completedToday = completedToday,
+                dailyProgress = progress,
+                activeBlocks = blockedApps.size + blockedLinks.size,
+                currentStreak = currentStreak,
+                focusMinutesToday = focusMinutesToday,
+                totalXp = totalXp,
+                currentLevel = currentLevel,
+                levelTitle = levelTitle,
+                xpProgress = xpProgress,
+                weeklyCompletionHistory = weeklyHistory.toList()
+            )
+        } catch (_: Exception) {
+            // Safe fallback if database access fails completely on boot
+            WidgetStats(
+                pendingTasks = 0,
+                completedToday = 0,
+                dailyProgress = 0f,
+                activeBlocks = 0,
+                currentStreak = 0,
+                focusMinutesToday = 0,
+                totalXp = 0,
+                currentLevel = 1,
+                levelTitle = "Novice",
+                xpProgress = 0f,
+                weeklyCompletionHistory = List(7) { 0 }
+            )
         }
-        
-        // ── Blocklist ─────────────────────────────────
-        val blockedApps = blocklistDao.observeEnabledBlockedAppPackages().first()
-        val blockedLinks = blocklistDao.observeEnabledBlockedLinkPatterns().first()
-        
-        // ── Streak ────────────────────────────────────
-        val currentStreak = calculateCurrentStreak()
-        
-        // ── Focus ─────────────────────────────────────
-        val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        val focusMinutesToday = focusSessionDao.observeTodayFocusMinutes(startOfDay).first()
-        
-        // ── XP / Level ────────────────────────────────
-        val totalXp = try { levelManager.getCachedTotalXp() } catch (_: Exception) { 0 }
-        val currentLevel = levelManager.getLevelForXp(totalXp)
-        val levelTitle = levelManager.getTitleForLevel(currentLevel)
-        val xpProgress = levelManager.getProgressToNextLevel(totalXp)
-        
-        return WidgetStats(
-            pendingTasks = pendingTasks.size,
-            completedToday = completedToday,
-            dailyProgress = progress,
-            activeBlocks = blockedApps.size + blockedLinks.size,
-            currentStreak = currentStreak,
-            focusMinutesToday = focusMinutesToday,
-            totalXp = totalXp,
-            currentLevel = currentLevel,
-            levelTitle = levelTitle,
-            xpProgress = xpProgress,
-            weeklyCompletionHistory = weeklyHistory.toList()
-        )
     }
 
     /**

@@ -1,0 +1,13 @@
+# Startup Profile for ANVIL
+# Colocates cold-start classes into primary classes.dex to prevent disk page faults.
+
+Lcom/james/anvil/AnvilApplication;
+Lcom/james/anvil/MainActivity;
+Lcom/james/anvil/ui/theme/ThemeKt;
+Lcom/james/anvil/ui/TaskViewModel;
+Lcom/james/anvil/data/AnvilDatabase;
+Lcom/james/anvil/data/AnvilDatabase_Impl;
+Lcom/james/anvil/ui/navigation/NavigationGraphKt;
+Landroidx/compose/ui/platform/AndroidComposeView;
+Landroidx/compose/runtime/ComposerImpl;
+Landroidx/compose/material3/MaterialTheme;

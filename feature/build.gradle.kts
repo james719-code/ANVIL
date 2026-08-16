@@ -51,6 +51,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.navigation.compose)
+
+    // Tracing
+    implementation(libs.androidx.tracing.ktx)
+    debugImplementation(libs.androidx.compose.runtime.tracing)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Hilt Dependency Injection

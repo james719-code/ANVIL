@@ -1,4 +1,8 @@
+@file:SuppressLint("RestrictedApi")
+
 package com.james.anvil.widget
+
+import android.annotation.SuppressLint
 
 import android.content.Context
 import android.content.Intent
@@ -43,8 +47,23 @@ import androidx.compose.runtime.remember
 class StatsWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val repository = WidgetRepository(context)
-        val stats = repository.getStats()
+        val stats = try {
+            WidgetRepository(context).getStats()
+        } catch (_: Exception) {
+            WidgetStats(
+                pendingTasks = 0,
+                completedToday = 0,
+                dailyProgress = 0f,
+                activeBlocks = 0,
+                currentStreak = 0,
+                focusMinutesToday = 0,
+                totalXp = 0,
+                currentLevel = 1,
+                levelTitle = "Novice",
+                xpProgress = 0f,
+                weeklyCompletionHistory = List(7) { 0 }
+            )
+        }
 
         provideContent {
             GlanceTheme(colors = AnvilGlanceColors) {
