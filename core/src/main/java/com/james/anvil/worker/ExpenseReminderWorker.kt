@@ -1,5 +1,6 @@
 package com.james.anvil.worker
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -51,6 +52,7 @@ class ExpenseReminderWorker(
         return Result.success()
     }
 
+    @SuppressLint("MissingPermission")
     private fun sendNotification(label: String) {
         val notificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -87,6 +89,15 @@ class ExpenseReminderWorker(
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
 
         try {
             NotificationManagerCompat.from(applicationContext).notify(notifId, notification)
