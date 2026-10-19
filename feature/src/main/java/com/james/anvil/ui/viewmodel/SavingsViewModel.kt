@@ -3,7 +3,6 @@ package com.james.anvil.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.james.anvil.core.SavingsManager
-import com.james.anvil.data.BalanceType
 import com.james.anvil.data.SavingsContribution
 import com.james.anvil.data.SavingsGoal
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,7 +54,7 @@ class SavingsViewModel @Inject constructor(
         _selectedGoalId.value = goalId
     }
 
-    fun createGoal(name: String, targetAmount: Double, balanceType: BalanceType, iconEmoji: String = "\uD83D\uDCB0") {
+    fun createGoal(name: String, targetAmount: Double, balanceType: String, iconEmoji: String = "savings") {
         viewModelScope.launch {
             savingsManager.createGoal(name, targetAmount, balanceType, iconEmoji)
         }

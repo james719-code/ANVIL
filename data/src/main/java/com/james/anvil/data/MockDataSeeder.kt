@@ -62,6 +62,7 @@ object MockDataSeeder {
                     title = "Read 20 pages of Clean Code",
                     deadline = now - (1 * oneDayMs),
                     isCompleted = true,
+                    completionRewardsGranted = true,
                     completedAt = now - (12 * 60 * 60 * 1000L),
                     category = "Study",
                     hardnessLevel = 1
@@ -70,6 +71,7 @@ object MockDataSeeder {
                     title = "Setup CI/CD Pipeline",
                     deadline = now - (2 * oneDayMs),
                     isCompleted = true,
+                    completionRewardsGranted = true,
                     completedAt = now - (24 * 60 * 60 * 1000L),
                     category = "Development",
                     hardnessLevel = 3
@@ -93,7 +95,7 @@ object MockDataSeeder {
             val budgetEntries = listOf(
                 BudgetEntry(
                     type = BudgetType.INCOME,
-                    balanceType = BalanceType.GCASH,
+                    balanceType = WalletDefaults.GCASH,
                     amount = 45000.0,
                     description = "Monthly Salary Deposit",
                     category = "Income",
@@ -102,7 +104,7 @@ object MockDataSeeder {
                 ),
                 BudgetEntry(
                     type = BudgetType.EXPENSE,
-                    balanceType = BalanceType.GCASH,
+                    balanceType = WalletDefaults.GCASH,
                     amount = 3500.0,
                     description = "Weekly Grocery Shopping",
                     category = "Groceries",
@@ -111,7 +113,7 @@ object MockDataSeeder {
                 ),
                 BudgetEntry(
                     type = BudgetType.EXPENSE,
-                    balanceType = BalanceType.CASH,
+                    balanceType = WalletDefaults.CASH,
                     amount = 180.0,
                     description = "Morning Specialty Coffee",
                     category = "Food & Drink",
@@ -120,7 +122,7 @@ object MockDataSeeder {
                 ),
                 BudgetEntry(
                     type = BudgetType.EXPENSE,
-                    balanceType = BalanceType.GCASH,
+                    balanceType = WalletDefaults.GCASH,
                     amount = 1490.0,
                     description = "Fiber Internet Subscription",
                     category = "Utilities",
@@ -129,7 +131,7 @@ object MockDataSeeder {
                 ),
                 BudgetEntry(
                     type = BudgetType.INCOME,
-                    balanceType = BalanceType.CASH,
+                    balanceType = WalletDefaults.CASH,
                     amount = 5000.0,
                     description = "Freelance Consulting Fee",
                     category = "Side Hustle",
@@ -147,7 +149,7 @@ object MockDataSeeder {
                     borrowerName = "Alex Rivera",
                     originalAmount = 2500.0,
                     remainingAmount = 2500.0,
-                    balanceType = BalanceType.GCASH,
+                    balanceType = WalletDefaults.GCASH,
                     description = "Concert ticket prepayment",
                     dueDate = now + (14 * oneDayMs),
                     status = LoanStatus.ACTIVE
@@ -156,13 +158,55 @@ object MockDataSeeder {
                     borrowerName = "Sam Miller",
                     originalAmount = 1000.0,
                     remainingAmount = 500.0,
-                    balanceType = BalanceType.CASH,
+                    balanceType = WalletDefaults.CASH,
                     description = "Dinner split share",
                     dueDate = now + (5 * oneDayMs),
                     status = LoanStatus.PARTIALLY_REPAID
                 )
             )
-            loans.forEach { db.loanDao().insert(it) }
+            loans.forEach { loan ->
+                val loanId = db.loanDao().insert(loan)
+                db.budgetDao().insert(
+                    BudgetEntry(
+                        type = BudgetType.LOAN_OUT,
+                        balanceType = loan.balanceType,
+                        amount = loan.originalAmount,
+                        description = "Loan to ${loan.borrowerName}",
+                        category = "Loan",
+                        borrowerName = loan.borrowerName,
+                        loanId = loanId,
+                        dueDate = loan.dueDate,
+                        loanStatus = loan.status,
+                        timestamp = loan.loanDate
+                    )
+                )
+
+                val repaidAmount = loan.originalAmount - loan.remainingAmount
+                if (repaidAmount > 0.0) {
+                    val repaymentId = db.loanDao().insertRepayment(
+                        LoanRepayment(
+                            loanId = loanId,
+                            amount = repaidAmount,
+                            repaymentDate = now - oneDayMs,
+                            note = "Seeded repayment"
+                        )
+                    )
+                    db.budgetDao().insert(
+                        BudgetEntry(
+                            type = BudgetType.LOAN_REPAYMENT,
+                            balanceType = loan.balanceType,
+                            amount = repaidAmount,
+                            description = "Repayment from ${loan.borrowerName}",
+                            category = "Loan Repayment",
+                            borrowerName = loan.borrowerName,
+                            loanId = loanId,
+                            repaymentId = repaymentId,
+                            loanStatus = loan.status,
+                            timestamp = now - oneDayMs
+                        )
+                    )
+                }
+            }
         }
 
         // 5. Seed Habit Contributions
@@ -229,16 +273,16 @@ object MockDataSeeder {
                     name = "M3 MacBook Pro Upgrade",
                     targetAmount = 120000.0,
                     currentAmount = 45000.0,
-                    balanceType = BalanceType.GCASH,
-                    iconEmoji = "💻",
+                    balanceType = WalletDefaults.GCASH,
+                    iconEmoji = "laptop",
                     createdAt = now - (30 * oneDayMs)
                 ),
                 SavingsGoal(
                     name = "Emergency Buffer Fund",
                     targetAmount = 50000.0,
                     currentAmount = 25000.0,
-                    balanceType = BalanceType.CASH,
-                    iconEmoji = "🛡️",
+                    balanceType = WalletDefaults.CASH,
+                    iconEmoji = "shield",
                     createdAt = now - (60 * oneDayMs)
                 )
             )

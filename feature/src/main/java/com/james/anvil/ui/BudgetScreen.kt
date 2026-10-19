@@ -6,6 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.graphics.Brush
 
@@ -32,7 +35,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.james.anvil.data.BalanceType
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
 import com.james.anvil.data.CategoryType
@@ -59,10 +61,9 @@ fun BudgetScreen(
 ) {
     val budgetEntries by viewModel.budgetEntries.collectAsState(initial = emptyList())
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
-    val cashBalance by viewModel.cashBalance.collectAsState(initial = 0.0)
-    val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
-    val totalCashLoaned by viewModel.totalCashLoaned.collectAsState(initial = 0.0)
-    val totalGcashLoaned by viewModel.totalGcashLoaned.collectAsState(initial = 0.0)
+    val walletSummaries by viewModel.walletSummaries.collectAsState(initial = emptyList())
+    val totalBalance by viewModel.totalBalance.collectAsState(initial = 0.0)
+    val totalLoaned by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
 
     var selectedFilter by remember { mutableStateOf(BudgetFilter.ALL) }
     var searchQuery by remember { mutableStateOf("") }
@@ -250,7 +251,7 @@ fun BudgetScreen(
                                         }
                                         Spacer(modifier = Modifier.width(20.dp))
                                         Text(
-                                            text = currencyFormat.format(cashBalance + gcashBalance),
+                                            text = currencyFormat.format(totalBalance),
                                             style = MaterialTheme.typography.displaySmall.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = (-1).sp
@@ -285,9 +286,9 @@ fun BudgetScreen(
                                                 color = Color.White.copy(alpha = 0.5f)
                                             )
                                             Text(
-                                                text = currencyFormat.format(totalCashLoaned + totalGcashLoaned),
+                                                text = currencyFormat.format(totalLoaned),
                                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = if (totalCashLoaned + totalGcashLoaned > 0) LiabilityRed else ForgedGold
+                                                color = if (totalLoaned > 0) LiabilityRed else ForgedGold
                                             )
                                         }
                                     }
@@ -299,27 +300,22 @@ fun BudgetScreen(
 
                         // Balance Cards inside Header
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            BalanceCard(
-                                title = "Cash Reserves",
-                                balance = cashBalance,
-                                loaned = totalCashLoaned,
-                                currencyFormat = currencyFormat,
-                                modifier = Modifier.weight(1f),
-                                color = SteelBlue,
-                                icon = Icons.Default.Wallet
-                            )
-                            BalanceCard(
-                                title = "GCash Digital",
-                                balance = gcashBalance,
-                                loaned = totalGcashLoaned,
-                                currencyFormat = currencyFormat,
-                                modifier = Modifier.weight(1f),
-                                color = GcashBlue,
-                                icon = Icons.Default.Smartphone
-                            )
+                            walletSummaries.forEach { summary ->
+                                BalanceCard(
+                                    title = summary.wallet.name,
+                                    balance = summary.balance,
+                                    loaned = summary.loaned,
+                                    currencyFormat = currencyFormat,
+                                    modifier = Modifier.width(170.dp),
+                                    color = Color(summary.wallet.colorArgb),
+                                    icon = Icons.Default.Wallet
+                                )
+                            }
                         }
                     }
                 }
@@ -784,9 +780,9 @@ private fun BudgetEntryItem(
                     )
 
                     Text(
-                        text = entry.balanceType.name,
+                        text = entry.balanceType,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
-                        color = if (entry.balanceType == BalanceType.GCASH) GcashBlue else CashTeal
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     if (entry.categoryType != CategoryType.NONE) {
@@ -908,7 +904,7 @@ private fun LoanItem(
                         )
 
                         Text(
-                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate)).uppercase()}",
+                            text = "${loan.balanceType} • ${dateFormat.format(Date(loan.loanDate)).uppercase()}",
                             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )

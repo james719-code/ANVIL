@@ -32,13 +32,22 @@ interface LoanDao {
     suspend fun getLoanById(id: Long): Loan?
 
     @Query("SELECT COALESCE(SUM(remainingAmount), 0.0) FROM loans WHERE balanceType = :balanceType AND status != 'FULLY_REPAID'")
-    fun getTotalLoanedAmount(balanceType: BalanceType): Flow<Double>
+    fun getTotalLoanedAmount(balanceType: String): Flow<Double>
 
     @Query("SELECT COALESCE(SUM(remainingAmount), 0.0) FROM loans WHERE status != 'FULLY_REPAID'")
     fun getTotalActiveLoanedAmount(): Flow<Double>
 
+    @Query("SELECT balanceType AS walletKey, COALESCE(SUM(remainingAmount), 0.0) AS total FROM loans WHERE status != 'FULLY_REPAID' GROUP BY balanceType")
+    fun observeLoanedByWallet(): Flow<List<WalletTotal>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertRepayment(repayment: LoanRepayment)
+    suspend fun insertRepayment(repayment: LoanRepayment): Long
+
+    @Query("SELECT * FROM loan_repayments WHERE id = :id LIMIT 1")
+    suspend fun getRepaymentById(id: Long): LoanRepayment?
+
+    @Query("DELETE FROM loan_repayments WHERE id = :id")
+    suspend fun deleteRepaymentById(id: Long)
 
     @Query("SELECT * FROM loan_repayments WHERE loanId = :loanId ORDER BY repaymentDate DESC")
     fun getRepaymentsForLoan(loanId: Long): Flow<List<LoanRepayment>>

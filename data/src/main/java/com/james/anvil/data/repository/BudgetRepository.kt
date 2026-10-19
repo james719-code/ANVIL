@@ -14,16 +14,16 @@ class BudgetRepository @Inject constructor(
     fun getEntriesByType(type: BudgetType): Flow<List<BudgetEntry>> = 
         budgetDao.observeEntriesByType(type)
     
-    fun getEntriesByBalanceType(balanceType: BalanceType): Flow<List<BudgetEntry>> = 
+    fun getEntriesByBalanceType(balanceType: String): Flow<List<BudgetEntry>> = 
         budgetDao.observeEntriesByBalanceType(balanceType)
     
-    fun getCurrentBalance(balanceType: BalanceType): Flow<Double> = 
+    fun getCurrentBalance(balanceType: String): Flow<Double> = 
         budgetDao.getCurrentBalance(balanceType)
     
-    fun getTotalIncome(balanceType: BalanceType): Flow<Double> = 
+    fun getTotalIncome(balanceType: String): Flow<Double> = 
         budgetDao.getTotalIncome(balanceType)
     
-    fun getTotalExpenses(balanceType: BalanceType): Flow<Double> = 
+    fun getTotalExpenses(balanceType: String): Flow<Double> = 
         budgetDao.getTotalExpenses(balanceType)
     
     suspend fun insert(entry: BudgetEntry) = budgetDao.insert(entry)

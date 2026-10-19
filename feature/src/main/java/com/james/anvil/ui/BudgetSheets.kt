@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.james.anvil.data.*
+import com.james.anvil.ui.components.WalletPicker
 import com.james.anvil.ui.theme.*
 import com.james.anvil.util.Categories
 import java.text.NumberFormat
@@ -126,12 +127,12 @@ private fun QuickSuggestionChip(
 @Composable
 fun AddBudgetEntrySheet(
     onDismiss: () -> Unit,
-    onSave: (BudgetType, BalanceType, Double, String, String, CategoryType) -> Unit,
+    onSave: (BudgetType, String, Double, String, String, CategoryType) -> Unit,
     initialType: BudgetType = BudgetType.EXPENSE,
     pastEntries: List<BudgetEntry> = emptyList()
 ) {
     var type by remember { mutableStateOf(initialType) }
-    var balanceType by remember { mutableStateOf(BalanceType.CASH) }
+    var balanceType by remember { mutableStateOf(WalletDefaults.CASH) }
     var categoryType by remember { mutableStateOf(CategoryType.NONE) }
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -309,74 +310,11 @@ fun AddBudgetEntrySheet(
             SectionHeader(
                 title = "Payment Source",
                 icon = Icons.Outlined.Wallet,
-                accentColor = if (balanceType == BalanceType.GCASH) InfoBlue else SteelBlue
+                accentColor = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Cash option
-                Surface(
-                    onClick = { balanceType = BalanceType.CASH },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (balanceType == BalanceType.CASH) SteelBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    border = if (balanceType == BalanceType.CASH) 
-                        androidx.compose.foundation.BorderStroke(1.5.dp, SteelBlue.copy(alpha = 0.3f)) 
-                    else null
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.Wallet,
-                            null,
-                            tint = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Cash",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                // GCash option
-                Surface(
-                    onClick = { balanceType = BalanceType.GCASH },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (balanceType == BalanceType.GCASH) InfoBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    border = if (balanceType == BalanceType.GCASH) 
-                        androidx.compose.foundation.BorderStroke(1.5.dp, InfoBlue.copy(alpha = 0.3f)) 
-                    else null
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.Smartphone,
-                            null,
-                            tint = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "GCash",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            WalletPicker(selectedId = balanceType, onSelect = { balanceType = it })
 
             // Transaction Category Type (Necessity/Leisure) - only for expenses
             AnimatedVisibility(
@@ -697,13 +635,13 @@ fun AddBudgetEntrySheet(
 @Composable
 fun AddLoanSheet(
     onDismiss: () -> Unit,
-    onSave: (String, Double, BalanceType, Double, Double, String?, Long?) -> Unit
+    onSave: (String, Double, String, Double, Double, String?, Long?) -> Unit
 ) {
     var borrowerName by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var interestRate by remember { mutableStateOf("") }
     var totalExpectedAmount by remember { mutableStateOf("") }
-    var balanceType by remember { mutableStateOf(BalanceType.CASH) }
+    var balanceType by remember { mutableStateOf(WalletDefaults.CASH) }
     var description by remember { mutableStateOf("") }
     var borrowerError by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
@@ -813,23 +751,7 @@ fun AddLoanSheet(
 
             Text("Source Account", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FilterChip(
-                    selected = balanceType == BalanceType.CASH,
-                    onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = balanceType == BalanceType.GCASH,
-                    onClick = { balanceType = BalanceType.GCASH },
-                    label = { Text("GCash") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            WalletPicker(selectedId = balanceType, onSelect = { balanceType = it })
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -891,7 +813,7 @@ fun AddRepaymentSheet(
     loan: Loan,
     currencyFormat: NumberFormat,
     onDismiss: () -> Unit,
-    onSave: (Double, BalanceType, String?) -> Unit
+    onSave: (Double, String, String?) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
     var balanceType by remember { mutableStateOf(loan.balanceType) }
@@ -961,23 +883,7 @@ fun AddRepaymentSheet(
             
             Text("Receive To", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FilterChip(
-                    selected = balanceType == BalanceType.CASH,
-                    onClick = { balanceType = BalanceType.CASH },
-                    label = { Text("Cash") },
-                    modifier = Modifier.weight(1f)
-                )
-                FilterChip(
-                    selected = balanceType == BalanceType.GCASH,
-                    onClick = { balanceType = BalanceType.GCASH },
-                    label = { Text("GCash") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            WalletPicker(selectedId = balanceType, onSelect = { balanceType = it })
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1015,7 +921,7 @@ fun AddRepaymentSheet(
 fun EditBudgetEntrySheet(
     entry: BudgetEntry,
     onDismiss: () -> Unit,
-    onSave: (BudgetType, BalanceType, Double, String, CategoryType) -> Unit,
+    onSave: (BudgetType, String, Double, String, CategoryType) -> Unit,
     onDelete: () -> Unit,
     pastEntries: List<BudgetEntry> = emptyList()
 ) {
@@ -1245,74 +1151,11 @@ fun EditBudgetEntrySheet(
             SectionHeader(
                 title = "Payment Source",
                 icon = Icons.Outlined.Wallet,
-                accentColor = if (balanceType == BalanceType.GCASH) InfoBlue else SteelBlue
+                accentColor = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Cash option
-                Surface(
-                    onClick = { balanceType = BalanceType.CASH },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (balanceType == BalanceType.CASH) SteelBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    border = if (balanceType == BalanceType.CASH) 
-                        androidx.compose.foundation.BorderStroke(1.5.dp, SteelBlue.copy(alpha = 0.3f)) 
-                    else null
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.Wallet,
-                            null,
-                            tint = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Cash",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (balanceType == BalanceType.CASH) SteelBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                // GCash option
-                Surface(
-                    onClick = { balanceType = BalanceType.GCASH },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (balanceType == BalanceType.GCASH) InfoBlue.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    border = if (balanceType == BalanceType.GCASH) 
-                        androidx.compose.foundation.BorderStroke(1.5.dp, InfoBlue.copy(alpha = 0.3f)) 
-                    else null
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Outlined.Smartphone,
-                            null,
-                            tint = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "GCash",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (balanceType == BalanceType.GCASH) InfoBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            WalletPicker(selectedId = balanceType, onSelect = { balanceType = it })
 
             // Transaction Category Type (Necessity/Leisure) - Animated
             AnimatedVisibility(

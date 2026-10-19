@@ -122,9 +122,7 @@ fun DashboardScreen(
     val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
     val bonusTaskCount by viewModel.bonusTaskCount.collectAsState(initial = 0)
     val hasDailyTasks by viewModel.hasDailyTasks.collectAsState(initial = false)
-    val cashBalance by budgetViewModel.cashBalance.collectAsState(initial = 0.0)
-    val gcashBalance by budgetViewModel.gcashBalance.collectAsState(initial = 0.0)
-    val totalBalance = cashBalance + gcashBalance
+    val totalBalance by budgetViewModel.totalBalance.collectAsState(initial = 0.0)
     val activeLoans by budgetViewModel.activeLoans.collectAsState(initial = emptyList())
     val habitContributions by streakViewModel.habitContributions.collectAsState(initial = emptyList())
     val currentStreak by streakViewModel.currentStreak.collectAsState(initial = 0)
@@ -252,7 +250,7 @@ fun DashboardScreen(
                         title = "Vault balance",
                         supporting = if (activeLoans.isNotEmpty())
                             "${activeLoans.size} active loan${if (activeLoans.size != 1) "s" else ""}"
-                        else "Cash and GCash",
+                        else "All your wallets",
                         value = currencyFormat.format(totalBalance),
                         icon = Icons.Outlined.AccountBalanceWallet,
                         onClick = onNavigateToBudget

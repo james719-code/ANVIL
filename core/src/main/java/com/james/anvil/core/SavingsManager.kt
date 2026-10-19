@@ -2,7 +2,6 @@ package com.james.anvil.core
 
 import android.content.Context
 import com.james.anvil.data.AnvilDatabase
-import com.james.anvil.data.BalanceType
 import com.james.anvil.data.CoinSource
 import com.james.anvil.data.SavingsContribution
 import com.james.anvil.data.SavingsGoal
@@ -49,9 +48,11 @@ class SavingsManager @Inject constructor(
     fun observeContributions(goalId: Long): Flow<List<SavingsContribution>> =
         savingsGoalDao.observeContributions(goalId)
 
-    suspend fun createGoal(name: String, targetAmount: Double, balanceType: BalanceType, iconEmoji: String = "\uD83D\uDCB0"): Long {
+    suspend fun createGoal(name: String, targetAmount: Double, balanceType: String, iconEmoji: String = "savings"): Long {
+        val normalizedName = name.trim()
+        if (normalizedName.isBlank() || !targetAmount.isFinite() || targetAmount <= 0.0) return 0L
         val goal = SavingsGoal(
-            name = name,
+            name = normalizedName,
             targetAmount = targetAmount,
             balanceType = balanceType,
             iconEmoji = iconEmoji
@@ -65,30 +66,28 @@ class SavingsManager @Inject constructor(
      * doesn't need to re-read stale data to check for completion.
      */
     suspend fun addContribution(goalId: Long, amount: Double, note: String? = null): ContributionResult {
+        if (!amount.isFinite() || amount <= 0.0) return ContributionResult(success = false)
         return contributionMutex.withLock {
             val goal = savingsGoalDao.getById(goalId)
                 ?: return@withLock ContributionResult(success = false)
             if (goal.isCompleted) return@withLock ContributionResult(success = false)
 
-            savingsGoalDao.insertContribution(
-                SavingsContribution(goalId = goalId, amount = amount, note = note)
-            )
-
             val newAmount = goal.currentAmount + amount
             val completed = newAmount >= goal.targetAmount
+            val updatedGoal = goal.copy(
+                currentAmount = newAmount,
+                isCompleted = completed,
+                completedAt = if (completed) System.currentTimeMillis() else null
+            )
 
-            savingsGoalDao.update(
-                goal.copy(
-                    currentAmount = newAmount,
-                    isCompleted = completed,
-                    completedAt = if (completed) System.currentTimeMillis() else null
-                )
+            savingsGoalDao.recordContribution(
+                SavingsContribution(goalId = goalId, amount = amount, note = note),
+                updatedGoal
             )
 
             if (completed) {
-                val completedGoal = goal.copy(currentAmount = newAmount, isCompleted = true)
-                onGoalCompleted(completedGoal)
-                ContributionResult(success = true, goalCompleted = true, completedGoal = completedGoal)
+                onGoalCompleted(updatedGoal)
+                ContributionResult(success = true, goalCompleted = true, completedGoal = updatedGoal)
             } else {
                 ContributionResult(success = true)
             }
@@ -106,9 +105,10 @@ class SavingsManager @Inject constructor(
     }
 
     suspend fun deleteGoal(goalId: Long) {
-        val goal = savingsGoalDao.getById(goalId) ?: return
-        savingsGoalDao.deleteContributionsForGoal(goalId)
-        savingsGoalDao.delete(goal)
+        contributionMutex.withLock {
+            val goal = savingsGoalDao.getById(goalId) ?: return@withLock
+            savingsGoalDao.deleteGoalWithContributions(goal)
+        }
     }
 
     fun getProgressPercent(goal: SavingsGoal): Float {

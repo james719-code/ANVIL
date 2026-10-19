@@ -15,7 +15,7 @@ class LoanRepository @Inject constructor(
     
     val repaidLoans: Flow<List<Loan>> = loanDao.observeRepaidLoans()
     
-    fun getTotalLoanedAmount(balanceType: BalanceType): Flow<Double> = 
+    fun getTotalLoanedAmount(balanceType: String): Flow<Double> = 
         loanDao.getTotalLoanedAmount(balanceType)
     
     val totalActiveLoanedAmount: Flow<Double> = loanDao.getTotalActiveLoanedAmount()

@@ -15,7 +15,7 @@ data class Loan(
     val borrowerName: String,
     val originalAmount: Double,
     val remainingAmount: Double,
-    val balanceType: BalanceType,
+    val balanceType: String, // wallet id
     val description: String? = null,
     val loanDate: Long = System.currentTimeMillis(),
     val dueDate: Long? = null,

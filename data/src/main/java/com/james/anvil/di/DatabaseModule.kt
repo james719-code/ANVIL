@@ -41,6 +41,9 @@ object DatabaseModule {
     fun provideBudgetDao(database: AnvilDatabase): BudgetDao = database.budgetDao()
 
     @Provides
+    fun provideWalletDao(database: AnvilDatabase): WalletDao = database.walletDao()
+
+    @Provides
     fun provideLoanDao(database: AnvilDatabase): LoanDao = database.loanDao()
 
     @Provides

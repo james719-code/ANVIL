@@ -17,12 +17,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Add
@@ -46,13 +49,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.james.anvil.data.BalanceType
+import com.james.anvil.data.Wallet
 import com.james.anvil.data.BudgetEntry
 import com.james.anvil.data.BudgetType
 import com.james.anvil.data.CategoryType
 import com.james.anvil.data.Loan
-import com.james.anvil.ui.components.ActionTile
+import com.james.anvil.ui.components.QuickActionTile
+import com.james.anvil.ui.components.WalletDot
+import com.james.anvil.ui.components.WalletEditorDialog
+import com.james.anvil.ui.components.color
+import com.james.anvil.ui.components.rememberWalletLookup
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.FilterPill
 import com.james.anvil.ui.components.PageHeader
@@ -61,6 +69,7 @@ import com.james.anvil.ui.components.SectionCard
 import com.james.anvil.ui.components.SectionTitle
 import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.DesignTokens
+import com.james.anvil.ui.theme.ExtendedTypography
 import com.james.anvil.ui.theme.ElectricBlue
 import com.james.anvil.ui.theme.ForgedGold
 import com.james.anvil.ui.theme.InfoBlue
@@ -79,10 +88,12 @@ fun VaultOverviewScreen(
 ) {
     val budgetEntries by viewModel.budgetEntries.collectAsState(initial = emptyList())
     val activeLoans by viewModel.activeLoans.collectAsState(initial = emptyList())
-    val cashBalance by viewModel.cashBalance.collectAsState(initial = 0.0)
-    val gcashBalance by viewModel.gcashBalance.collectAsState(initial = 0.0)
-    val totalCashLoaned by viewModel.totalCashLoaned.collectAsState(initial = 0.0)
-    val totalGcashLoaned by viewModel.totalGcashLoaned.collectAsState(initial = 0.0)
+    val walletSummaries by viewModel.walletSummaries.collectAsState(initial = emptyList())
+    val totalBalance by viewModel.totalBalance.collectAsState(initial = 0.0)
+    val totalLoaned by viewModel.totalActiveLoanedAmount.collectAsState(initial = 0.0)
+    val walletLookup = rememberWalletLookup()
+    var editingWallet by remember { mutableStateOf<Wallet?>(null) }
+    var showNewWallet by remember { mutableStateOf(false) }
 
     var selectedFilter by remember { mutableStateOf(BudgetFilter.ALL) }
     var searchQuery by remember { mutableStateOf("") }
@@ -91,6 +102,7 @@ fun VaultOverviewScreen(
     var showAddLoanSheet by remember { mutableStateOf(false) }
     var showEditEntrySheet by remember { mutableStateOf<BudgetEntry?>(null) }
     var showRepaymentSheet by remember { mutableStateOf<Loan?>(null) }
+    var pendingDeleteEntry by remember { mutableStateOf<BudgetEntry?>(null) }
 
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-PH")) }
     val windowInfo = LocalWindowInfo.current
@@ -108,15 +120,8 @@ fun VaultOverviewScreen(
         }.sortedByDescending { it.timestamp }
     }
 
-    val totalBalance = cashBalance + gcashBalance
-    val totalLoaned = totalCashLoaned + totalGcashLoaned
 
     val listState = rememberLazyListState()
-    val isScrolled by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 40
-        }
-    }
 
     TopLevelPageScaffold(
         floatingActionButton = {
@@ -147,142 +152,68 @@ fun VaultOverviewScreen(
                         }
                     )
                     .padding(horizontal = windowInfo.contentPadding),
-                contentPadding = PaddingValues(bottom = 100.dp, top = DesignTokens.SpacingSm),
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLg)
             ) {
                 item {
                     PageHeader(
-                        eyebrow = "Finance",
                         title = "Vault",
-                        subtitle = if (isScrolled) "" else "See balances first, then move into transactions and loans."
+                        subtitle = "Balances, transactions and loans"
                     )
                 }
 
                 item {
-                    SectionCard(accentColor = MaterialTheme.colorScheme.primary) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(4.dp)
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "Available now",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = currencyFormat.format(totalBalance),
-                                            style = if (isScrolled) MaterialTheme.typography.titleLarge else MaterialTheme.typography.displaySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                    if (isScrolled) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            IconButton(
-                                                onClick = { showAddEntrySheet = BudgetType.EXPENSE },
-                                                modifier = Modifier.size(36.dp)
-                                            ) {
-                                                Icon(Icons.Outlined.ArrowUpward, "Expense", tint = WarningOrange)
-                                            }
-                                            IconButton(
-                                                onClick = { showAddEntrySheet = BudgetType.INCOME },
-                                                modifier = Modifier.size(36.dp)
-                                            ) {
-                                                Icon(Icons.Outlined.ArrowDownward, "Income", tint = SuccessGreen)
-                                            }
-                                        }
-                                    }
-                                }
-
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = !isScrolled,
-                                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                        Text(
-                                            text = if (totalLoaned > 0) {
-                                                "${currencyFormat.format(totalLoaned)} currently loaned out"
-                                            } else {
-                                                "No active liabilities."
-                                            },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                        ) {
-                                            ActionTile(
-                                                label = "Add expense",
-                                                supporting = "Record an outgoing transaction",
-                                                icon = Icons.Outlined.ArrowUpward,
-                                                tint = WarningOrange,
-                                                modifier = Modifier.weight(1f),
-                                                onClick = { showAddEntrySheet = BudgetType.EXPENSE }
-                                            )
-                                            ActionTile(
-                                                label = "Add income",
-                                                supporting = "Log money coming in",
-                                                icon = Icons.Outlined.ArrowDownward,
-                                                tint = SuccessGreen,
-                                                modifier = Modifier.weight(1f),
-                                                onClick = { showAddEntrySheet = BudgetType.INCOME }
-                                            )
-                                        }
-                                        ActionTile(
-                                            label = "Manage loans",
-                                            supporting = "Track people, repayments, and outstanding balances",
-                                            icon = Icons.Outlined.Payments,
-                                            tint = ForgedGold,
-                                            onClick = {
-                                                selectedFilter = BudgetFilter.LOANS
-                                                showAddLoanSheet = true
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+                    VaultBalanceCard(
+                        balance = currencyFormat.format(totalBalance),
+                        loanedLine = if (totalLoaned > 0) {
+                            "${currencyFormat.format(totalLoaned)} currently loaned out"
+                        } else {
+                            "No active loans"
+                        },
+                        onAddExpense = { showAddEntrySheet = BudgetType.EXPENSE },
+                        onAddIncome = { showAddEntrySheet = BudgetType.INCOME },
+                        onAddLoan = {
+                            selectedFilter = BudgetFilter.LOANS
+                            showAddLoanSheet = true
                         }
-                    }
+                    )
                 }
 
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        VaultStatCard(
-                            label = "Cash",
-                            value = currencyFormat.format(cashBalance),
-                            supporting = currencyFormat.format(totalCashLoaned) + " loaned",
-                            tint = InfoBlue,
-                            modifier = Modifier.weight(1f)
-                        )
-                        VaultStatCard(
-                            label = "GCash",
-                            value = currencyFormat.format(gcashBalance),
-                            supporting = currencyFormat.format(totalGcashLoaned) + " loaned",
-                            tint = ElectricBlue,
-                            modifier = Modifier.weight(1f)
-                        )
+                    SectionTitle(
+                        title = "Wallets",
+                        actionLabel = "Add wallet",
+                        onAction = { showNewWallet = true }
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        walletSummaries.chunked(2).forEach { pair ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                pair.forEach { summary ->
+                                    VaultStatCard(
+                                        label = summary.wallet.name,
+                                        value = currencyFormat.format(summary.balance),
+                                        supporting = if (summary.loaned > 0) currencyFormat.format(summary.loaned) + " loaned" else "No active loans",
+                                        tint = summary.wallet.color(),
+                                        onClick = { editingWallet = summary.wallet },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (pair.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
+                    if (showNewWallet) WalletEditorDialog(wallet = null, onDismiss = { showNewWallet = false })
+                    editingWallet?.let { WalletEditorDialog(wallet = it, onDismiss = { editingWallet = null }) }
                 }
 
                 item {
                     SearchField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = "Search transactions or descriptions",
+                        placeholder = "Search transactions",
                         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = "Search") },
                         trailingIcon = {
                             Box {
@@ -292,9 +223,14 @@ fun VaultOverviewScreen(
                                         imageVector = when (searchTypeFilter) {
                                             BudgetType.INCOME -> Icons.Outlined.ArrowDownward
                                             BudgetType.EXPENSE -> Icons.Outlined.ArrowUpward
-                                            else -> Icons.Outlined.AccountBalanceWallet
+                                            else -> Icons.Outlined.FilterList
                                         },
-                                        contentDescription = "Filter by type"
+                                        contentDescription = "Filter by type",
+                                        tint = when (searchTypeFilter) {
+                                            BudgetType.INCOME -> SuccessGreen
+                                            BudgetType.EXPENSE -> WarningOrange
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
                                     )
                                 }
                                 DropdownMenu(
@@ -391,9 +327,26 @@ fun VaultOverviewScreen(
                     else -> {
                         if (filteredEntries.isEmpty()) {
                             item {
+                                val isFiltered = searchQuery.isNotBlank() ||
+                                    searchTypeFilter != null ||
+                                    selectedFilter != BudgetFilter.ALL
                                 EmptyState(
-                                    message = "No entries found",
-                                    subtitle = "Try a broader search or log a new transaction.",
+                                    message = if (isFiltered) "No matching transactions" else "No transactions yet",
+                                    subtitle = if (isFiltered) {
+                                        "Try a broader search or clear your filters."
+                                    } else {
+                                        "Log an expense or income to\nstart tracking your balance."
+                                    },
+                                    actionLabel = if (isFiltered) "Clear filters" else "Add transaction",
+                                    onAction = {
+                                        if (isFiltered) {
+                                            searchQuery = ""
+                                            searchTypeFilter = null
+                                            selectedFilter = BudgetFilter.ALL
+                                        } else {
+                                            showAddEntrySheet = BudgetType.EXPENSE
+                                        }
+                                    },
                                     icon = Icons.Outlined.AccountBalanceWallet
                                 )
                             }
@@ -401,9 +354,10 @@ fun VaultOverviewScreen(
                             items(filteredEntries, key = { it.id }) { entry ->
                                 BudgetEntryOverviewRow(
                                     entry = entry,
+                                    walletName = walletLookup(entry.balanceType)?.name ?: entry.balanceType,
                                     currencyFormat = currencyFormat,
                                     onEdit = { showEditEntrySheet = entry },
-                                    onDelete = { viewModel.deleteBudgetEntry(entry) }
+                                    onDelete = { pendingDeleteEntry = entry }
                                 )
                             }
                         }
@@ -474,6 +428,31 @@ fun VaultOverviewScreen(
             }
         )
     }
+
+    pendingDeleteEntry?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteEntry = null },
+            title = { Text("Delete transaction?") },
+            text = {
+                Text("\"${entry.description.ifBlank { "This transaction" }}\" will be permanently deleted. This cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteBudgetEntry(entry)
+                        pendingDeleteEntry = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteEntry = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -482,13 +461,23 @@ private fun VaultStatCard(
     value: String,
     supporting: String,
     tint: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
-    SectionCard(modifier = modifier, accentColor = tint) {
-        Text(text = label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(text = value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = tint)
-        Spacer(modifier = Modifier.height(6.dp))
+    SectionCard(modifier = modifier, onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WalletDot(tint)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        Spacer(modifier = Modifier.height(2.dp))
         Text(text = supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -496,6 +485,7 @@ private fun VaultStatCard(
 @Composable
 private fun BudgetEntryOverviewRow(
     entry: BudgetEntry,
+    walletName: String,
     currencyFormat: NumberFormat,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -515,7 +505,7 @@ private fun BudgetEntryOverviewRow(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "${entry.balanceType.name.lowercase().replaceFirstChar { it.uppercase() }} • ${entry.categoryType.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                    text = "$walletName • ${entry.categoryType.name.lowercase().replaceFirstChar { it.uppercase() }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -582,6 +572,45 @@ private fun LoanOverviewRow(
                     Text("Record repayment")
                 }
             }
+        }
+    }
+}
+
+/** Balance hero with the three money actions inside it, so actions sit next to the number they change. */
+@Composable
+private fun VaultBalanceCard(
+    balance: String,
+    loanedLine: String,
+    onAddExpense: () -> Unit,
+    onAddIncome: () -> Unit,
+    onAddLoan: () -> Unit
+) {
+    SectionCard(contentPadding = PaddingValues(20.dp)) {
+        Text(
+            text = "TOTAL BALANCE",
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = balance,
+            style = ExtendedTypography.numberMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1
+        )
+        Text(
+            text = loanedLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickActionTile("Expense", Icons.Outlined.ArrowUpward, Modifier.weight(1f), WarningOrange, onAddExpense)
+            QuickActionTile("Income", Icons.Outlined.ArrowDownward, Modifier.weight(1f), SuccessGreen, onAddIncome)
+            QuickActionTile("Loan", Icons.Outlined.Payments, Modifier.weight(1f), MaterialTheme.colorScheme.primary, onAddLoan)
         }
     }
 }

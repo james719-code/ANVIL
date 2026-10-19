@@ -12,9 +12,9 @@ data class SavingsGoal(
     val name: String,
     val targetAmount: Double,
     val currentAmount: Double = 0.0,
-    val balanceType: BalanceType,
+    val balanceType: String, // wallet id
     val isCompleted: Boolean = false,
     val completedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val iconEmoji: String = "\uD83D\uDCB0"
+    val iconEmoji: String = "savings" // icon key (older rows hold an emoji)
 )

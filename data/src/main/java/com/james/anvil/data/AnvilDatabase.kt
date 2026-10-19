@@ -27,9 +27,10 @@ import androidx.room.TypeConverters
         GearItem::class,
         Quest::class,
         SkillNode::class,
-        ForgeTransaction::class
+        ForgeTransaction::class,
+        Wallet::class
     ],
-    version = 16,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -50,6 +51,7 @@ abstract class AnvilDatabase : RoomDatabase() {
     abstract fun questDao(): QuestDao
     abstract fun skillNodeDao(): SkillNodeDao
     abstract fun forgeTransactionDao(): ForgeTransactionDao
+    abstract fun walletDao(): WalletDao
 
     companion object {
         @Volatile
@@ -265,6 +267,60 @@ abstract class AnvilDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : androidx.room.migration.Migration(16, 17) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE `tasks` ADD COLUMN `completionRewardsGranted` INTEGER NOT NULL DEFAULT 0"
+                )
+                // Existing completed tasks already had their completion event
+                // processed under the old schema.
+                database.execSQL(
+                    "UPDATE `tasks` SET `completionRewardsGranted` = 1 WHERE `isCompleted` = 1"
+                )
+            }
+        }
+
+        val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `budget_entries` ADD COLUMN `repaymentId` INTEGER")
+            }
+        }
+
+        /**
+         * Wallets become user-defined. Entries, loans and savings goals already hold "CASH"/"GCASH"
+         * in their balanceType column, so those ids are seeded as-is and no row needs rewriting.
+         */
+        val MIGRATION_18_19 = object : androidx.room.migration.Migration(18, 19) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `wallets` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `colorArgb` INTEGER NOT NULL,
+                        `sortOrder` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+                val now = System.currentTimeMillis()
+                WalletDefaults.all.forEach { w ->
+                    database.execSQL(
+                        "INSERT OR IGNORE INTO `wallets` (`id`, `name`, `colorArgb`, `sortOrder`, `createdAt`) VALUES (?, ?, ?, ?, ?)",
+                        arrayOf<Any>(w.id, w.name, w.colorArgb, w.sortOrder, now)
+                    )
+                }
+                // Any wallet id already used by existing rows must exist, whatever its value.
+                listOf("budget_entries", "loans", "savings_goals").forEach { table ->
+                    database.execSQL(
+                        "INSERT OR IGNORE INTO `wallets` (`id`, `name`, `colorArgb`, `sortOrder`, `createdAt`) " +
+                            "SELECT DISTINCT `balanceType`, `balanceType`, 4284773515, 99, $now FROM `$table`"
+                    )
+                }
+            }
+        }
+
         fun getDatabase(context: Context): AnvilDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -272,7 +328,7 @@ abstract class AnvilDatabase : RoomDatabase() {
                     AnvilDatabase::class.java,
                     "anvil_database"
                 )
-                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                 .build()
                 INSTANCE = instance
                 instance

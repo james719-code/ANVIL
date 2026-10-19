@@ -26,11 +26,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.james.anvil.data.BalanceType
 import com.james.anvil.data.Loan
 import com.james.anvil.data.LoanRepayment
 import com.james.anvil.data.LoanStatus
 import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.color
+import com.james.anvil.ui.components.rememberWalletLookup
 import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.GcashBlue
 import com.james.anvil.ui.theme.CashTeal
@@ -232,7 +233,8 @@ private fun LoanItem(
 ) {
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     val progress = 1 - (loan.remainingAmount / loan.originalAmount).coerceIn(0.0, 1.0)
-    val isGcash = loan.balanceType == BalanceType.GCASH
+    val wallet = rememberWalletLookup()(loan.balanceType)
+    val walletColor = wallet?.color() ?: MaterialTheme.colorScheme.primary
     val isActive = loan.status != LoanStatus.FULLY_REPAID
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -265,8 +267,7 @@ private fun LoanItem(
                         modifier = Modifier
                             .size(44.dp)
                             .background(
-                                if (isGcash) GcashBlue.copy(alpha = 0.1f) 
-                                else CashTeal.copy(alpha = 0.1f),
+                                walletColor.copy(alpha = 0.1f),
                                 RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -274,7 +275,7 @@ private fun LoanItem(
                         Icon(
                             imageVector = Icons.Outlined.Person,
                             contentDescription = "Borrower",
-                            tint = if (isGcash) GcashBlue else CashTeal
+                            tint = walletColor
                         )
                     }
                     Column {
@@ -285,7 +286,7 @@ private fun LoanItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${loan.balanceType.name} • ${dateFormat.format(Date(loan.loanDate))}${if (loan.interestRate > 0) " • ${loan.interestRate}% Int." else ""}",
+                            text = "${wallet?.name ?: loan.balanceType} • ${dateFormat.format(Date(loan.loanDate))}${if (loan.interestRate > 0) " • ${loan.interestRate}% Int." else ""}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -359,7 +360,7 @@ private fun LoanItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp),
-                color = if (isGcash) GcashBlue else CashTeal,
+                color = walletColor,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 

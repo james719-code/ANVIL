@@ -10,11 +10,6 @@ enum class BudgetType {
     LOAN_REPAYMENT  // Repayment received - shows in history but doesn't affect balance
 }
 
-enum class BalanceType {
-    CASH,
-    GCASH
-}
-
 enum class CategoryType {
     NONE,
     NECESSITY,
@@ -25,7 +20,8 @@ enum class CategoryType {
 data class BudgetEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: BudgetType,
-    val balanceType: BalanceType,
+    /** Id of the [Wallet] this entry belongs to. */
+    val balanceType: String,
     val amount: Double,
     val description: String,
     val category: String = "General",
@@ -36,6 +32,7 @@ data class BudgetEntry(
     // Loan-related fields for normalization
     val borrowerName: String? = null,
     val loanId: Long? = null, // Used for repayments to link to original loan entry
+    val repaymentId: Long? = null, // Exact repayment row represented by this history entry
     val dueDate: Long? = null,
     val loanStatus: LoanStatus? = null
 )

@@ -19,11 +19,14 @@ interface BudgetDao {
     @Delete
     suspend fun delete(entry: BudgetEntry)
 
+    @Query("SELECT * FROM budget_entries WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): BudgetEntry?
+
     @Query("SELECT * FROM budget_entries ORDER BY timestamp DESC")
     fun observeAllEntries(): Flow<List<BudgetEntry>>
 
     @Query("SELECT * FROM budget_entries WHERE balanceType = :balanceType ORDER BY timestamp DESC")
-    fun observeEntriesByBalanceType(balanceType: BalanceType): Flow<List<BudgetEntry>>
+    fun observeEntriesByBalanceType(balanceType: String): Flow<List<BudgetEntry>>
 
     @Query("SELECT * FROM budget_entries WHERE type = :type ORDER BY timestamp DESC")
     fun observeEntriesByType(type: BudgetType): Flow<List<BudgetEntry>>
@@ -32,10 +35,10 @@ interface BudgetDao {
     suspend fun getEntriesInRange(startTime: Long, endTime: Long): List<BudgetEntry>
 
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE (type = 'INCOME' OR type = 'LOAN_REPAYMENT') AND balanceType = :balanceType")
-    fun getTotalIncome(balanceType: BalanceType): Flow<Double>
+    fun getTotalIncome(balanceType: String): Flow<Double>
 
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM budget_entries WHERE (type = 'EXPENSE' OR type = 'LOAN_OUT') AND balanceType = :balanceType")
-    fun getTotalExpenses(balanceType: BalanceType): Flow<Double>
+    fun getTotalExpenses(balanceType: String): Flow<Double>
 
     @Query("""
         SELECT COALESCE(
@@ -44,7 +47,20 @@ interface BudgetDao {
             (SELECT SUM(amount) FROM budget_entries WHERE (type = 'EXPENSE' OR type = 'LOAN_OUT') AND balanceType = :balanceType), 0.0
         )
     """)
-    fun getCurrentBalance(balanceType: BalanceType): Flow<Double>
+    fun getCurrentBalance(balanceType: String): Flow<Double>
+
+    /** Net balance of every wallet that has entries, in one query. */
+    @Query("""
+        SELECT balanceType AS walletKey,
+               COALESCE(SUM(CASE
+                   WHEN type IN ('INCOME', 'LOAN_REPAYMENT') THEN amount
+                   WHEN type IN ('EXPENSE', 'LOAN_OUT') THEN -amount
+                   ELSE 0.0 END), 0.0) AS total
+        FROM budget_entries
+        GROUP BY balanceType
+    """)
+    fun observeBalancesByWallet(): Flow<List<WalletTotal>>
+
     @Query("DELETE FROM budget_entries WHERE loanId = :loanId")
     suspend fun deleteByLoanId(loanId: Long)
 

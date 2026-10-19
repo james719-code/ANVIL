@@ -28,11 +28,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.james.anvil.data.BalanceType
+import com.james.anvil.data.WalletDefaults
 import com.james.anvil.data.SavingsGoal
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.PageHeader
+import com.james.anvil.ui.components.WalletPicker
+import com.james.anvil.ui.components.color
+import com.james.anvil.ui.components.rememberWalletLookup
 import com.james.anvil.ui.components.TopLevelPageScaffold
 import com.james.anvil.ui.theme.*
 import com.james.anvil.ui.viewmodel.SavingsViewModel
@@ -92,7 +95,7 @@ fun SavingsGoalsScreen(
                 PageHeader(
                     eyebrow = "Treasure",
                     title = "Savings Goals",
-                    subtitle = "Turn progress into visible milestones and funded rewards.",
+                    subtitle = "Milestones and funded rewards",
                     onBack = onBack
                 )
             }
@@ -198,9 +201,11 @@ private fun TreasureChestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = goal.iconEmoji,
-                        fontSize = 28.sp
+                    androidx.compose.material3.Icon(
+                        imageVector = com.james.anvil.ui.theme.AppIcons.goalIcon(goal.iconEmoji),
+                        contentDescription = null,
+                        tint = ForgedGold,
+                        modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column {
@@ -209,10 +214,11 @@ private fun TreasureChestCard(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+                        val goalWallet = rememberWalletLookup()(goal.balanceType)
                         Text(
-                            text = if (goal.balanceType == BalanceType.CASH) "Cash" else "GCash",
+                            text = goalWallet?.name ?: goal.balanceType,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (goal.balanceType == BalanceType.CASH) ElectricTeal else GcashBlue
+                            color = goalWallet?.color() ?: MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -320,14 +326,14 @@ private fun TreasureChestCard(
 @Composable
 private fun CreateGoalDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, Double, BalanceType, String) -> Unit
+    onCreate: (String, Double, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var targetAmount by remember { mutableStateOf("") }
-    var selectedBalanceType by remember { mutableStateOf(BalanceType.CASH) }
-    var selectedEmoji by remember { mutableStateOf("\uD83D\uDCB0") }
+    var selectedBalanceType by remember { mutableStateOf(WalletDefaults.CASH) }
+    var selectedEmoji by remember { mutableStateOf("savings") }
 
-    val emojis = listOf("\uD83D\uDCB0", "\uD83C\uDFAF", "\uD83D\uDCF1", "\u2708\uFE0F", "\uD83C\uDFE0", "\uD83D\uDE97", "\uD83C\uDF93", "\uD83D\uDC8E")
+    val goalIconOptions = com.james.anvil.ui.theme.AppIcons.goalIcons
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -353,42 +359,29 @@ private fun CreateGoalDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
 
-                // Balance type selector
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = selectedBalanceType == BalanceType.CASH,
-                        onClick = { selectedBalanceType = BalanceType.CASH },
-                        label = { Text("Cash") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = ElectricTeal.copy(alpha = 0.2f)
-                        )
-                    )
-                    FilterChip(
-                        selected = selectedBalanceType == BalanceType.GCASH,
-                        onClick = { selectedBalanceType = BalanceType.GCASH },
-                        label = { Text("GCash") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = GcashBlue.copy(alpha = 0.2f)
-                        )
-                    )
-                }
+                // Wallet selector
+                Text("Wallet", style = MaterialTheme.typography.labelMedium)
+                WalletPicker(selectedId = selectedBalanceType, onSelect = { selectedBalanceType = it })
 
                 // Emoji picker
                 Text("Icon", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    emojis.forEach { emoji ->
-                        Surface(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clickable { selectedEmoji = emoji },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (selectedEmoji == emoji)
-                                ForgedGold.copy(alpha = 0.2f)
-                            else
-                                Color.Transparent
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(emoji, fontSize = 20.sp)
+                goalIconOptions.chunked(4).forEach { rowIcons ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowIcons.forEach { (key, vector) ->
+                            Surface(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clickable { selectedEmoji = key },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selectedEmoji == key) ForgedGold.copy(alpha = 0.2f) else Color.Transparent
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    androidx.compose.material3.Icon(
+                                        imageVector = vector,
+                                        contentDescription = key,
+                                        tint = if (selectedEmoji == key) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

@@ -31,12 +31,6 @@ class Converters {
     fun toBudgetType(value: String): BudgetType = BudgetType.valueOf(value)
 
     @TypeConverter
-    fun fromBalanceType(value: BalanceType): String = value.name
-
-    @TypeConverter
-    fun toBalanceType(value: String): BalanceType = BalanceType.valueOf(value)
-
-    @TypeConverter
     fun fromLoanStatus(value: LoanStatus): String = value.name
 
     @TypeConverter
