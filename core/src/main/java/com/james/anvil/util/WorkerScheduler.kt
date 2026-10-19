@@ -8,6 +8,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.james.anvil.worker.DailyTaskResetWorker
+import com.james.anvil.worker.AnvilWorker
 import com.james.anvil.worker.ExpenseReminderWorker
 import com.james.anvil.worker.HistoryCleanupWorker
 import com.james.anvil.worker.MidnightContributionWorker
@@ -27,24 +28,29 @@ object WorkerScheduler {
     private const val WORK_NAME_REMINDER = "AnvilReminderCheck"
     private const val WORK_NAME_DAILY_RESET = "AnvilDailyReset"
     private const val WORK_NAME_HISTORY_CLEANUP = "AnvilHistoryCleanup"
+    private const val WORK_NAME_BLOCKING_STATE = "AnvilBlockingState"
     
     // Intervals
     private const val REMINDER_INTERVAL_MINUTES = 15L
     private const val DAILY_RESET_INTERVAL_HOURS = 12L
     private const val HISTORY_CLEANUP_INTERVAL_HOURS = 24L
     private const val WIDGET_REFRESH_INTERVAL_MINUTES = 30L
+    private const val BLOCKING_STATE_INTERVAL_MINUTES = 15L
     
     // Backoff settings
     private const val BACKOFF_DELAY_SECONDS = 10L
     
     /**
      * Schedules all workers with appropriate constraints and policies.
-     * Uses KEEP policy to avoid rescheduling if already scheduled.
+     * The blocking-state request uses UPDATE so an app upgrade can reconcile
+     * its interval and constraints. Time-aligned workers retain KEEP so
+     * opening the app cannot continually postpone midnight reminders.
      */
     fun scheduleAllWorkers(context: Context) {
         val workManager = WorkManager.getInstance(context)
 
         scheduleReminderWorker(workManager)
+        scheduleBlockingStateWorker(workManager)
         scheduleDailyResetWorker(workManager)
         scheduleWidgetRefreshWorker(workManager)
         scheduleMidnightContributionWorker(workManager)
@@ -77,6 +83,30 @@ object WorkerScheduler {
         workManager.enqueueUniquePeriodicWork(
             WORK_NAME_REMINDER,
             ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Reconciles overdue tasks and persistent penalty state even when the
+     * accessibility service is not currently receiving events.
+     */
+    private fun scheduleBlockingStateWorker(workManager: WorkManager) {
+        val request = PeriodicWorkRequestBuilder<AnvilWorker>(
+            BLOCKING_STATE_INTERVAL_MINUTES,
+            TimeUnit.MINUTES
+        )
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                BACKOFF_DELAY_SECONDS,
+                TimeUnit.SECONDS
+            )
+            .addTag(TAG_BLOCKING_STATE)
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            WORK_NAME_BLOCKING_STATE,
+            ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
     }
@@ -256,6 +286,7 @@ object WorkerScheduler {
     fun cancelAllWork(context: Context) {
         val workManager = WorkManager.getInstance(context)
         workManager.cancelUniqueWork(WORK_NAME_REMINDER)
+        workManager.cancelUniqueWork(WORK_NAME_BLOCKING_STATE)
         workManager.cancelUniqueWork(WORK_NAME_DAILY_RESET)
         workManager.cancelUniqueWork(WidgetRefreshWorker.WORK_NAME)
         workManager.cancelUniqueWork(MidnightContributionWorker.WORK_NAME)
@@ -273,6 +304,7 @@ object WorkerScheduler {
     
     // Tags for work identification
     const val TAG_REMINDER = "reminder_worker"
+    const val TAG_BLOCKING_STATE = "blocking_state_worker"
     const val TAG_DAILY_RESET = "daily_reset_worker"
     const val TAG_WIDGET_REFRESH = "widget_refresh_worker"
     const val TAG_MIDNIGHT_CONTRIBUTION = "midnight_contribution_worker"

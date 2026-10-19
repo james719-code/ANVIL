@@ -44,9 +44,6 @@ class MidnightContributionWorker(
                 return Result.success()
             }
             
-            // Get the end of yesterday
-            val endOfYesterday = yesterday + 24 * 60 * 60 * 1000
-            
             // NEW LOGIC: Habit Contribution is based ONLY on Daily Tasks.
             // "Separate one time to do and daily" -> One-time backlog doesn't break streak.
             // "Only shown if there's a daily to do" -> Must have at least 1 daily task.
@@ -70,15 +67,16 @@ class MidnightContributionWorker(
                     reason = "all_dailies_completed", // Reason updated
                     recordedAt = System.currentTimeMillis()
                 )
-                habitContributionDao.insert(contribution)
-                Log.d(TAG, "Recorded habit contribution for ${formatDate(yesterday)} (Clean Sweep of Dailies)")
+                if (habitContributionDao.insertIfMissing(contribution)) {
+                    Log.d(TAG, "Recorded habit contribution for ${formatDate(yesterday)} (Clean Sweep of Dailies)")
 
-                // Award streak coins every 7 days
-                val streakLength = habitContributionDao.getTotalContributionCount()
-                if (streakLength > 0 && streakLength % 7 == 0) {
-                    val coinManager = ForgeCoinManager(applicationContext)
-                    coinManager.awardCoins(10, CoinSource.STREAK_BONUS, "7-day streak milestone!")
-                    Log.d(TAG, "Awarded 10 streak coins for ${streakLength}-day milestone")
+                    // Award streak coins every 7 days
+                    val streakLength = habitContributionDao.getTotalContributionCount()
+                    if (streakLength > 0 && streakLength % 7 == 0) {
+                        val coinManager = ForgeCoinManager(applicationContext)
+                        coinManager.awardCoins(10, CoinSource.STREAK_BONUS, "7-day streak milestone!")
+                        Log.d(TAG, "Awarded 10 streak coins for ${streakLength}-day milestone")
+                    }
                 }
             } else {
                  Log.d(TAG, "No contribution: Dailies not all done. Checking for Ice (Grace Days)...")
@@ -92,8 +90,9 @@ class MidnightContributionWorker(
                         reason = "streak_freeze", // Streak saved by Ice
                         recordedAt = System.currentTimeMillis()
                     )
-                    habitContributionDao.insert(contribution)
-                    Log.d(TAG, "Streak saved by Ice (Grace Day) for ${formatDate(yesterday)}")
+                    if (habitContributionDao.insertIfMissing(contribution)) {
+                        Log.d(TAG, "Streak saved by Ice (Grace Day) for ${formatDate(yesterday)}")
+                    }
                  } else {
                      Log.d(TAG, "No Ice available. Streak broken.")
                  }
@@ -111,7 +110,9 @@ class MidnightContributionWorker(
                 val resetTasks = tasksToReset.map { task ->
                     task.copy(
                         isCompleted = false,
-                        completedAt = null
+                        completedAt = null,
+                        reminderSent = false,
+                        completionRewardsGranted = false
                     )
                 }
                 taskDao.updateAll(resetTasks)

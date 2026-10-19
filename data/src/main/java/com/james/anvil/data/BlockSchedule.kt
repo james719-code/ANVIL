@@ -1,5 +1,7 @@
 package com.james.anvil.data
 
+import java.util.Calendar
+
 /**
  * Represents the schedule type for blocking.
  * - EVERYDAY: Block every day of the week
@@ -12,6 +14,80 @@ enum class BlockScheduleType {
     WEEKDAYS,
     CUSTOM,
     CUSTOM_RANGE
+}
+
+/**
+ * Single source of truth for schedule evaluation.
+ *
+ * A schedule's start day owns an overnight range. For example, a weekday
+ * schedule from 22:00 to 06:00 remains active on Saturday until 06:00 when
+ * Friday is selected. This is important because the check runs when an app
+ * window changes, not only at the exact start time.
+ */
+object BlockScheduleEvaluator {
+    fun isActive(
+        scheduleType: BlockScheduleType,
+        dayMask: Int,
+        startTimeMinutes: Int,
+        endTimeMinutes: Int,
+        startDayOfWeek: Int?,
+        endDayOfWeek: Int?,
+        currentDayOfWeek: Int,
+        currentMinutes: Int
+    ): Boolean {
+        val start = startTimeMinutes.coerceIn(0, 1439)
+        val end = endTimeMinutes.coerceIn(0, 1439)
+        val current = currentMinutes.coerceIn(0, 1439)
+
+        if (scheduleType == BlockScheduleType.CUSTOM_RANGE) {
+            if (startDayOfWeek == null ||
+                endDayOfWeek == null ||
+                startDayOfWeek !in Calendar.SUNDAY..Calendar.SATURDAY ||
+                endDayOfWeek !in Calendar.SUNDAY..Calendar.SATURDAY ||
+                currentDayOfWeek !in Calendar.SUNDAY..Calendar.SATURDAY
+            ) {
+                return false
+            }
+
+            return TimeRange(
+                startMinutes = start,
+                endMinutes = end,
+                startDayOfWeek = startDayOfWeek,
+                endDayOfWeek = endDayOfWeek
+            ).isWithinRangeWithDay(currentDayOfWeek, current)
+        }
+
+        if (currentDayOfWeek !in Calendar.SUNDAY..Calendar.SATURDAY) return false
+
+        val currentDaySelected = isSelectedDay(scheduleType, dayMask, currentDayOfWeek)
+        if (start <= end) {
+            return currentDaySelected && current in start..end
+        }
+
+        // Overnight schedule: the portion after midnight belongs to the
+        // previous day's schedule, not the current day.
+        val previousDay = if (currentDayOfWeek == Calendar.SUNDAY) {
+            Calendar.SATURDAY
+        } else {
+            currentDayOfWeek - 1
+        }
+
+        return (current >= start && currentDaySelected) ||
+            (current <= end && isSelectedDay(scheduleType, dayMask, previousDay))
+    }
+
+    private fun isSelectedDay(
+        scheduleType: BlockScheduleType,
+        dayMask: Int,
+        dayOfWeek: Int
+    ): Boolean {
+        return when (scheduleType) {
+            BlockScheduleType.EVERYDAY -> true
+            BlockScheduleType.WEEKDAYS -> dayOfWeek in Calendar.MONDAY..Calendar.FRIDAY
+            BlockScheduleType.CUSTOM -> DayOfWeekMask.isDayIncluded(dayMask, dayOfWeek)
+            BlockScheduleType.CUSTOM_RANGE -> false
+        }
+    }
 }
 
 /**
@@ -145,8 +221,8 @@ data class TimeRange(
     private fun calculateWeekMinutes(dayOfWeek: Int, minutesInDay: Int): Int {
         // Calendar.SUNDAY = 1, MONDAY = 2, ..., SATURDAY = 7
         // Convert to 0-based: Sunday = 0, Monday = 1, ..., Saturday = 6
-        val dayIndex = dayOfWeek - 1
-        return dayIndex * 1440 + minutesInDay
+        val dayIndex = (dayOfWeek - 1).coerceIn(0, 6)
+        return dayIndex * 1440 + minutesInDay.coerceIn(0, 1439)
     }
 
     fun toDisplayString(): String {

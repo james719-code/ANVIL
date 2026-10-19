@@ -22,7 +22,9 @@ class GearManager @Inject constructor(
         AnvilDatabase.getDatabase(context).gearDao()
     )
 
-    private val equipMutex = Mutex()
+    companion object {
+        private val equipMutex = Mutex()
+    }
 
     fun observeAllGear(): Flow<List<GearItem>> = gearDao.observeAllGear()
 
@@ -44,9 +46,11 @@ class GearManager @Inject constructor(
     }
 
     suspend fun unequipItem(itemId: Long): Boolean {
-        val item = gearDao.getById(itemId) ?: return false
-        gearDao.update(item.copy(isEquipped = false))
-        return true
+        return equipMutex.withLock {
+            val item = gearDao.getById(itemId) ?: return@withLock false
+            gearDao.update(item.copy(isEquipped = false))
+            true
+        }
     }
 
     suspend fun getEquippedInSlot(slot: GearSlot): GearItem? =

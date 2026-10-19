@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
@@ -47,6 +49,7 @@ class TaskViewModel @Inject constructor(
     private val levelManager = com.james.anvil.core.LevelManager(application)
     private val questManager = QuestManager(application)
     private val combatManager = CombatManager(application)
+    private val taskMutationMutex = Mutex()
 
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
@@ -84,7 +87,10 @@ class TaskViewModel @Inject constructor(
     val tasks: Flow<List<Task>> = taskDao.observeIncompleteTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
-    val completedTasks: Flow<List<Task>> = taskDao.observeCompletedTasks(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000)
+    val completedTasks: Flow<List<Task>> = taskDao.observeAllCompletedTasks().map { completed ->
+        val since = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
+        completed.filter { (it.completedAt ?: Long.MIN_VALUE) >= since }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     val allCompletedTasks: Flow<List<Task>> = taskDao.observeAllCompletedTasks()
@@ -140,7 +146,8 @@ class TaskViewModel @Inject constructor(
     }
 
     private fun updateDailyQuote() {
-        val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+        val calendar = Calendar.getInstance()
+        val today = calendar.get(Calendar.YEAR) * 1000 + calendar.get(Calendar.DAY_OF_YEAR)
         val lastShownDay = prefs.getInt(PrefsKeys.LAST_QUOTE_DAY, -1)
 
         if (today != lastShownDay) {
@@ -217,10 +224,12 @@ class TaskViewModel @Inject constructor(
     fun addTask(title: String, deadlineTimestamp: Long, category: String, steps: List<TaskStep> = emptyList(), isDaily: Boolean = false, hardnessLevel: Int = 1, notes: String = "") {
         viewModelScope.launch {
             traceSection("TaskViewModel:addTask") {
+                val normalizedTitle = title.trim()
+                if (normalizedTitle.isEmpty()) return@traceSection
                 val task = Task(
-                    title = title,
+                    title = normalizedTitle,
                     deadline = deadlineTimestamp,
-                    category = category,
+                    category = category.trim().ifBlank { "General" },
                     steps = steps,
                     createdAt = System.currentTimeMillis(),
                     isDaily = isDaily,
@@ -236,50 +245,73 @@ class TaskViewModel @Inject constructor(
     fun completeTask(task: Task) {
         viewModelScope.launch {
             traceSection("TaskViewModel:completeTask") {
-                val now = System.currentTimeMillis()
-                val completedTask = if (task.isDaily) {
-                    task.copy(
-                        isCompleted = true,
-                        completedAt = now,
-                        lastCompletedDate = now
-                    )
-                } else {
-                    task.copy(isCompleted = true, completedAt = now)
+                taskMutationMutex.withLock {
+                    completeTaskLocked(task.id)
                 }
-                taskDao.update(completedTask)
-                levelManager.awardTaskXp(task.title, task.hardnessLevel)
-                questManager.updateQuestProgress(QuestCategory.TASK)
-                // Deal damage to all active monsters
-                dealDamageToActiveMonsters(10 * task.hardnessLevel, DamageSource.TASK)
-                WidgetRefresher.refreshAll(getApplication())
             }
         }
     }
 
     fun toggleTaskStep(task: Task, stepId: String, isCompleted: Boolean) {
         viewModelScope.launch {
-            val updatedSteps = task.steps.map {
-                if (it.id == stepId) it.copy(isCompleted = isCompleted) else it
+            taskMutationMutex.withLock {
+                val current = taskDao.getById(task.id) ?: return@withLock
+                val updatedSteps = current.steps.map {
+                    if (it.id == stepId) it.copy(isCompleted = isCompleted) else it
+                }
+                val allStepsCompleted = updatedSteps.isNotEmpty() && updatedSteps.all { it.isCompleted }
+
+                if (allStepsCompleted && !current.isCompleted) {
+                    taskDao.update(current.copy(steps = updatedSteps))
+                    completeTaskLocked(current.id)
+                } else {
+                    taskDao.update(
+                        current.copy(
+                            steps = updatedSteps,
+                            isCompleted = if (allStepsCompleted) current.isCompleted else false,
+                            completedAt = if (allStepsCompleted) current.completedAt else null
+                        )
+                    )
+                }
             }
-
-            val allStepsCompleted = updatedSteps.isNotEmpty() && updatedSteps.all { it.isCompleted }
-
-            val updatedTask = if (allStepsCompleted && !task.isCompleted) {
-                task.copy(steps = updatedSteps, isCompleted = true, completedAt = System.currentTimeMillis())
-            } else if (!allStepsCompleted && task.isCompleted) {
-                task.copy(steps = updatedSteps, isCompleted = false, completedAt = null)
-            } else {
-                task.copy(steps = updatedSteps)
-            }
-
-            taskDao.update(updatedTask)
         }
     }
 
     fun updateTask(task: Task) {
         viewModelScope.launch {
-            taskDao.update(task)
+            taskMutationMutex.withLock {
+                val current = taskDao.getById(task.id) ?: return@withLock
+                if (!current.isCompleted && task.isCompleted) {
+                    completeTaskLocked(current.id)
+                } else {
+                    // Preserve the reward ledger owned by the current row;
+                    // edit screens should not reset it with stale data.
+                    taskDao.update(task.copy(completionRewardsGranted = current.completionRewardsGranted))
+                }
+            }
         }
+    }
+
+    private suspend fun completeTaskLocked(taskId: Long) {
+        val current = taskDao.getById(taskId) ?: return
+        if (current.isCompleted) return
+
+        val now = System.currentTimeMillis()
+        val completedTask = current.copy(
+            isCompleted = true,
+            completedAt = now,
+            lastCompletedDate = if (current.isDaily) now else current.lastCompletedDate,
+            completionRewardsGranted = true
+        )
+        taskDao.update(completedTask)
+
+        // Mark before side effects so stale taps cannot duplicate rewards.
+        if (!current.completionRewardsGranted) {
+            levelManager.awardTaskXp(current.title, current.hardnessLevel)
+            questManager.updateQuestProgress(QuestCategory.TASK)
+            dealDamageToActiveMonsters(10 * current.hardnessLevel, DamageSource.TASK)
+        }
+        WidgetRefresher.refreshAll(getApplication())
     }
 
     fun deleteTask(task: Task) {
@@ -359,8 +391,18 @@ class TaskViewModel @Inject constructor(
             val startTime = calendar.timeInMillis
 
             // Single batch query instead of N individual queries
-            val contributions = bonusTaskDao.getContributionsInRange(startTime, endTime)
-            val contributionMap = contributions.associate { it.dayStart to it.total }
+            val bonusTasksInRange = bonusTaskDao.getBonusTasksInRange(startTime, endTime)
+            val contributionMap = bonusTasksInRange.groupBy { bonusTask ->
+                Calendar.getInstance().apply {
+                    timeInMillis = bonusTask.completedAt
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+            }.mapValues { (_, tasksForDay) ->
+                tasksForDay.sumOf { it.contributionValue }
+            }
 
             // Build result map with 0 for days with no contributions
             val result = mutableMapOf<Long, Int>()

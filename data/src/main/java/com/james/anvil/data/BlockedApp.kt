@@ -37,29 +37,16 @@ data class BlockedApp(
         val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + 
                             calendar.get(java.util.Calendar.MINUTE)
 
-        // Handle CUSTOM_RANGE separately
-        if (scheduleType == BlockScheduleType.CUSTOM_RANGE) {
-            if (startDayOfWeek == null || endDayOfWeek == null) return false
-            return TimeRange(
-                startMinutes = startTimeMinutes,
-                endMinutes = endTimeMinutes,
-                startDayOfWeek = startDayOfWeek,
-                endDayOfWeek = endDayOfWeek
-            ).isWithinRangeWithDay(currentDayOfWeek, currentMinutes)
-        }
-
-        // Check day first for other schedule types
-        val isDayActive = when (scheduleType) {
-            BlockScheduleType.EVERYDAY -> true
-            BlockScheduleType.WEEKDAYS -> currentDayOfWeek in java.util.Calendar.MONDAY..java.util.Calendar.FRIDAY
-            BlockScheduleType.CUSTOM -> DayOfWeekMask.isDayIncluded(dayMask, currentDayOfWeek)
-            BlockScheduleType.CUSTOM_RANGE -> false // Already handled above
-        }
-
-        if (!isDayActive) return false
-
-        // Check time range
-        return TimeRange(startTimeMinutes, endTimeMinutes).isWithinRange(currentMinutes)
+        return BlockScheduleEvaluator.isActive(
+            scheduleType = scheduleType,
+            dayMask = dayMask,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            startDayOfWeek = startDayOfWeek,
+            endDayOfWeek = endDayOfWeek,
+            currentDayOfWeek = currentDayOfWeek,
+            currentMinutes = currentMinutes
+        )
     }
 
     /**

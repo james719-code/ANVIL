@@ -8,6 +8,10 @@ import androidx.security.crypto.MasterKey
 class PenaltyManager(context: Context) {
     private val sharedPreferences: SharedPreferences
 
+    companion object {
+        private val mutationLock = Any()
+    }
+
     init {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -22,12 +26,23 @@ class PenaltyManager(context: Context) {
         )
     }
 
-    fun startPenalty(durationMillis: Long = 24 * 60 * 60 * 1000L) { 
-        val endTime = System.currentTimeMillis() + durationMillis
-        sharedPreferences.edit()
-            .putLong("penalty_end_time", endTime)
-            .putInt("violation_count", getViolationCount() + 1)
-            .apply()
+    @Synchronized
+    fun startPenalty(durationMillis: Long = 24 * 60 * 60 * 1000L) {
+        synchronized(mutationLock) {
+            val now = System.currentTimeMillis()
+            val currentEndTime = getPenaltyEndTime()
+
+            // Reconciliation runs from both the accessibility service and
+            // WorkManager. Do not extend the same penalty or increment the
+            // violation count every time either one observes the same violation.
+            if (currentEndTime > now) return
+
+            val endTime = now + durationMillis.coerceAtLeast(1L)
+            sharedPreferences.edit()
+                .putLong("penalty_end_time", endTime)
+                .putInt("violation_count", getViolationCount() + 1)
+                .commit()
+        }
     }
 
     fun isPenaltyActive(): Boolean {
@@ -42,18 +57,24 @@ class PenaltyManager(context: Context) {
         return sharedPreferences.getInt("violation_count", 0)
     }
 
+    @Synchronized
     fun clearPenalty() {
-        sharedPreferences.edit()
-            .remove("penalty_end_time")
-            .apply()
+        synchronized(mutationLock) {
+            sharedPreferences.edit()
+                .remove("penalty_end_time")
+                .commit()
+        }
     }
 
     
+    @Synchronized
     fun saveTimeCheckpoints(systemTime: Long, elapsedRealtime: Long) {
-        sharedPreferences.edit()
-            .putLong("last_system_time", systemTime)
-            .putLong("last_elapsed_time", elapsedRealtime)
-            .apply()
+        synchronized(mutationLock) {
+            sharedPreferences.edit()
+                .putLong("last_system_time", systemTime)
+                .putLong("last_elapsed_time", elapsedRealtime)
+                .commit()
+        }
     }
 
     fun getLastSystemTime(): Long {

@@ -27,7 +27,13 @@ class DecisionEngineTest {
         taskDao = mock()
         penaltyManager = mock()
         bonusManager = mock()
-        decisionEngine = DecisionEngine(taskDao, penaltyManager, bonusManager)
+        decisionEngine = DecisionEngine(
+            taskDao = taskDao,
+            penaltyManager = penaltyManager,
+            bonusManager = bonusManager,
+            currentTimeMillis = { 1_000_000L },
+            elapsedRealtime = { 500_000L }
+        )
         
         // Default stubs for PenaltyManager methods
         whenever(penaltyManager.getLastSystemTime()).thenReturn(0L)
@@ -97,5 +103,20 @@ class DecisionEngineTest {
         val isBlocked = decisionEngine.isBlocked()
 
         assertFalse(isBlocked)
+    }
+
+    @Test
+    fun `updateState keeps the user unblocked during an active grace protection window`() = runTest {
+        whenever(taskDao.countAllIncompleteNonDailyTasks()).thenReturn(1)
+        whenever(taskDao.getTasksViolatingHardness(any())).thenReturn(
+            listOf(Task(title = "Hard Task", deadline = 100L))
+        )
+        whenever(taskDao.getOverdueIncomplete(any())).thenReturn(emptyList())
+        whenever(bonusManager.isGraceProtectionActive(any())).thenReturn(false, true)
+        whenever(bonusManager.consumeGraceDayForBlocking(any(), any())).thenReturn(true)
+
+        decisionEngine.updateState()
+
+        assertFalse(decisionEngine.isBlockedFlow.value)
     }
 }

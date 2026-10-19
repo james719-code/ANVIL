@@ -13,11 +13,16 @@ import com.james.anvil.data.FocusSession
 import com.james.anvil.data.QuestCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -65,17 +70,19 @@ class FocusSessionViewModel @Inject constructor(
     private var completedRounds: Int = 0
 
     // Stats
-    private val startOfToday: Long
-        get() {
-            val cal = Calendar.getInstance()
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            return cal.timeInMillis
+    private val clockTicks = flow {
+        while (currentCoroutineContext().isActive) {
+            emit(Unit)
+            delay(60_000L)
         }
+    }
 
-    val todayFocusMinutes: StateFlow<Int> = focusSessionDao.observeTodayFocusMinutes(startOfToday)
+    val todayFocusMinutes: StateFlow<Int> = combine(
+        focusSessionDao.observeAll(),
+        clockTicks
+    ) { sessions, _ ->
+        sessions.filter { isSameLocalDay(it.startTime) }.sumOf { it.totalFocusMinutes }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0)
 
     val totalFocusMinutes: StateFlow<Int> = focusSessionDao.observeTotalFocusMinutes()
@@ -108,6 +115,7 @@ class FocusSessionViewModel @Inject constructor(
 
     // Timer control
     fun startSession() {
+        if (_isRunning.value || _phase.value != FocusPhase.IDLE) return
         sessionStartTime = System.currentTimeMillis()
         completedRounds = 0
         _currentRound.value = 1
@@ -171,13 +179,17 @@ class FocusSessionViewModel @Inject constructor(
         countDownTimer?.cancel()
 
         val totalMinutes = completedRounds * _workMinutes.value
+        val sessionStart = sessionStartTime
+        val workDuration = _workMinutes.value
+        val breakDuration = _breakMinutes.value
+        val sessionEnd = System.currentTimeMillis()
 
         viewModelScope.launch {
             val session = FocusSession(
-                startTime = sessionStartTime,
-                endTime = System.currentTimeMillis(),
-                workMinutes = _workMinutes.value,
-                breakMinutes = _breakMinutes.value,
+                startTime = sessionStart,
+                endTime = sessionEnd,
+                workMinutes = workDuration,
+                breakMinutes = breakDuration,
                 sessionsCompleted = completedRounds,
                 totalFocusMinutes = totalMinutes,
                 isCompleted = true
@@ -190,23 +202,28 @@ class FocusSessionViewModel @Inject constructor(
     }
 
     fun stopSession() {
+        if (!_isRunning.value) return
         countDownTimer?.cancel()
         _isRunning.value = false
 
         if (completedRounds > 0) {
             val totalMinutes = completedRounds * _workMinutes.value
+            val sessionStart = sessionStartTime
+            val workDuration = _workMinutes.value
+            val breakDuration = _breakMinutes.value
+            val sessionEnd = System.currentTimeMillis()
             viewModelScope.launch {
                 val session = FocusSession(
-                    startTime = sessionStartTime,
-                    endTime = System.currentTimeMillis(),
-                    workMinutes = _workMinutes.value,
-                    breakMinutes = _breakMinutes.value,
+                    startTime = sessionStart,
+                    endTime = sessionEnd,
+                    workMinutes = workDuration,
+                    breakMinutes = breakDuration,
                     sessionsCompleted = completedRounds,
                     totalFocusMinutes = totalMinutes,
                     isCompleted = false
                 )
                 focusSessionDao.insert(session)
-                if (totalMinutes >= _workMinutes.value) {
+                if (totalMinutes >= workDuration) {
                     levelManager.awardFocusSessionXp(totalMinutes)
                     questManager.updateQuestProgress(QuestCategory.FOCUS)
                     dealDamageToActiveMonster(totalMinutes)
@@ -232,6 +249,14 @@ class FocusSessionViewModel @Inject constructor(
         if (damage > 0) {
             combatManager.dealDamage(monster.id, damage, DamageSource.FOCUS)
         }
+    }
+
+    private fun isSameLocalDay(timestamp: Long): Boolean {
+        val target = Calendar.getInstance().apply { timeInMillis = timestamp }
+        val today = Calendar.getInstance()
+        return target.get(Calendar.ERA) == today.get(Calendar.ERA) &&
+            target.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+            target.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
     }
 
     override fun onCleared() {

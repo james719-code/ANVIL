@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
+import androidx.core.content.ContextCompat
 import com.james.anvil.service.AnvilVpnService
 
 /**
@@ -37,17 +38,17 @@ object VpnHelper {
         val intent = Intent(context, AnvilVpnService::class.java).apply {
             action = AnvilVpnService.ACTION_START
         }
-        context.startService(intent)
+        ContextCompat.startForegroundService(context, intent)
     }
 
     /**
      * Stop the VPN service.
      */
     fun stopVpn(context: Context) {
-        val intent = Intent(context, AnvilVpnService::class.java).apply {
-            action = AnvilVpnService.ACTION_STOP
-        }
-        context.startService(intent)
+        // Stopping through startService could create a fresh service instance
+        // only to stop it. stopService also reaches onDestroy cleanup without
+        // violating foreground-service start restrictions.
+        context.stopService(Intent(context, AnvilVpnService::class.java))
     }
 
     /**

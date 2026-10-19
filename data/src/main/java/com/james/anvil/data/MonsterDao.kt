@@ -21,11 +21,24 @@ interface MonsterDao {
     @Query("SELECT * FROM monsters WHERE isActive = 1 AND isDefeated = 0 LIMIT 1")
     suspend fun getFirstActiveMonster(): Monster?
 
-    @Query("SELECT * FROM monsters WHERE targetPackageName = :pkg AND isDefeated = 0 LIMIT 1")
+    @Query("SELECT * FROM monsters WHERE targetPackageName = :pkg AND isActive = 1 AND isDefeated = 0 LIMIT 1")
     suspend fun getActiveMonsterForApp(pkg: String): Monster?
 
-    @Query("SELECT * FROM monsters WHERE targetLinkPattern = :pattern AND isDefeated = 0 LIMIT 1")
+    @Query("SELECT * FROM monsters WHERE targetLinkPattern = :pattern AND isActive = 1 AND isDefeated = 0 LIMIT 1")
     suspend fun getActiveMonsterForLink(pattern: String): Monster?
+
+    /** Applies damage only to a live, active monster. Returns 1 when this call won the update. */
+    @Query(
+        """
+        UPDATE monsters SET
+            currentHp = CASE WHEN currentHp - :damage > 0 THEN currentHp - :damage ELSE 0 END,
+            isDefeated = CASE WHEN currentHp - :damage <= 0 THEN 1 ELSE 0 END,
+            isActive = CASE WHEN currentHp - :damage <= 0 THEN 0 ELSE 1 END,
+            defeatedAt = CASE WHEN currentHp - :damage <= 0 THEN :defeatedAt ELSE defeatedAt END
+        WHERE id = :monsterId AND isActive = 1 AND isDefeated = 0
+        """
+    )
+    suspend fun applyDamage(monsterId: Long, damage: Int, defeatedAt: Long): Int
 
     @Query("SELECT * FROM monsters WHERE id = :id")
     suspend fun getById(id: Long): Monster?

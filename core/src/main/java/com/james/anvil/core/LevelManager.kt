@@ -6,11 +6,7 @@ import com.james.anvil.data.UserProgressDao
 import com.james.anvil.data.UserProgress
 import com.james.anvil.data.XpSource
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.sync.Mutex
@@ -28,10 +24,11 @@ class LevelManager @Inject constructor(
     )
 
     private val prefs = context.getSharedPreferences("anvil_level_prefs", Context.MODE_PRIVATE)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val xpMutex = Mutex()
-
     companion object {
+        // Managers are created by several ViewModels and legacy call sites;
+        // one shared lock keeps the Room ledger and preference cache aligned.
+        private val xpMutex = Mutex()
+
         /** 
          * Leveling curve: each entry is the TOTAL XP needed to reach that level.
          * Index 0 = Level 1 (0 XP), Index 9 = Level 10 (4500 XP).
@@ -72,59 +69,58 @@ class LevelManager @Inject constructor(
     // XP AWARDING
     // ================================================
 
-    fun awardTaskXp(taskTitle: String, hardnessLevel: Int) {
+    suspend fun awardTaskXp(taskTitle: String, hardnessLevel: Int) {
         val xp = XP_PER_TASK_BASE * hardnessLevel.coerceIn(1, 5)
         awardXp(xp, XpSource.TASK, "Completed: $taskTitle")
     }
 
-    fun awardBonusTaskXp(taskTitle: String) {
+    suspend fun awardBonusTaskXp(taskTitle: String) {
         awardXp(XP_PER_BONUS_TASK, XpSource.BONUS, "Bonus: $taskTitle")
     }
 
-    fun awardStreakXp(streakDays: Int) {
+    suspend fun awardStreakXp(streakDays: Int) {
         val xp = XP_PER_STREAK_BASE * streakDays.coerceAtLeast(1)
         awardXp(xp, XpSource.STREAK, "Streak: $streakDays day${if (streakDays != 1) "s" else ""}")
     }
 
-    fun awardBudgetEntryXp(description: String) {
+    suspend fun awardBudgetEntryXp(description: String) {
         awardXp(XP_PER_BUDGET_ENTRY, XpSource.BUDGET, "Logged: $description")
     }
 
-    fun awardLoanPayoffXp(borrowerName: String) {
+    suspend fun awardLoanPayoffXp(borrowerName: String) {
         awardXp(XP_PER_LOAN_PAYOFF, XpSource.LOAN, "Paid off: $borrowerName")
     }
 
-    fun awardFocusSessionXp(minutes: Int) {
+    suspend fun awardFocusSessionXp(minutes: Int) {
         awardXp(XP_PER_FOCUS_SESSION, XpSource.FOCUS, "Focus: ${minutes}min session")
     }
 
-    fun awardSavingsGoalXp(goalName: String, xpAmount: Int) {
+    suspend fun awardSavingsGoalXp(goalName: String, xpAmount: Int) {
         awardXp(xpAmount, XpSource.SAVINGS, "Savings goal: $goalName")
     }
 
-    fun awardQuestXp(questTitle: String, xpAmount: Int) {
+    suspend fun awardQuestXp(questTitle: String, xpAmount: Int) {
         awardXp(xpAmount, XpSource.QUEST, "Quest: $questTitle")
     }
 
-    fun awardCombatXp(monsterName: String, xpAmount: Int) {
+    suspend fun awardCombatXp(monsterName: String, xpAmount: Int) {
         awardXp(xpAmount, XpSource.COMBAT, "Defeated: $monsterName")
     }
 
-    internal fun awardXp(amount: Int, source: XpSource, label: String) {
-        scope.launch {
-            xpMutex.withLock {
-                val entry = UserProgress(
-                    xpAmount = amount,
-                    source = source,
-                    sourceLabel = label
-                )
-                userProgressDao.insert(entry)
+    internal suspend fun awardXp(amount: Int, source: XpSource, label: String) {
+        if (amount <= 0) return
+        xpMutex.withLock {
+            val entry = UserProgress(
+                xpAmount = amount,
+                source = source,
+                sourceLabel = label
+            )
+            userProgressDao.insert(entry)
 
-                // Update cached total atomically
-                val currentTotal = prefs.getInt("total_xp", 0)
-                val newTotal = currentTotal + amount
-                prefs.edit().putInt("total_xp", newTotal).apply()
-            }
+            // Update cached total only after the Room write succeeds.
+            val currentTotal = prefs.getInt("total_xp", 0)
+            val newTotal = currentTotal + amount
+            prefs.edit().putInt("total_xp", newTotal).commit()
         }
     }
 
@@ -193,7 +189,9 @@ class LevelManager @Inject constructor(
 
     /** Sync cached total with Room (call on app start) */
     suspend fun syncCachedTotal() {
-        val dbTotal = userProgressDao.getTotalXp()
-        prefs.edit().putInt("total_xp", dbTotal).apply()
+        xpMutex.withLock {
+            val dbTotal = userProgressDao.getTotalXp()
+            prefs.edit().putInt("total_xp", dbTotal).commit()
+        }
     }
 }

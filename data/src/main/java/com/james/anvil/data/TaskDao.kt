@@ -20,7 +20,7 @@ interface TaskDao {
     @Query("SELECT COUNT(*) FROM tasks WHERE isCompleted = 0 AND isDaily = 0")
     suspend fun countAllIncompleteNonDailyTasks(): Int
 
-    @Query("SELECT * FROM tasks WHERE deadline < :now AND isCompleted = 0")
+    @Query("SELECT * FROM tasks WHERE deadline < :now AND isCompleted = 0 AND isDaily = 0")
     suspend fun getOverdueIncomplete(now: Long): List<Task>
 
     // Get all incomplete tasks
@@ -29,6 +29,9 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE isCompleted = 0 ORDER BY deadline ASC")
     fun observeIncompleteTasks(): Flow<List<Task>>
+
+    @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): Task?
 
     @Query("SELECT * FROM tasks WHERE isCompleted = 1 AND completedAt >= :since ORDER BY completedAt DESC")
     fun observeCompletedTasks(since: Long): Flow<List<Task>>

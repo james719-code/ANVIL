@@ -30,9 +30,8 @@ class ForgeCoinManager @Inject constructor(
     )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val spendMutex = Mutex()
-
     companion object {
+        private val mutationMutex = Mutex()
         const val COST_UNBLOCK_PASS = 50
         const val COST_XP_BOOST = 30
         const val COST_ICE = 40
@@ -47,13 +46,15 @@ class ForgeCoinManager @Inject constructor(
 
     suspend fun awardCoins(amount: Int, source: CoinSource, description: String) {
         if (amount <= 0) return
-        forgeTransactionDao.insert(
-            ForgeTransaction(
-                amount = amount,
-                source = source,
-                description = description
+        mutationMutex.withLock {
+            forgeTransactionDao.insert(
+                ForgeTransaction(
+                    amount = amount,
+                    source = source,
+                    description = description
+                )
             )
-        )
+        }
     }
 
     /**
@@ -62,7 +63,7 @@ class ForgeCoinManager @Inject constructor(
      */
     suspend fun spendCoins(amount: Int, source: CoinSource, description: String): Boolean {
         if (amount <= 0) return false
-        return spendMutex.withLock {
+        return mutationMutex.withLock {
             val balance = getBalance()
             if (balance < amount) return@withLock false
             forgeTransactionDao.insert(

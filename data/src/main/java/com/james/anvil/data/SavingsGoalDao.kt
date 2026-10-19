@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -39,4 +40,16 @@ interface SavingsGoalDao {
 
     @Query("DELETE FROM savings_contributions WHERE goalId = :goalId")
     suspend fun deleteContributionsForGoal(goalId: Long)
+
+    @Transaction
+    suspend fun recordContribution(contribution: SavingsContribution, updatedGoal: SavingsGoal) {
+        insertContribution(contribution)
+        update(updatedGoal)
+    }
+
+    @Transaction
+    suspend fun deleteGoalWithContributions(goal: SavingsGoal) {
+        deleteContributionsForGoal(goal.id)
+        delete(goal)
+    }
 }

@@ -22,15 +22,24 @@ class DailyTaskResetWorker(
             val db = AnvilDatabase.getDatabase(applicationContext)
             val taskDao = db.taskDao()
 
-            val startOfToday = getStartOfDay(System.currentTimeMillis())
+            // Keep yesterday's completion state available until the midnight
+            // contribution worker has had a chance to evaluate it. This
+            // worker is a fallback and must not erase the streak input early.
+            val startOfYesterday = getStartOfDay(System.currentTimeMillis()).let {
+                Calendar.getInstance().apply {
+                    timeInMillis = it
+                    add(Calendar.DAY_OF_YEAR, -1)
+                }.timeInMillis
+            }
 
-            val dailyTasksToReset = taskDao.getDailyTasksNeedingReset(startOfToday)
+            val dailyTasksToReset = taskDao.getDailyTasksNeedingReset(startOfYesterday)
 
             if (dailyTasksToReset.isNotEmpty()) {
                 val resetTasks = dailyTasksToReset.map { task ->
                     task.copy(
                         isCompleted = false,
-                        reminderSent = false
+                        reminderSent = false,
+                        completionRewardsGranted = false
                     )
                 }
                 taskDao.updateAll(resetTasks)

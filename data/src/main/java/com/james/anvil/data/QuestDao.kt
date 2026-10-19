@@ -18,14 +18,14 @@ interface QuestDao {
     @Update
     suspend fun update(quest: Quest)
 
-    @Query("SELECT * FROM quests WHERE isActive = 1 AND questType = 'DAILY' AND expiresAt > :now ORDER BY createdAt DESC")
-    fun observeActiveDailyQuests(now: Long = System.currentTimeMillis()): Flow<List<Quest>>
+    @Query("SELECT * FROM quests WHERE isActive = 1 AND questType = 'DAILY' ORDER BY createdAt DESC")
+    fun observeActiveDailyQuests(): Flow<List<Quest>>
 
     @Query("SELECT * FROM quests WHERE isActive = 1 AND questType != 'DAILY' AND weekChainId = :chainId ORDER BY weekChainStep ASC")
     fun observeWeeklyChain(chainId: String): Flow<List<Quest>>
 
-    @Query("SELECT * FROM quests WHERE isActive = 1 AND expiresAt > :now ORDER BY questType ASC, createdAt DESC")
-    fun observeActiveQuests(now: Long = System.currentTimeMillis()): Flow<List<Quest>>
+    @Query("SELECT * FROM quests WHERE isActive = 1 ORDER BY questType ASC, createdAt DESC")
+    fun observeActiveQuests(): Flow<List<Quest>>
 
     @Query("SELECT * FROM quests WHERE isCompleted = 1 ORDER BY completedAt DESC LIMIT :limit")
     fun observeCompletedQuests(limit: Int = 50): Flow<List<Quest>>
@@ -39,11 +39,17 @@ interface QuestDao {
     @Query("SELECT COUNT(*) FROM quests WHERE isCompleted = 1")
     suspend fun getCompletedQuestCount(): Int
 
-    @Query("SELECT * FROM quests WHERE questType = 'WEEKLY_BOSS' AND isActive = 1 AND isCompleted = 0 LIMIT 1")
-    suspend fun getActiveWeeklyBoss(): Quest?
+    @Query("SELECT * FROM quests WHERE questType = 'WEEKLY_BOSS' AND isActive = 1 AND isCompleted = 0 AND expiresAt > :now LIMIT 1")
+    suspend fun getActiveWeeklyBoss(now: Long): Quest?
 
-    @Query("SELECT * FROM quests WHERE questType IN ('WEEKLY_STEP', 'WEEKLY_BOSS') AND isActive = 1 AND isCompleted = 0 ORDER BY weekChainStep ASC")
-    suspend fun getActiveWeeklyQuests(): List<Quest>
+    @Query("SELECT * FROM quests WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): Quest?
+
+    @Query("SELECT COUNT(*) FROM quests WHERE weekChainId = :chainId")
+    suspend fun countForWeekChain(chainId: String): Int
+
+    @Query("SELECT * FROM quests WHERE questType IN ('WEEKLY_STEP', 'WEEKLY_BOSS') AND isActive = 1 AND isCompleted = 0 AND expiresAt > :now ORDER BY weekChainStep ASC")
+    suspend fun getActiveWeeklyQuests(now: Long): List<Quest>
 
     // ── Forge Report Queries ──
 

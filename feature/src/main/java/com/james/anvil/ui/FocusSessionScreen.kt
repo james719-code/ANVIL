@@ -73,8 +73,8 @@ fun FocusSessionScreen(
             item {
                 PageHeader(
                     eyebrow = "Focus",
-                    title = "Forge Session",
-                    subtitle = "Work or break interval timer designed to keep focus high.",
+                    title = "Find your focus",
+                    subtitle = "One interval. One thing at a time.",
                     onBack = onNavigateBack
                 )
             }
@@ -376,7 +376,8 @@ private fun TimerCard(
                                 },
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = ElectricBlue
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "Start")

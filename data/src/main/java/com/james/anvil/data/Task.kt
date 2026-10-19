@@ -25,5 +25,9 @@ data class Task(
     val hardnessLevel: Int = 1,
     
     // Freeform notes/description
-    val notes: String = ""
+    val notes: String = "",
+
+    // Prevent duplicate rewards when a task is reopened and completed again.
+    // Daily tasks reset this marker at the start of a new day.
+    val completionRewardsGranted: Boolean = false
 )

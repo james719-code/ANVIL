@@ -1,6 +1,7 @@
 package com.james.anvil.core
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.CoinSource
 import com.james.anvil.data.GearItem
@@ -10,8 +11,11 @@ import com.james.anvil.data.LootType
 import com.james.anvil.data.Monster
 import com.james.anvil.data.MonsterLoot
 import com.james.anvil.data.MonsterType
+import com.james.anvil.data.QuestCategory
 import com.james.anvil.data.StatType
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 
 data class CombatResult(
@@ -34,8 +38,13 @@ class CombatManager(context: Context) {
     private val gearDao = db.gearDao()
     private val forgeCoinManager = ForgeCoinManager(context)
     private val levelManager = LevelManager(context)
+    private val questManager = QuestManager(context)
 
     companion object {
+        // Multiple ViewModels can create CombatManager instances. Keep spawn
+        // idempotent across those instances during this process.
+        private val spawnMutex = Mutex()
+
         private val MONSTER_NAMES = listOf(
             "Chrome Golem", "Social Wraith", "Scroll Demon", "Feed Phantom",
             "Notification Shade", "Doom Scroller", "App Specter", "Pixel Fiend",
@@ -85,23 +94,25 @@ class CombatManager(context: Context) {
     suspend fun getMonsterById(id: Long): Monster? = monsterDao.getById(id)
 
     suspend fun spawnMonsterForApp(packageName: String, appLabel: String): Monster {
-        val existing = monsterDao.getActiveMonsterForApp(packageName)
-        if (existing != null) return existing
+        return spawnMutex.withLock {
+            val existing = monsterDao.getActiveMonsterForApp(packageName)
+            if (existing != null) return@withLock existing
 
-        val difficulty = Random.nextInt(1, 4) // 1-3 for normal monsters
-        val hp = 100 * difficulty
-        val name = "${MONSTER_NAMES.random()} ($appLabel)"
+            val difficulty = Random.nextInt(1, 4) // 1-3 for normal monsters
+            val hp = 100 * difficulty
+            val name = "${MONSTER_NAMES.random()} ($appLabel)"
 
-        val monster = Monster(
-            name = name,
-            maxHp = hp,
-            currentHp = hp,
-            targetPackageName = packageName,
-            difficulty = difficulty,
-            monsterType = MonsterType.NORMAL
-        )
-        val id = monsterDao.insert(monster)
-        return monster.copy(id = id)
+            val monster = Monster(
+                name = name,
+                maxHp = hp,
+                currentHp = hp,
+                targetPackageName = packageName,
+                difficulty = difficulty,
+                monsterType = MonsterType.NORMAL
+            )
+            val id = monsterDao.insert(monster)
+            monster.copy(id = id)
+        }
     }
 
     suspend fun spawnBossMonster(weeklyQuestId: Long, difficulty: Int = 4): Monster {
@@ -121,31 +132,30 @@ class CombatManager(context: Context) {
     }
 
     suspend fun dealDamage(monsterId: Long, baseDamage: Int, source: DamageSource): CombatResult? {
-        val monster = monsterDao.getById(monsterId) ?: return null
-        if (monster.isDefeated) return CombatResult(0, true, 0)
+        return db.withTransaction {
+            val monster = monsterDao.getById(monsterId) ?: return@withTransaction null
+            if (monster.isDefeated || !monster.isActive) {
+                return@withTransaction CombatResult(0, monster.isDefeated, monster.currentHp)
+            }
 
-        val finalDamage = baseDamage.coerceAtLeast(1)
-        val newHp = (monster.currentHp - finalDamage).coerceAtLeast(0)
-        val defeated = newHp <= 0
+            val finalDamage = baseDamage.coerceAtLeast(1)
+            val defeatedAt = System.currentTimeMillis()
+            val updatedRows = monsterDao.applyDamage(monsterId, finalDamage, defeatedAt)
+            val updated = monsterDao.getById(monsterId) ?: return@withTransaction null
 
-        monsterDao.update(
-            monster.copy(
-                currentHp = newHp,
-                isDefeated = defeated,
-                isActive = !defeated,
-                defeatedAt = if (defeated) System.currentTimeMillis() else null
+            // The conditional UPDATE makes only one concurrent attacker the
+            // winner. That winner alone distributes loot and combat XP, in
+            // the same transaction as the defeat state.
+            if (updatedRows == 1 && updated.isDefeated) {
+                onMonsterDefeated(updated)
+            }
+
+            CombatResult(
+                damage = if (updatedRows == 1) finalDamage else 0,
+                isDefeated = updated.isDefeated,
+                remainingHp = updated.currentHp
             )
-        )
-
-        if (defeated) {
-            onMonsterDefeated(monster)
         }
-
-        return CombatResult(
-            damage = finalDamage,
-            isDefeated = defeated,
-            remainingHp = newHp
-        )
     }
 
     private suspend fun onMonsterDefeated(monster: Monster) {
@@ -170,6 +180,7 @@ class CombatManager(context: Context) {
         // Award combat XP
         val xp = 15 * monster.difficulty + if (monster.monsterType == MonsterType.BOSS) 50 else 0
         levelManager.awardCombatXp(monster.name, xp)
+        questManager.updateQuestProgress(QuestCategory.COMBAT)
     }
 
     private fun generateLoot(monster: Monster): LootResult {

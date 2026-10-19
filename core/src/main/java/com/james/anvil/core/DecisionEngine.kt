@@ -10,7 +10,9 @@ import java.util.Calendar
 class DecisionEngine(
     private val taskDao: TaskDao,
     private val penaltyManager: PenaltyManager,
-    private val bonusManager: BonusManager
+    private val bonusManager: BonusManager,
+    private val currentTimeMillis: () -> Long = { System.currentTimeMillis() },
+    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() }
 ) {
 
     private val timeGuard = TimeIntegrityGuard()
@@ -20,87 +22,51 @@ class DecisionEngine(
     val isBlockedFlow: StateFlow<Boolean> = _isBlockedFlow.asStateFlow()
 
     suspend fun updateState() {
-        
         val lastSystem = penaltyManager.getLastSystemTime()
         val lastElapsed = penaltyManager.getLastElapsedRealtime()
-        
-        
+
+        val now = currentTimeMillis()
+        val elapsedNow = elapsedRealtime()
+
         if (lastSystem > 0 && lastElapsed > 0) {
-            if (timeGuard.isTimeManipulated(lastSystem, lastElapsed)) {
-                
+            if (timeGuard.isTimeManipulated(lastSystem, lastElapsed, now, elapsedNow)) {
                 penaltyManager.startPenalty()
-                
-                
             }
         }
-        
-        
-        penaltyManager.saveTimeCheckpoints(System.currentTimeMillis(), SystemClock.elapsedRealtime())
 
-        val now = System.currentTimeMillis()
-        
+        penaltyManager.saveTimeCheckpoints(now, elapsedNow)
+
+        bonusManager.checkExpiry(now)
         val activeTasksCount = taskDao.countAllIncompleteNonDailyTasks()
-        
+
         if (activeTasksCount == 0) {
-            if (penaltyManager.isPenaltyActive()) {
-                penaltyManager.clearPenalty()
-            }
+            penaltyManager.clearPenalty()
+            bonusManager.clearGraceProtection()
             _isBlockedFlow.value = false
             return
         }
 
         if (!penaltyManager.isPenaltyActive()) {
-            // Check for tasks violating hardness-based deadlines
-            val hardnessViolations = taskDao.getTasksViolatingHardness(now)
-            if (hardnessViolations.isNotEmpty()) {
-                if (bonusManager.consumeGraceDay()) {
-                    // Grace day consumed, don't trigger penalty
-                } else {
+            val hasViolation = hasBlockingViolation(now)
+            if (hasViolation && !bonusManager.isGraceProtectionActive(now)) {
+                val graceUntil = getEndOfDay(now)
+                if (!bonusManager.consumeGraceDayForBlocking(graceUntil, now)) {
                     penaltyManager.startPenalty()
-                }
-            } else {
-                // Also check for regular overdue tasks (past actual deadline)
-                val overdueTasks = taskDao.getOverdueIncomplete(now)
-                if (overdueTasks.isNotEmpty()) {
-                    if (bonusManager.consumeGraceDay()) {
-                        // Grace day consumed
-                    } else {
-                        penaltyManager.startPenalty()
-                    }
                 }
             }
         }
 
         // Push the freshly-computed blocking state
-        _isBlockedFlow.value = isBlocked()
+        _isBlockedFlow.value = isBlocked(now)
     }
 
-    suspend fun isBlocked(): Boolean {
-        val now = System.currentTimeMillis()
-        
-        val activeTasksCount = taskDao.countAllIncompleteNonDailyTasks()
-        
-        if (activeTasksCount == 0) {
-            return false
-        }
-
+    suspend fun isBlocked(now: Long = currentTimeMillis()): Boolean {
+        if (taskDao.countAllIncompleteNonDailyTasks() == 0) return false
         if (penaltyManager.isPenaltyActive()) {
             return true
         }
-        
-        // Check for tasks violating hardness-based deadlines
-        val hardnessViolations = taskDao.getTasksViolatingHardness(now)
-        if (hardnessViolations.isNotEmpty()) {
-            return true
-        }
-        
-        // Check for regular overdue tasks
-        val overdueTasks = taskDao.getOverdueIncomplete(now)
-        if (overdueTasks.isNotEmpty()) {
-            return true
-        }
-        
-        return false
+        if (bonusManager.isGraceProtectionActive(now)) return false
+        return hasBlockingViolation(now)
     }
     
     suspend fun getBlockingTasks(): List<com.james.anvil.data.Task> {
@@ -110,20 +76,14 @@ class DecisionEngine(
         return (hardnessViolations + overdueTasks).distinctBy { it.id }
     }
 
-    private fun getStartOfDay(time: Long): Long {
+    private suspend fun hasBlockingViolation(now: Long): Boolean =
+        taskDao.getTasksViolatingHardness(now).isNotEmpty() ||
+            taskDao.getOverdueIncomplete(now).isNotEmpty()
+
+    private fun getEndOfDay(time: Long): Long {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = time
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
-    }
-    
-    private fun getEndOfNextDay(time: Long): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = time
-        calendar.add(Calendar.DAY_OF_YEAR, 2)
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)

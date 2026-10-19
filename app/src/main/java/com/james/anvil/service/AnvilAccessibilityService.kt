@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -19,8 +21,14 @@ import com.james.anvil.data.VisitedLink
 import com.james.anvil.util.PrefsKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -39,7 +47,8 @@ class AnvilAccessibilityService : AccessibilityService() {
 
     private lateinit var decisionEngine: DecisionEngine
     private lateinit var db: AnvilDatabase
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val blockingStateMutex = Mutex()
 
     @Volatile
     private var isBlocked: Boolean = false
@@ -54,7 +63,16 @@ class AnvilAccessibilityService : AccessibilityService() {
     
     @Volatile
     private var isPauseModeActive: Boolean = false
+    @Volatile
+    private var foregroundPackageName: String? = null
     private lateinit var appPrefs: SharedPreferences
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val foregroundEnforcement = object : Runnable {
+        override fun run() {
+            enforceForegroundPackage()
+            mainHandler.postDelayed(this, 15_000L)
+        }
+    }
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         if (key == PrefsKeys.PAUSE_MODE_ACTIVE) {
             isPauseModeActive = prefs.getBoolean(key, false)
@@ -64,6 +82,9 @@ class AnvilAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        // Android may reconnect an already-running accessibility service.
+        // Do not start duplicate Room collectors and enforcement timers.
+        if (::decisionEngine.isInitialized) return
         db = AnvilDatabase.getDatabase(applicationContext)
 
         // Load app preferences
@@ -79,13 +100,50 @@ class AnvilAccessibilityService : AccessibilityService() {
         // Start background monitoring
         monitorBlockingStatus()
         monitorBlocklists()
+        mainHandler.post(foregroundEnforcement)
     }
 
     private fun monitorBlockingStatus() {
+        // Re-evaluate whenever tasks change so a newly overdue task is
+        // enforced without requiring the app UI or a worker to be open.
         scope.launch {
-            decisionEngine.isBlockedFlow.collectLatest { blocked ->
-                isBlocked = blocked
+            db.taskDao().observeIncompleteTasks().collectLatest {
+                refreshBlockingStatus()
             }
+        }
+
+        // Deadlines can pass while the task table is unchanged. A short
+        // ticker keeps penalty blocking current while the service is alive.
+        scope.launch {
+            while (isActive) {
+                refreshBlockingStatus()
+                delay(15_000L)
+            }
+        }
+    }
+
+    private suspend fun refreshBlockingStatus() {
+        blockingStateMutex.withLock {
+            // Reconcile overdue tasks, grace days, and persistent penalty
+            // state before reading the value used by accessibility blocking.
+            decisionEngine.updateState()
+            isBlocked = decisionEngine.isBlocked()
+        }
+    }
+
+    /**
+     * Re-check the current foreground package even when it has not emitted a
+     * new accessibility event at a schedule boundary.
+     */
+    private fun enforceForegroundPackage() {
+        val packageName = foregroundPackageName ?: return
+        if (isPauseModeActive) return
+
+        val shouldBlock = (isBlocked && shouldEnforcePenaltyBlocking(packageName, null, null)) ||
+            shouldEnforceScheduleBlocking(packageName, null, null)
+
+        if (shouldBlock) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
         }
     }
 
@@ -114,15 +172,17 @@ class AnvilAccessibilityService : AccessibilityService() {
         event ?: return
         val packageName = event.packageName?.toString() ?: return
         val eventType = event.eventType
+        foregroundPackageName = packageName
 
-        // rootInActiveWindow can be null; if so, we can't inspect the screen
-        val rootNode = rootInActiveWindow ?: return
+        // App blocking only needs the foreground package. The accessibility
+        // tree is optional and is only required for browser/incognito checks.
+        val rootNode = rootInActiveWindow
 
         try {
             var currentUrl: String? = null
 
             // 1. URL Tracking Logic (Only runs if app is a known browser)
-            if (isBrowserPackage(packageName)) {
+            if (rootNode != null && isBrowserPackage(packageName)) {
                 // Detect when user finishes typing and navigates
                 // WINDOW_CONTENT_CHANGED with subtree change usually indicates page load
                 // WINDOW_STATE_CHANGED indicates window/page transition
@@ -181,7 +241,7 @@ class AnvilAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Error processing accessibility event for $packageName", e)
         } finally {
             // CRITICAL: Must recycle the root node to prevent memory leaks
-            rootNode.recycle()
+            rootNode?.recycle()
         }
     }
 
@@ -194,7 +254,7 @@ class AnvilAccessibilityService : AccessibilityService() {
     private fun shouldEnforceScheduleBlocking(
         packageName: String,
         currentUrl: String?,
-        rootNode: AccessibilityNodeInfo
+        rootNode: AccessibilityNodeInfo?
     ): Boolean {
         if (isPauseModeActive) return false
 
@@ -204,10 +264,11 @@ class AnvilAccessibilityService : AccessibilityService() {
             return true
         }
         
-        // B. Block incognito mode if any link blocking schedule is currently active
-        // VPN handles actual link/domain blocking via DNS, but incognito could bypass VPN
+        // B. Block incognito mode whenever a link rule is active. The
+        // isEncrypted flag only hides the rule in the UI; it is not a
+        // transport-security indicator and must not change enforcement.
         val hasActiveLinkSchedule = blockedLinksMap.values.any { it.isBlockingActiveNow() }
-        if (hasActiveLinkSchedule && isBrowserPackage(packageName) && isIncognitoMode(rootNode)) {
+        if (hasActiveLinkSchedule && isBrowserPackage(packageName) && rootNode != null && isIncognitoMode(rootNode)) {
             return true
         }
 
@@ -223,7 +284,7 @@ class AnvilAccessibilityService : AccessibilityService() {
     private fun shouldEnforcePenaltyBlocking(
         packageName: String,
         currentUrl: String?,
-        rootNode: AccessibilityNodeInfo
+        rootNode: AccessibilityNodeInfo?
     ): Boolean {
         if (isPauseModeActive) return false
 
@@ -234,12 +295,12 @@ class AnvilAccessibilityService : AccessibilityService() {
         
         // B. Block incognito/private browsing mode entirely during penalty
         // Incognito can potentially bypass VPN DNS blocking
-        if (isBrowserPackage(packageName) && isIncognitoMode(rootNode)) {
+        if (isBrowserPackage(packageName) && rootNode != null && isIncognitoMode(rootNode)) {
             return true
         }
 
         // C. Specific Check for YouTube Shorts (Addiction control during penalty)
-        if (packageName == "com.google.android.youtube") {
+        if (packageName == "com.google.android.youtube" && rootNode != null) {
             if (checkForShortsContent(rootNode)) return true
         }
 
@@ -489,6 +550,8 @@ class AnvilAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mainHandler.removeCallbacks(foregroundEnforcement)
+        scope.cancel()
         if (::appPrefs.isInitialized) {
             appPrefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         }

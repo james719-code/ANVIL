@@ -96,6 +96,9 @@ class SkillTreeManager @Inject constructor(
     }
 
     suspend fun getAvailablePoints(): Int {
+        // The cache is also used by widgets/legacy callers; reconcile it with
+        // the authoritative Room XP ledger before spending a skill point.
+        levelManager.syncCachedTotal()
         val totalXp = levelManager.getCachedTotalXp()
         val currentLevel = levelManager.getLevelForXp(totalXp)
         val unlockedCount = skillNodeDao.getUnlockedCount()

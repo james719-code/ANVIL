@@ -4,12 +4,20 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HabitContributionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(contribution: HabitContribution)
+
+    @Transaction
+    suspend fun insertIfMissing(contribution: HabitContribution): Boolean {
+        if (hasContributionForDay(contribution.date) > 0) return false
+        insert(contribution)
+        return true
+    }
 
     @Query("SELECT * FROM habit_contributions ORDER BY date DESC")
     fun observeAllContributions(): Flow<List<HabitContribution>>
