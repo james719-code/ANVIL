@@ -4,7 +4,10 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
+import android.content.Intent
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.james.anvil.data.AnvilDatabase
@@ -13,6 +16,7 @@ import com.james.anvil.data.BlockScheduleType
 import com.james.anvil.data.BlockedApp
 import com.james.anvil.data.BlockedLink
 import com.james.anvil.data.DayOfWeekMask
+import com.james.anvil.data.DomainPattern
 import com.james.anvil.util.PrefsKeys
 import com.james.anvil.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +33,7 @@ import javax.inject.Inject
 data class AppInfo(
     val name: String,
     val packageName: String,
-    val icon: Drawable?
+    val icon: ImageBitmap?
 )
 
 /**
@@ -97,7 +101,10 @@ class BlocklistViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
 
     companion object {
-        private val iconCache = androidx.collection.LruCache<String, Drawable>(150)
+        private val iconCache = androidx.collection.LruCache<String, ImageBitmap>(200)
+
+        /** Icons are rasterised once at list size so scrolling never decodes drawables. */
+        private const val ICON_PX = 96
     }
 
     init {
@@ -111,24 +118,27 @@ class BlocklistViewModel @Inject constructor(
                 com.james.anvil.util.traceSection("BlocklistViewModel:fetchInstalledApps") {
                     val pm = getApplication<Application>().packageManager
                     val myPackageName = getApplication<Application>().packageName
-                    val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-                    packages.mapNotNull { pkg ->
-                        val intent = pm.getLaunchIntentForPackage(pkg.packageName)
-                        // Exclude apps without launcher intent and exclude ANVIL itself
-                        if (intent != null && pkg.packageName != myPackageName) {
-                            val cachedIcon = iconCache.get(pkg.packageName)
-                            val icon = cachedIcon ?: pkg.applicationInfo?.loadIcon(pm)?.also {
-                                iconCache.put(pkg.packageName, it)
-                            }
+                    // One launcher query instead of a package scan plus a launch-intent lookup per app.
+                    // Only apps with a launcher entry are listed, and ANVIL itself is excluded.
+                    val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    pm.queryIntentActivities(launcherIntent, 0)
+                        .asSequence()
+                        .map { it.activityInfo }
+                        .filter { it.packageName != myPackageName }
+                        .distinctBy { it.packageName }
+                        .map { info ->
+                            val icon = iconCache.get(info.packageName)
+                                ?: runCatching {
+                                    info.applicationInfo.loadIcon(pm).toBitmap(ICON_PX, ICON_PX).asImageBitmap()
+                                }.getOrNull()?.also { iconCache.put(info.packageName, it) }
                             AppInfo(
-                                name = pkg.applicationInfo?.loadLabel(pm)?.toString() ?: pkg.packageName,
-                                packageName = pkg.packageName,
+                                name = info.applicationInfo.loadLabel(pm).toString(),
+                                packageName = info.packageName,
                                 icon = icon
                             )
-                        } else {
-                            null
                         }
-                    }.sortedBy { it.name.lowercase() }
+                        .sortedBy { it.name.lowercase() }
+                        .toList()
                 }
             }
             _isLoadingApps.value = false
@@ -205,9 +215,10 @@ class BlocklistViewModel @Inject constructor(
         endTimeMinutes: Int = 1439
     ) {
         viewModelScope.launch {
+            val normalizedPattern = DomainPattern.normalize(pattern) ?: return@launch
             blocklistDao.insertLink(
                 BlockedLink(
-                    pattern = pattern,
+                    pattern = normalizedPattern,
                     isEnabled = true,
                     isEncrypted = isEncrypted,
                     scheduleType = scheduleType,

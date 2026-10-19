@@ -73,6 +73,8 @@ dependencies {
 
     // Core Android
     implementation(libs.androidx.core.ktx)
+    // Installs the bundled Baseline Profile (app/src/main/baseline-prof.txt) on first launch
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 

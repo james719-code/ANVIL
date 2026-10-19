@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
 import com.james.anvil.ui.AppInfoWithCategory
 
 @Composable
@@ -28,57 +27,56 @@ fun BlocklistItem(
 ) {
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(16.dp),
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             
             if (app.appInfo.icon != null) {
                 Image(
-                    painter = rememberAsyncImagePainter(app.appInfo.icon),
+                    bitmap = app.appInfo.icon,
                     contentDescription = "${app.appInfo.name} icon",
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray)
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appInfo.name,
-                    style = MaterialTheme.typography.bodyLarge.copy(
+                    style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 15.sp
                     ),
+                    maxLines = 1,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = app.category,
-                    style = MaterialTheme.typography.bodyMedium.copy(
+                    style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.clickable { onCategoryClick() }
@@ -101,7 +99,9 @@ fun BlocklistItem(
                 onCheckedChange = onToggleBlock,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
         }
