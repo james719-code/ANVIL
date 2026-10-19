@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Launch window and system splash use the dark app background, so a cold start
+         doesn't flash white before Compose draws the first frame. -->
+    <style name="Theme.ANVIL" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/anvil_night_background</item>
+        <item name="android:windowSplashScreenBackground">@color/anvil_night_background</item>
+        <item name="android:statusBarColor">@color/anvil_night_background</item>
+        <item name="android:navigationBarColor">@color/anvil_night_background</item>
+    </style>
+</resources>

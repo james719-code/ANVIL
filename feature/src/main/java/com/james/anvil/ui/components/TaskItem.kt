@@ -2,6 +2,9 @@ package com.james.anvil.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,8 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.james.anvil.data.Task
 import com.james.anvil.ui.theme.ForgedGold
@@ -44,6 +50,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TaskItem(
     task: Task,
@@ -53,24 +60,25 @@ fun TaskItem(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()) }
 
     SectionCard(
         modifier = modifier,
         accentColor = urgencyColor(task),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp)
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 6.dp, end = 4.dp, top = 8.dp, bottom = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top
         ) {
-            RadioButton(
-                selected = task.isCompleted,
-                onClick = onComplete,
-                colors = RadioButtonDefaults.colors(
-                    selectedColor = SuccessGreen,
-                    unselectedColor = MaterialTheme.colorScheme.outline
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { onComplete() },
+                modifier = Modifier.semantics { contentDescription = "Complete ${task.title}" },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.outline
                 )
             )
 
@@ -87,10 +95,10 @@ fun TaskItem(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             TaskMetaPill(text = task.category, tint = InfoBlue)
                             if (task.isDaily) {
@@ -114,7 +122,7 @@ fun TaskItem(
                             }
                             if (task.hardnessLevel > 1 && !task.isDaily) {
                                 TaskMetaPill(
-                                    text = "H${task.hardnessLevel}",
+                                    text = "Hardness ${task.hardnessLevel}",
                                     tint = urgencyColor(task)
                                 )
                             }
@@ -125,7 +133,7 @@ fun TaskItem(
                         IconButton(onClick = { showMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More options",
+                                contentDescription = "Options for ${task.title}",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -189,6 +197,7 @@ private fun TaskMetaPill(
     icon: (@Composable () -> Unit)? = null
 ) {
     Surface(
+        modifier = Modifier.widthIn(max = 200.dp),
         shape = RoundedCornerShape(999.dp),
         color = tint.copy(alpha = 0.12f)
     ) {
@@ -200,6 +209,8 @@ private fun TaskMetaPill(
             icon?.invoke()
             Text(
                 text = text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelMedium,
                 color = tint
             )

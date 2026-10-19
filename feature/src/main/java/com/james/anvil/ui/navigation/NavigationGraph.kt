@@ -6,6 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,7 +38,40 @@ import com.james.anvil.ui.SettingsScreen
 import com.james.anvil.ui.SkillTreeScreen
 import androidx.compose.material3.SnackbarHostState
 
-private const val NAV_ANIMATION_DURATION = 300
+private const val NAV_ANIMATION_DURATION = 280
+
+/** Position of a destination in the bottom bar, or null for screens that aren't a tab. */
+private fun NavDestination?.tabIndex(): Int? = when {
+    this == null -> null
+    hasRoute(DashboardRoute::class) -> 0
+    hasRoute(TasksRoute::class) || hasRoute(BonusTasksRoute::class) -> 1
+    hasRoute(BlocklistRoute::class) -> 2
+    hasRoute(BudgetRoute::class) -> 3
+    hasRoute(ForgeHubRoute::class) -> 4
+    else -> null
+}
+
+/**
+ * Between two tabs the screen slides in from the side the new tab sits on: moving right in the
+ * bar brings the new screen in from the right, moving left brings it in from the left.
+ * Returns null when either end isn't a tab, so push/pop rules apply instead.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabDirection(): AnimatedContentTransitionScope.SlideDirection? {
+    val from = initialState.destination.tabIndex() ?: return null
+    val to = targetState.destination.tabIndex() ?: return null
+    if (from == to) return null
+    return if (to > from) AnimatedContentTransitionScope.SlideDirection.Start
+    else AnimatedContentTransitionScope.SlideDirection.End
+}
+
+/** Switch to a bottom-bar destination the same way tapping its tab does. */
+private fun NavHostController.navigateTab(route: Any) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
 
 @Composable
 fun NavigationGraph(
@@ -46,43 +83,35 @@ fun NavigationGraph(
         navController = navController, 
         startDestination = DashboardRoute,
         enterTransition = {
-            fadeIn(animationSpec = tween(NAV_ANIMATION_DURATION)) +
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(NAV_ANIMATION_DURATION)
-            )
+            val direction = tabDirection() ?: AnimatedContentTransitionScope.SlideDirection.Start
+            fadeIn(tween(NAV_ANIMATION_DURATION)) +
+                slideIntoContainer(direction, tween(NAV_ANIMATION_DURATION))
         },
         exitTransition = {
-            fadeOut(animationSpec = tween(NAV_ANIMATION_DURATION)) +
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(NAV_ANIMATION_DURATION)
-            )
+            val direction = tabDirection() ?: AnimatedContentTransitionScope.SlideDirection.Start
+            fadeOut(tween(NAV_ANIMATION_DURATION)) +
+                slideOutOfContainer(direction, tween(NAV_ANIMATION_DURATION))
         },
         popEnterTransition = {
-            fadeIn(animationSpec = tween(NAV_ANIMATION_DURATION)) +
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(NAV_ANIMATION_DURATION)
-            )
+            val direction = tabDirection() ?: AnimatedContentTransitionScope.SlideDirection.End
+            fadeIn(tween(NAV_ANIMATION_DURATION)) +
+                slideIntoContainer(direction, tween(NAV_ANIMATION_DURATION))
         },
         popExitTransition = {
-            fadeOut(animationSpec = tween(NAV_ANIMATION_DURATION)) +
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(NAV_ANIMATION_DURATION)
-            )
+            val direction = tabDirection() ?: AnimatedContentTransitionScope.SlideDirection.End
+            fadeOut(tween(NAV_ANIMATION_DURATION)) +
+                slideOutOfContainer(direction, tween(NAV_ANIMATION_DURATION))
         }
     ) {
         composable<DashboardRoute> {
             DashboardScreen(
                 viewModel = viewModel,
-                onNavigateToTasks = { navController.navigate(TasksRoute) },
+                onNavigateToTasks = { navController.navigateTab(TasksRoute) },
                 onNavigateToBonusTasks = { navController.navigate(BonusTasksRoute) },
-                onNavigateToBudget = { navController.navigate(BudgetRoute) },
-                onNavigateToBlocklist = { navController.navigate(BlocklistRoute) },
+                onNavigateToBudget = { navController.navigateTab(BudgetRoute) },
+                onNavigateToBlocklist = { navController.navigateTab(BlocklistRoute) },
                 onNavigateToSettings = { navController.navigate(SettingsRoute) },
-                onNavigateToForge = { navController.navigate(ForgeHubRoute) },
+                onNavigateToForge = { navController.navigateTab(ForgeHubRoute) },
                 onNavigateToFocus = { navController.navigate(FocusSessionRoute) },
                 onNavigateToSavings = { navController.navigate(SavingsGoalsRoute) },
                 onNavigateToShop = { navController.navigate(ForgeShopRoute) },
@@ -125,7 +154,11 @@ fun NavigationGraph(
         }
         
         composable<BlocklistRoute> {
-            BlocklistScreen()
+            BlocklistScreen(
+                onNavigateToMonsterCombat = { monsterId ->
+                    navController.navigate(MonsterCombatRoute(monsterId))
+                }
+            )
         }
         
         composable<SettingsRoute> {

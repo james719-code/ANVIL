@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,6 +55,7 @@ import com.james.anvil.formatDate
 import com.james.anvil.data.BonusTask
 import com.james.anvil.ui.components.BonusTaskBottomSheet
 import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.AnvilSegmentedTabs
 import com.james.anvil.ui.components.PageHeader
 import com.james.anvil.ui.components.SearchField
 import com.james.anvil.ui.components.SectionCard
@@ -68,8 +73,8 @@ fun TaskWorkspaceScreen(
     snackbarHostState: SnackbarHostState,
     initialTab: Int = 0
 ) {
-    var selectedTabIndex by remember(initialTab) { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
-    val tabs = listOf("Standard", "Bonus")
+    var selectedTabIndex by rememberSaveable(initialTab) { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
+    val tabs = listOf("Planned", "Bonus wins")
     var showAddTaskSheet by remember { mutableStateOf(false) }
     var showAddBonusSheet by remember { mutableStateOf(false) }
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -78,8 +83,8 @@ fun TaskWorkspaceScreen(
     var selectedTaskId by remember { mutableStateOf<Long?>(null) }
     var editingTaskId by remember { mutableStateOf<Long?>(null) }
     var editingBonusTask by remember { mutableStateOf<BonusTask?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
     val allTasks by viewModel.tasks.collectAsState(initial = emptyList())
@@ -87,8 +92,8 @@ fun TaskWorkspaceScreen(
     val bonusTasks by viewModel.bonusTasks.collectAsState(initial = emptyList())
     val windowInfo = LocalWindowInfo.current
 
-    val selectedTask = remember(allTasks, selectedTaskId) {
-        allTasks.find { it.id == selectedTaskId }
+    val selectedTask = remember(allTasks, completedTasks, selectedTaskId) {
+        (allTasks + completedTasks).find { it.id == selectedTaskId }
     }
     val editingTask = remember(allTasks, editingTaskId) {
         allTasks.find { it.id == editingTaskId }
@@ -129,23 +134,34 @@ fun TaskWorkspaceScreen(
 
     val standardListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val bonusListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val activeListState = if (selectedTabIndex == 0) standardListState else bonusListState
-    val isScrolled by remember {
-        androidx.compose.runtime.derivedStateOf {
-            activeListState.firstVisibleItemIndex > 0 || activeListState.firstVisibleItemScrollOffset > 40
-        }
+
+    // While the empty state shows, the button shrinks to an icon so it doesn't cover
+    // the empty-state text. Once there are items (or a search/filter), the label returns.
+    val isListEmpty = if (selectedTabIndex == 0) tasks.isEmpty() else filteredBonusTasks.isEmpty()
+    val isFiltering = searchQuery.isNotBlank() || (selectedTabIndex == 0 && selectedCategory != null)
+    val addLabel = if (selectedTabIndex == 0) "Add task" else "Log bonus"
+    val onAddClick: () -> Unit = {
+        if (selectedTabIndex == 0) showAddTaskSheet = true else showAddBonusSheet = true
     }
 
     TopLevelPageScaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (selectedTabIndex == 0) showAddTaskSheet = true else showAddBonusSheet = true
-                },
-                containerColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.primary else ForgedGold,
-                contentColor = if (selectedTabIndex == 0) MaterialTheme.colorScheme.onPrimary else Color.Black
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Task")
+            if (isListEmpty && !isFiltering) {
+                FloatingActionButton(
+                    onClick = onAddClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = addLabel)
+                }
+            } else {
+                ExtendedFloatingActionButton(
+                    onClick = onAddClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(addLabel) }
+                )
             }
         }
     ) { innerPadding ->
@@ -168,50 +184,21 @@ fun TaskWorkspaceScreen(
                     .padding(horizontal = windowInfo.contentPadding)
             ) {
                 PageHeader(
-                    eyebrow = "Execution",
                     title = "Tasks",
-                    subtitle = if (isScrolled) "" else "Keep the next action obvious and the interaction path short."
+                    subtitle = if (selectedTabIndex == 0) {
+                        "${allTasks.size} active · ${completedTasks.size} done this week"
+                    } else {
+                        "${bonusTasks.size} bonus wins logged"
+                    }
                 )
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = !isScrolled,
-                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+                Spacer(modifier = Modifier.height(DesignTokens.SpacingMd))
 
-                        SectionCard(accentColor = MaterialTheme.colorScheme.primary) {
-                            Text(
-                                text = "${tasks.size} active tasks in focus",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${filteredCompletedTasks.size} completed, ${bonusTasks.size} bonus logged",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(if (isScrolled) DesignTokens.SpacingSm else DesignTokens.SpacingLg))
-
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.Transparent,
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) }
-                        )
-                    }
-                }
+                AnvilSegmentedTabs(
+                    options = tabs,
+                    selectedIndex = selectedTabIndex,
+                    onSelect = { selectedTabIndex = it }
+                )
 
                 Spacer(modifier = Modifier.height(DesignTokens.SpacingMd))
 
@@ -245,14 +232,21 @@ fun TaskWorkspaceScreen(
                     LazyColumn(
                         state = standardListState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        contentPadding = PaddingValues(bottom = 104.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (tasks.isEmpty()) {
                             item {
                                 EmptyState(
-                                    message = "No active tasks to work through.",
-                                    subtitle = "Add a task or clear your filters to bring the next action back into focus.",
+                                    message = if (searchQuery.isNotBlank() || selectedCategory != null) "No matching tasks" else "Your next step starts here",
+                                    subtitle = if (searchQuery.isNotBlank() || selectedCategory != null) "Try another search or clear your filters." else "Add a task and break it\ninto manageable steps.",
+                                    actionLabel = if (searchQuery.isNotBlank() || selectedCategory != null) "Clear filters" else "Add task",
+                                    onAction = {
+                                        if (searchQuery.isNotBlank() || selectedCategory != null) {
+                                            searchQuery = ""
+                                            selectedCategory = null
+                                        } else showAddTaskSheet = true
+                                    },
                                     icon = Icons.Default.Check,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -319,19 +313,19 @@ fun TaskWorkspaceScreen(
                     LazyColumn(
                         state = bonusListState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp),
+                        contentPadding = PaddingValues(bottom = 104.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item {
                             SectionCard(accentColor = ForgedGold) {
                                 Text(
                                     text = "Bonus work builds grace",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Track the extra things you finish outside the core queue so they stay visible and rewarding.",
+                                    text = "Log extra things you finish outside your planned tasks. Enough of them earn a grace day.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -341,8 +335,12 @@ fun TaskWorkspaceScreen(
                         if (filteredBonusTasks.isEmpty()) {
                             item {
                                 EmptyState(
-                                    message = "No bonus tasks recorded yet.",
-                                    subtitle = "Log extra wins here so they can contribute to grace and momentum.",
+                                    message = if (searchQuery.isNotBlank()) "No matching bonus tasks" else "Give your extra effort credit",
+                                    subtitle = if (searchQuery.isNotBlank()) "Try a different search." else "Log something you finished outside your planned tasks.",
+                                    actionLabel = if (searchQuery.isNotBlank()) "Clear search" else "Log bonus",
+                                    onAction = {
+                                        if (searchQuery.isNotBlank()) searchQuery = "" else showAddBonusSheet = true
+                                    },
                                     icon = Icons.Default.Star
                                 )
                             }

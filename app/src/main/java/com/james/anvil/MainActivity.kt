@@ -6,12 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -30,6 +36,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.navigation.NavDestination
@@ -40,6 +48,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.rememberNavController
 import com.james.anvil.ui.TaskViewModel
 import com.james.anvil.ui.components.AnimatedBottomBar
+import com.james.anvil.ui.components.AnvilBottomBar
 import com.james.anvil.ui.components.AnvilOnboardingSteps
 import com.james.anvil.ui.components.OnboardingOverlay
 import com.james.anvil.ui.components.PermissionCheckManager
@@ -158,7 +167,7 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
                             colors = NavigationRailItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                 selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                indicatorColor = ForgedGold.copy(alpha = 0.35f),
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -180,37 +189,19 @@ private fun AnvilAppShell(viewModel: TaskViewModel) {
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 AnimatedBottomBar(visible = shouldShowBottomBar) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = DesignTokens.ElevationMedium
-                    ) {
-                        navItems.forEach { navItem ->
-                            val selected = currentDestination.isTopLevelSelected(navItem)
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { navController.navigateToTopLevel(navItem) },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) navItem.selectedIcon else navItem.unselectedIcon,
-                                        contentDescription = navItem.title
-                                    )
-                                },
-                                label = { Text(navItem.title) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    indicatorColor = ForgedGold.copy(alpha = 0.35f),
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
-                    }
+                    AnvilBottomBar(
+                        items = navItems,
+                        isSelected = { currentDestination.isTopLevelSelected(it) },
+                        onItemClick = { navController.navigateToTopLevel(it) }
+                    )
                 }
             }
         ) { innerPadding ->
             ShellContent(
-                modifier = Modifier.padding(innerPadding),
+                // Screens without the bottom bar must still clear the system navigation buttons.
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .then(if (shouldShowBottomBar) Modifier else Modifier.navigationBarsPadding()),
                 navController = navController,
                 viewModel = viewModel,
                 snackbarHostState = snackbarHostState
@@ -233,6 +224,16 @@ private fun ShellContent(
             navController = navController,
             viewModel = viewModel,
             snackbarHostState = snackbarHostState
+        )
+
+        // Edge-to-edge lets scrolled content slide under the clock. A solid strip
+        // in the background colour keeps the status bar clean on every screen.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+                .background(MaterialTheme.colorScheme.background)
         )
 
         SnackbarHost(
@@ -265,6 +266,7 @@ private fun NavDestination?.shouldShowBottomBar(): Boolean {
         destination.hasRoute(TasksRoute::class) ||
         destination.hasRoute(BonusTasksRoute::class) ||
         destination.hasRoute(BudgetRoute::class) ||
+        destination.hasRoute(BlocklistRoute::class) ||
         destination.hasRoute(ForgeHubRoute::class)
     }
 }

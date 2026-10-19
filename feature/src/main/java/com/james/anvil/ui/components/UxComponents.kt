@@ -54,6 +54,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import com.james.anvil.feature.R
+import com.james.anvil.core.R as CoreR
 import com.james.anvil.ui.theme.DesignTokens
 import com.james.anvil.ui.theme.LocalWindowInfo
 import com.james.anvil.ui.theme.SuccessGreen
@@ -125,7 +145,7 @@ fun AnvilBackButton(
     IconButton(
         onClick = onClick,
         modifier = modifier
-            .size(40.dp)
+            .size(48.dp)
             .background(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 shape = CircleShape
@@ -139,56 +159,334 @@ fun AnvilBackButton(
     }
 }
 
+/**
+ * One header idiom for every screen: a compact title with a single supporting line.
+ *
+ * [eyebrow] is kept so existing call sites compile, but it is no longer drawn: the eyebrow
+ * label, a 32sp title and a two-line subtitle used to eat ~230dp of a phone screen.
+ */
 @Composable
 fun PageHeader(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
-    eyebrow: String? = null,
+    @Suppress("UNUSED_PARAMETER") eyebrow: String? = null,
     onBack: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .statusBarsPadding(),
-        verticalAlignment = Alignment.Top,
+            .statusBarsPadding()
+            .padding(top = DesignTokens.SpacingSm),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMd)
     ) {
         if (onBack != null) {
-            AnvilBackButton(
-                onClick = onBack,
-                modifier = Modifier.align(Alignment.CenterVertically)
-            )
+            AnvilBackButton(onClick = onBack)
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            if (eyebrow != null) {
-                Text(
-                    text = eyebrow.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
-            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             if (subtitle.isNotBlank()) {
-                Spacer(modifier = Modifier.height(DesignTokens.SpacingXs))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
         trailing?.invoke()
+    }
+}
+
+/** Round tonal icon button used in headers (settings, filters, etc.). */
+@Composable
+fun HeaderIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(44.dp)
+            .background(MaterialTheme.colorScheme.surface, CircleShape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+/** The ANVIL app icon rendered in-app (same layers as the launcher icon). */
+@Composable
+fun AnvilLogo(
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(size * 0.28f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize()
+        )
+        // The launcher foreground leaves a safe-zone margin; scale it up to fill the tile.
+        Image(
+            painter = painterResource(R.drawable.ic_launcher_foreground),
+            contentDescription = "ANVIL",
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { scaleX = 1.3f; scaleY = 1.3f }
+        )
+    }
+}
+
+/** Single-colour anvil glyph for tinting. */
+@Composable
+fun AnvilGlyph(
+    modifier: Modifier = Modifier,
+    size: Dp = 24.dp,
+    tint: Color = MaterialTheme.colorScheme.primary
+) {
+    Icon(
+        painter = painterResource(CoreR.drawable.ic_anvil_glyph),
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier.size(size)
+    )
+}
+
+/** Full-width pill segmented control; replaces the cramped underlined TabRow. */
+@Composable
+fun AnvilSegmentedTabs(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val trackShape = RoundedCornerShape(DesignTokens.RadiusFull)
+    // Light: white pill on a stone track. Dark: a raised pill on a recessed track.
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val trackColor = if (isDark) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
+    val pillColor = if (isDark) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surface
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(trackColor, trackShape)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        options.forEachIndexed { index, label ->
+            val selected = index == selectedIndex
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(trackShape)
+                    .background(if (selected) pillColor else Color.Transparent, trackShape)
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) }),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** Compact vertical tile (icon over label) for 3-4 across quick actions. */
+@Composable
+fun QuickActionTile(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(DesignTokens.RadiusMedium),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(tint.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/** A tappable row for grouped lists: icon chip, title + supporting text, optional value, chevron. */
+@Composable
+fun AnvilListRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    value: String? = null,
+    icon: ImageVector? = null,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    onClick: (() -> Unit)? = null
+) {
+    val rowModifier = modifier
+        .fillMaxWidth()
+        .heightIn(min = 60.dp)
+        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+        .padding(horizontal = 16.dp, vertical = 10.dp)
+    Row(
+        modifier = rowModifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        if (icon != null) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (supporting != null) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (value != null) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        if (onClick != null) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/** Card that stacks [AnvilListRow]s (or anything) with hairline dividers between them. */
+@Composable
+fun GroupedCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(DesignTokens.RadiusLarge),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+fun GroupDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 70.dp),
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant
+    )
+}
+
+/** Circular progress ring with arbitrary centre content. */
+@Composable
+fun ProgressRing(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    size: Dp = 88.dp,
+    strokeWidth: Dp = 8.dp,
+    color: Color = MaterialTheme.colorScheme.primary,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    val animated by animateFloatAsState(progress.coerceIn(0f, 1f), tween(700), label = "ring")
+    Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = strokeWidth.toPx()
+            val inset = stroke / 2f
+            val arcSize = Size(this.size.width - stroke, this.size.height - stroke)
+            drawArc(
+                color = trackColor, startAngle = 0f, sweepAngle = 360f, useCenter = false,
+                topLeft = Offset(inset, inset), size = arcSize,
+                style = Stroke(width = stroke)
+            )
+            if (animated > 0f) {
+                drawArc(
+                    color = color, startAngle = -90f, sweepAngle = 360f * animated, useCenter = false,
+                    topLeft = Offset(inset, inset), size = arcSize,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round)
+                )
+            }
+        }
+        content()
     }
 }
 
@@ -200,14 +498,18 @@ fun SectionTitle(
     onAction: (() -> Unit)? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 40.dp)
+            .padding(bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         if (actionLabel != null && onAction != null) {
@@ -224,17 +526,17 @@ fun SectionCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary,
-    contentPadding: PaddingValues = PaddingValues(20.dp),
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(DesignTokens.RadiusLarge)
-    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
 
     if (onClick != null) {
         val interactionSource = remember { MutableInteractionSource() }
         val isPressed by interactionSource.collectIsPressedAsState()
         val scale by animateFloatAsState(
-            targetValue = if (isPressed) 0.97f else 1.0f,
+            targetValue = if (isPressed) 0.98f else 1.0f,
             animationSpec = tween(120),
             label = "card_press_scale"
         )
@@ -366,48 +668,47 @@ fun ForgeActionTile(
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(DesignTokens.RadiusMedium),
+        shape = RoundedCornerShape(DesignTokens.RadiusLarge),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(
-                        tint.copy(alpha = 0.10f),
-                        RoundedCornerShape(DesignTokens.RadiusMedium)
-                    ),
+                    .background(tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = tint
-                )
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = label,
+                    label,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = supporting,
+                    supporting,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -569,12 +870,12 @@ fun SearchField(
         singleLine = true,
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(DesignTokens.RadiusMedium),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
 }

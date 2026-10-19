@@ -115,7 +115,7 @@ fun SettingsScreen(
             PageHeader(
                 eyebrow = "Controls",
                 title = "Settings",
-                subtitle = "Tune blocking, reminders, permissions, and the forge interface.",
+                subtitle = "Blocking, reminders and permissions",
                 onBack = onBack ?: navController?.let { { it.popBackStack() } }
             )
 
@@ -455,8 +455,9 @@ private fun SettingsCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         tonalElevation = 0.dp
     ) {
         Column(content = content)
@@ -514,7 +515,8 @@ private fun SettingsRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        
+
+        Spacer(modifier = Modifier.width(12.dp))
         trailing()
     }
 }

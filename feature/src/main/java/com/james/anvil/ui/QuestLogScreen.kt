@@ -30,6 +30,7 @@ import com.james.anvil.data.Quest
 import com.james.anvil.data.QuestType
 import com.james.anvil.ui.components.AnvilCard
 import com.james.anvil.ui.components.EmptyState
+import com.james.anvil.ui.components.AnvilSegmentedTabs
 import com.james.anvil.ui.components.PageHeader
 import com.james.anvil.ui.components.RewardChip
 import com.james.anvil.ui.components.TopLevelPageScaffold
@@ -66,28 +67,19 @@ fun QuestLogScreen(
             PageHeader(
                 eyebrow = "Quests",
                 title = "Quest Log",
-                subtitle = "Track daily contracts, weekly chains, XP, and coin rewards.",
+                subtitle = "Daily contracts and weekly chains",
                 onBack = onBack
             )
 
             Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
 
             // Tab selector
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.background
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Daily") }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Weekly") }
-                )
-            }
+            AnvilSegmentedTabs(
+                options = listOf("Daily", "Weekly"),
+                selectedIndex = selectedTab,
+                onSelect = { selectedTab = it }
+            )
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingMd))
 
             when (selectedTab) {
                 0 -> DailyQuestsTab(dailyQuests)

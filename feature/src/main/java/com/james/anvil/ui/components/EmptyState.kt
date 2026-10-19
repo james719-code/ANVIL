@@ -67,7 +67,7 @@ fun EmptyState(
         // Animated icon with background circle
         Box(
             modifier = Modifier
-                .size(96.dp)
+                .size(80.dp)
                 .scale(scale)
                 .background(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
@@ -77,15 +77,15 @@ fun EmptyState(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = message,
+                contentDescription = null,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(36.dp)
                     .alpha(alpha),
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
             )
         }
         
-        Spacer(modifier = Modifier.height(Dimens.spacing24))
+        Spacer(modifier = Modifier.height(Dimens.spacing16))
         
         Text(
             text = message,
@@ -111,12 +111,6 @@ fun EmptyState(
                 onClick = onAction,
                 shape = AnvilShapes.button
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(Dimens.spacing8))
                 Text(actionLabel)
             }
         }

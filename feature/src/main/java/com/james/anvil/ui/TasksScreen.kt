@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -556,6 +557,7 @@ fun CategorySelectionInput(
             onValueChange = { onCategoryChange(it) },
             label = { Text("Category (e.g. Work, Health)") },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
             trailingIcon = {
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Category")
@@ -739,164 +741,223 @@ private fun TaskFormContent(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(headerTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Task Title") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Notes (optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-            maxLines = 4
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        CategorySelectionInput(
-            category = category,
-            onCategoryChange = { category = it },
-            existingCategories = existingCategories
-        )
-
-        if (!isDaily) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Deadline:")
-            Button(onClick = { datePickerDialog.show() }) {
-                Text(text = formatDate(selectedDeadline))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Daily task toggle
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Header stays put while the form scrolls
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text("Daily Task", fontWeight = FontWeight.Medium)
-                Text(
-                    "Repeats every day",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = isDaily,
-                onCheckedChange = { isDaily = it }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (!isDaily) {
-            // Hardness Level Slider
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Hardness Level", fontWeight = FontWeight.Medium)
-                        Text(
-                            when (hardnessLevel.toInt()) {
-                                1 -> "Complete by deadline"
-                                2 -> "Complete 2 days before"
-                                3 -> "Complete 3 days before"
-                                4 -> "Complete 4 days before"
-                                5 -> "Complete 5 days before"
-                                else -> ""
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        text = "${hardnessLevel.toInt()}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Slider(
-                    value = hardnessLevel,
-                    onValueChange = { hardnessLevel = it },
-                    valueRange = 1f..5f,
-                    steps = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        Text("Steps:")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = currentStepTitle,
-                onValueChange = { currentStepTitle = it },
-                label = { Text("Add Step") },
+            Text(
+                text = headerTitle,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = {
-                if (currentStepTitle.isNotBlank()) {
-                    steps = steps + TaskStep(title = currentStepTitle)
-                    currentStepTitle = ""
-                }
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Step")
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
             }
         }
 
-        steps.forEach { step ->
-            Row(
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("What needs doing?") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = { Text("Notes (optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(14.dp),
+                minLines = 2,
+                maxLines = 4
+            )
+
+            CategorySelectionInput(
+                category = category,
+                onCategoryChange = { category = it },
+                existingCategories = existingCategories
+            )
+
+            // Schedule: one grouped card instead of loose label + button + switch
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "• ${step.title}" + if (step.isCompleted) " (Done)" else "",
-                    modifier = Modifier.weight(1f),
-                    color = if (step.isCompleted) MaterialTheme.colorScheme.primary else Color.Unspecified
-                )
-                IconButton(onClick = {
-                    val newSteps = steps.toMutableList()
-                    newSteps.remove(step)
-                    steps = newSteps
-                }) {
-                    Icon(Icons.Default.Close, contentDescription = "Remove Step", tint = MaterialTheme.colorScheme.error)
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Repeat daily", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (isDaily) "Resets every day, no deadline" else "One-off task with a deadline",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = isDaily, onCheckedChange = { isDaily = it })
+                    }
+                    if (!isDaily) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { datePickerDialog.show() }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Deadline", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    formatDate(selectedDeadline),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                "Change",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
+
+            if (!isDaily) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Hardness", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                when (hardnessLevel.toInt()) {
+                                    1 -> "Complete by deadline"
+                                    2 -> "Complete 2 days before"
+                                    3 -> "Complete 3 days before"
+                                    4 -> "Complete 4 days before"
+                                    5 -> "Complete 5 days before"
+                                    else -> ""
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "${hardnessLevel.toInt()} / 5",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Slider(
+                        value = hardnessLevel,
+                        onValueChange = { hardnessLevel = it },
+                        valueRange = 1f..5f,
+                        steps = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Steps", fontWeight = FontWeight.SemiBold)
+                steps.forEach { step ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "• ${step.title}" + if (step.isCompleted) " (Done)" else "",
+                            modifier = Modifier.weight(1f),
+                            color = if (step.isCompleted) MaterialTheme.colorScheme.primary else Color.Unspecified
+                        )
+                        IconButton(onClick = {
+                            val newSteps = steps.toMutableList()
+                            newSteps.remove(step)
+                            steps = newSteps
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove Step", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = currentStepTitle,
+                        onValueChange = { currentStepTitle = it },
+                        label = { Text("Add a step") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilledTonalIconButton(
+                        onClick = {
+                            if (currentStepTitle.isNotBlank()) {
+                                steps = steps + TaskStep(title = currentStepTitle)
+                                currentStepTitle = ""
+                            }
+                        },
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Step")
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                if (title.isNotBlank()) {
+        // Footer: the primary action is always on screen
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text("Cancel") }
+            Button(
+                onClick = {
                     onSubmit(title, selectedDeadline, category.ifBlank { "General" }, steps, isDaily, hardnessLevel.toInt(), notes)
-                }
-            }) {
-                Text(submitButtonText)
-            }
+                },
+                enabled = title.isNotBlank(),
+                modifier = Modifier.weight(1.4f).heightIn(min = 48.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text(submitButtonText, fontWeight = FontWeight.Bold) }
         }
     }
 }

@@ -3,11 +3,11 @@ package com.james.anvil.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================
-// PRIMARY ACCENT
+// PRIMARY ACCENT  (ember on graphite)
 // ============================================
-val PrimaryAccent = Color(0xFF6B7B8D)
-val PrimaryAccentLight = Color(0xFF8E9DAF)
-val PrimaryAccentDark = Color(0xFF4A5A6A)
+val PrimaryAccent = Color(0xFFC8431A)       // ember: 4.9:1 on white, safe for text and fills in light theme
+val PrimaryAccentLight = Color(0xFFFF8A57)  // glowing ember: primary in dark theme
+val PrimaryAccentDark = Color(0xFF8F2D0E)
 
 // ============================================
 // SEMANTIC COLORS
@@ -17,30 +17,39 @@ val ErrorRed = Color(0xFFEF4444)
 val WarningOrange = Color(0xFFF97316)
 
 // ============================================
-// DARK THEME SURFACE COLORS
+// DARK THEME SURFACE COLORS  (graphite, a touch cool so ember pops)
 // ============================================
-val BackgroundDark = Color(0xFF0D0D0D)
-val SurfaceDark = Color(0xFF161616)
-val SurfaceElevatedDark = Color(0xFF1E1E1E)
-val TextPrimaryDark = Color(0xFFF3F2EF)
-val TextSecondaryDark = Color(0xFF98958F)
-val BorderDark = Color(0xFF2A2A2A)
+val BackgroundDark = Color(0xFF0F1113)
+val SurfaceDark = Color(0xFF181B1E)
+val SurfaceElevatedDark = Color(0xFF22262A)
+val TextPrimaryDark = Color(0xFFF2F1ED)
+val TextSecondaryDark = Color(0xFFA7ABB0)
+val BorderDark = Color(0xFF2C3136)
 
 // ============================================
-// LIGHT THEME SURFACE COLORS
+// LIGHT THEME SURFACE COLORS  (warm stone)
 // ============================================
-val BackgroundLight = Color(0xFFF8F8F8)
+val BackgroundLight = Color(0xFFF4F3EF)
 val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceElevatedLight = Color(0xFFF2F2F2)
-val TextPrimaryLight = Color(0xFF1A1A1A)
-val TextSecondaryLight = Color(0xFF737373)
-val BorderLight = Color(0xFFE0E0E0)
+val SurfaceElevatedLight = Color(0xFFEAE8E2)
+val TextPrimaryLight = Color(0xFF17191B)
+val TextSecondaryLight = Color(0xFF5B5F64)
+val BorderLight = Color(0xFFE0DED7)
+
+// ============================================
+// HERO / FORGE SURFACE  (same in both themes: the glowing "furnace" card)
+// ============================================
+val ForgeInk = Color(0xFF1A1D21)
+val ForgeInkRaised = Color(0xFF262A2F)
+val ForgePaper = Color(0xFFF7F4EC)
+val ForgePaperMuted = Color(0xFFB9BDC2)
+val ForgeEmber = Color(0xFFFF8A57)
 
 // ============================================
 // LOCK SCREEN COLORS
 // ============================================
 val LockScreenBg = Color(0xFF0A0A0A)
-val LockScreenBorder = Color(0xFF2A2A2A)
+val LockScreenBorder = Color(0xFF3B403A)
 val LockScreenWarning = Color(0xFFFFB300)
 
 // ============================================

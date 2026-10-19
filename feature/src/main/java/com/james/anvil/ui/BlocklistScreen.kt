@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.james.anvil.ui.components.AnvilSegmentedTabs
 import com.james.anvil.ui.components.BlocklistItem
 import com.james.anvil.ui.components.EmptyState
 import com.james.anvil.ui.components.PageHeader
@@ -61,27 +62,17 @@ fun BlocklistScreen(
                 .padding(horizontal = windowInfo.contentPadding)
         ) {
             PageHeader(
-                eyebrow = "Shield",
-                title = "Blocklist",
-                subtitle = "Control distractions, schedules, and unlock challenges from one place."
+                title = "Blocks",
+                subtitle = "Apps and links you keep out of reach"
             )
 
-            Spacer(modifier = Modifier.height(DesignTokens.SpacingLg))
+            Spacer(modifier = Modifier.height(DesignTokens.SpacingMd))
 
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.primary,
-                divider = {}
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
+            AnvilSegmentedTabs(
+                options = tabs,
+                selectedIndex = selectedTabIndex,
+                onSelect = { selectedTabIndex = it }
+            )
 
             Spacer(modifier = Modifier.height(DesignTokens.SpacingSm))
 

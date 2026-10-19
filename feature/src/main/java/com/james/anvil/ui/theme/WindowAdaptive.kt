@@ -87,8 +87,8 @@ data class WindowInfo(
      */
     val contentPadding: Dp
         get() = when (screenWidthType) {
-            WindowType.Compact -> DesignTokens.SpacingMd
-            WindowType.Medium -> DesignTokens.SpacingLg
+            WindowType.Compact -> 16.dp
+            WindowType.Medium -> DesignTokens.SpacingXl
             WindowType.Expanded -> DesignTokens.SpacingXl
         }
     

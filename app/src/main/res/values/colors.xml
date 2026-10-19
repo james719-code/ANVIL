@@ -11,6 +11,8 @@
     <!-- Neutrals -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- App background in dark mode (matches BackgroundDark in the Compose theme) -->
+    <color name="anvil_night_background">#FF0F1113</color>
     
     <!-- Legacy compatibility -->
     <color name="purple_200">#FF0288D1</color>
