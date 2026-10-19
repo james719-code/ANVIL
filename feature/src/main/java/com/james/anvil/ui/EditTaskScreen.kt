@@ -53,7 +53,7 @@ fun EditTaskScreen(
             PageHeader(
                 eyebrow = "Modification",
                 title = "Edit Task",
-                subtitle = "Refine objectives, steps, hardness, and deadlines.",
+                subtitle = "Refine steps, hardness and deadline",
                 onBack = onNavigateBack
             )
             

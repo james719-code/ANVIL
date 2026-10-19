@@ -300,7 +300,7 @@ object AnvilOnboardingSteps {
     
     fun getDashboardSteps(): List<OnboardingStep> = listOf(
         OnboardingStep(
-            title = "Welcome to ANVIL! 🔨",
+            title = "Welcome to ANVIL",
             description = "Your personal productivity forge. Let's take a quick tour of the main features.",
             icon = null
         ),
@@ -337,7 +337,7 @@ object AnvilOnboardingSteps {
     fun getBudgetSteps(): List<OnboardingStep> = listOf(
         OnboardingStep(
             title = "Track Your Money",
-            description = "Log income and expenses across Cash and GCash accounts. See your total balance at the top.",
+            description = "Log income and expenses across all your wallets. See your total balance at the top.",
             icon = null
         ),
         OnboardingStep(
@@ -362,7 +362,7 @@ object AnvilOnboardingSteps {
     
     fun getFullOnboarding(): List<OnboardingStep> = listOf(
         OnboardingStep(
-            title = "Welcome to ANVIL! 🔨",
+            title = "Welcome to ANVIL",
             description = "Your personal productivity forge. ANVIL helps you manage tasks, track finances, and stay focused by blocking distractions.",
             icon = null
         ),
@@ -383,7 +383,7 @@ object AnvilOnboardingSteps {
         ),
         OnboardingStep(
             title = "Budget",
-            description = "Track your money across Cash and GCash. Log income, expenses, and loans to stay on top of your finances.",
+            description = "Track your money across all your wallets. Log income, expenses, and loans to stay on top of your finances.",
             icon = null
         ),
         OnboardingStep(

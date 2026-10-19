@@ -14,16 +14,19 @@ import com.james.anvil.MainActivity
 import com.james.anvil.R
 import com.james.anvil.data.AnvilDatabase
 import com.james.anvil.data.BlockedLink
+import com.james.anvil.data.DomainPattern
 import com.james.anvil.util.PrefsKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Job
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -87,7 +90,8 @@ class AnvilVpnService : VpnService() {
     private fun updateActiveBlocklist() {
         val rules = blockedRules
         activeBlockedPatterns = rules.filter { it.blockedLink.isBlockingActiveNow() }
-                                     .map { it.normalizedPattern }
+            .map { it.normalizedPattern }
+            .distinct()
     }
 
     private val packetBufferPool = ConcurrentLinkedQueue<ByteArray>()
@@ -110,7 +114,8 @@ class AnvilVpnService : VpnService() {
     }
 
     private class PacketData(val buffer: ByteArray, val length: Int, val ihl: Int)
-    private val packetChannel = Channel<PacketData>(capacity = 128)
+    private var packetChannel: Channel<PacketData>? = null
+    private var dnsProxyJob: Job? = null
 
     // Pool of DatagramSockets for fast DNS forwarding without IPC overhead
     private val socketPool = ArrayBlockingQueue<DatagramSocket>(16)
@@ -162,7 +167,11 @@ class AnvilVpnService : VpnService() {
         val db = AnvilDatabase.getDatabase(applicationContext)
         serviceScope.launch {
             db.blocklistDao().observeEnabledBlockedLinksWithSchedule().collectLatest { links ->
-                blockedRules = links.map { BlockRule(normalizeDomain(it.pattern), it) }
+                blockedRules = links.mapNotNull { link ->
+                    DomainPattern.normalize(link.pattern)?.let { normalized ->
+                        BlockRule(normalized, link)
+                    }
+                }
                 updateActiveBlocklist()
             }
         }
@@ -215,6 +224,8 @@ class AnvilVpnService : VpnService() {
 
             shouldRun = true
             _isRunning.set(true)
+            val channel = Channel<PacketData>(capacity = 128)
+            packetChannel = channel
 
             // Start foreground service with notification (with type for Android 14+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -228,8 +239,8 @@ class AnvilVpnService : VpnService() {
             }
 
             // Start DNS proxy in background
-            serviceScope.launch {
-                runDnsProxy()
+            dnsProxyJob = serviceScope.launch {
+                runDnsProxy(channel)
             }
 
         } catch (e: Exception) {
@@ -241,6 +252,11 @@ class AnvilVpnService : VpnService() {
     private fun stopVpn() {
         shouldRun = false
         _isRunning.set(false)
+
+        packetChannel?.close()
+        packetChannel = null
+        dnsProxyJob?.cancel()
+        dnsProxyJob = null
 
         try {
             vpnInterface?.close()
@@ -259,8 +275,8 @@ class AnvilVpnService : VpnService() {
      * - Returns NXDOMAIN for blocked domains
      * - Forwards to upstream DNS for allowed domains
      */
-    private fun runDnsProxy() {
-        val vpnFd = vpnInterface ?: return
+    private suspend fun runDnsProxy(channel: Channel<PacketData>) = coroutineScope {
+        val vpnFd = vpnInterface ?: return@coroutineScope
         val inputStream = FileInputStream(vpnFd.fileDescriptor)
         val outputStream = FileOutputStream(vpnFd.fileDescriptor)
         
@@ -268,8 +284,8 @@ class AnvilVpnService : VpnService() {
 
         // Start worker coroutines
         repeat(4) {
-            serviceScope.launch {
-                for (packetData in packetChannel) {
+            launch {
+                for (packetData in channel) {
                     try {
                         processPacket(packetData.buffer, packetData.length, packetData.ihl, outputStream)
                     } catch (e: Exception) {
@@ -306,7 +322,7 @@ class AnvilVpnService : VpnService() {
 
                 // Process packet asynchronously via channel
                 val packetData = PacketData(packetCopy, length, ihl)
-                val result = packetChannel.trySend(packetData)
+                val result = channel.trySend(packetData)
                 if (!result.isSuccess) {
                     releasePacketBuffer(packetCopy) // Drop if channel is full
                 }
@@ -368,29 +384,14 @@ class AnvilVpnService : VpnService() {
     private fun shouldBlockDomain(domain: String): Boolean {
         if (isPauseModeActive) return false
 
-        val normalizedDomain = normalizeDomain(domain)
         val activePatterns = activeBlockedPatterns // Keep local reference for thread-safety
 
         for (pattern in activePatterns) {
-            if (normalizedDomain == pattern ||
-                normalizedDomain.endsWith(".$pattern") ||
-                normalizedDomain.contains(pattern)) {
+            if (DomainPattern.matches(domain, pattern)) {
                 return true
             }
         }
         return false
-    }
-
-    private fun normalizeDomain(domain: String): String {
-        var normalized = domain.lowercase()
-        val prefixes = listOf("www.", "m.", "mobile.", "amp.", "web.", "touch.")
-        for (prefix in prefixes) {
-            if (normalized.startsWith(prefix)) {
-                normalized = normalized.removePrefix(prefix)
-                break
-            }
-        }
-        return normalized
     }
 
     private fun sendNxdomainResponse(
@@ -457,7 +458,6 @@ class AnvilVpnService : VpnService() {
         var socket: DatagramSocket? = null
         var receiveSuccess = false
         try {
-            val dnsLength = length - dnsStart
             val dnsData = buffer.copyOfRange(dnsStart, length)
 
             socket = acquireSocket()
@@ -575,9 +575,9 @@ class AnvilVpnService : VpnService() {
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("ANVIL Blocking Active")
             .setContentText("Website blocking is enabled")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(com.james.anvil.core.R.drawable.ic_anvil_glyph)
             .setContentIntent(pendingIntent)
-            .addAction(R.drawable.ic_launcher_foreground, "Stop", stopPendingIntent)
+            .addAction(com.james.anvil.core.R.drawable.ic_anvil_glyph, "Stop", stopPendingIntent)
             .setOngoing(true)
             .build()
     }
@@ -589,6 +589,10 @@ class AnvilVpnService : VpnService() {
         }
         shouldRun = false
         _isRunning.set(false)
+        packetChannel?.close()
+        packetChannel = null
+        dnsProxyJob?.cancel()
+        dnsProxyJob = null
         serviceScope.cancel()
         try {
             vpnInterface?.close()

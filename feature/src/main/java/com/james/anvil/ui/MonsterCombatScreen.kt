@@ -11,7 +11,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material3.*
@@ -101,7 +103,7 @@ fun MonsterCombatScreen(
             PageHeader(
                 eyebrow = "Challenge",
                 title = "Monster Combat",
-                subtitle = "Earn your unblock by dealing damage through productive actions.",
+                subtitle = "Deal damage to earn your unblock",
                 onBack = onBack
             )
 
@@ -243,10 +245,20 @@ private fun MonsterDisplay(
                     StatusPill(text = "Boss", tint = ErrorRed)
                 }
                 Text(
-                    "Difficulty: ${"★".repeat(monster.difficulty)}${"☆".repeat((5 - monster.difficulty).coerceAtLeast(0))}",
+                    "Difficulty",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    repeat(5) { index ->
+                        androidx.compose.material3.Icon(
+                            imageVector = if (index < monster.difficulty) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = if (index < monster.difficulty) ForgedGold else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                }
             }
         }
     }
@@ -400,7 +412,7 @@ private fun LootRevealDialog(loot: LootReveal, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text("\uD83C\uDF81", fontSize = 40.sp)
+                androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.lootGift, contentDescription = null, modifier = Modifier.size(44.dp), tint = ForgedGold)
                 Spacer(Modifier.height(4.dp))
                 Text("Loot Dropped!", fontWeight = FontWeight.Bold)
             }
@@ -414,12 +426,15 @@ private fun LootRevealDialog(loot: LootReveal, onDismiss: () -> Unit) {
                 Text("Defeated ${loot.monsterName}", style = MaterialTheme.typography.bodyMedium)
 
                 if (loot.coins > 0) {
-                    Text(
-                        "\uD83D\uDCB0 +${loot.coins} Forge Coins",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = ForgedGold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.coins, contentDescription = null, modifier = Modifier.size(22.dp), tint = ForgedGold)
+                        Text(
+                            "+${loot.coins} Forge Coins",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ForgedGold
+                        )
+                    }
                 }
 
                 if (loot.gearItem != null) {

@@ -68,7 +68,7 @@ fun SkillTreeScreen(
             PageHeader(
                 eyebrow = "Build",
                 title = "Skill Tree",
-                subtitle = "Spend skill points on upgrades that make ANVIL stronger.",
+                subtitle = "Spend skill points on upgrades",
                 onBack = onBack
             )
 
@@ -129,7 +129,7 @@ fun SkillTreeScreen(
                             )
                         },
                         icon = {
-                            Text(branchEmoji(branch), fontSize = 16.sp)
+                            androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.skillBranchIcon(branch), contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     )
                 }
@@ -279,13 +279,6 @@ private fun branchDisplayName(branch: SkillBranch) = when (branch) {
     SkillBranch.WEALTH -> "Wealth"
     SkillBranch.FOCUS -> "Focus"
     SkillBranch.GUARDIAN -> "Guardian"
-}
-
-private fun branchEmoji(branch: SkillBranch) = when (branch) {
-    SkillBranch.DISCIPLINE -> "\u2694\uFE0F"
-    SkillBranch.WEALTH -> "\uD83D\uDCB0"
-    SkillBranch.FOCUS -> "\uD83E\uDDD8"
-    SkillBranch.GUARDIAN -> "\uD83D\uDEE1\uFE0F"
 }
 
 private fun branchDescription(branch: SkillBranch) = when (branch) {

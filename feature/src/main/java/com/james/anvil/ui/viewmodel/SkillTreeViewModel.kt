@@ -50,7 +50,7 @@ class SkillTreeViewModel @Inject constructor(
             val success = skillTreeManager.unlockSkill(skillId)
             if (success) {
                 val def = SkillTreeManager.getSkillDefinition(skillId)
-                _unlockResult.value = "\u2705 Unlocked: ${def?.name ?: skillId} (${def?.description ?: ""})"
+                _unlockResult.value = "Unlocked: ${def?.name ?: skillId} (${def?.description ?: ""})"
                 refreshPoints()
             } else {
                 // Provide richer feedback on why the unlock failed

@@ -75,7 +75,7 @@ fun ForgeReportScreen(
                     PageHeader(
                         eyebrow = "Analytics",
                         title = "Forge Report",
-                        subtitle = "Review productivity, consistency, task history, and budget patterns.",
+                        subtitle = "Productivity, consistency and budget patterns",
                         onBack = onBack
                     )
                 }
@@ -717,7 +717,7 @@ private fun CombatQuestCard(state: ForgeReportState) {
     AnvilCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("\u2694\uFE0F", fontSize = 16.sp)
+                androidx.compose.material3.Icon(Icons.Outlined.MilitaryTech, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(6.dp))
                 Text("Combat & Quests", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             }

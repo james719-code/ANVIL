@@ -47,7 +47,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔥 7d"
+            android:text="7d"
+            android:drawableStart="@drawable/ic_wp_flame"
+            android:drawablePadding="3dp"
+            android:drawableTint="#FFFFFF"
             android:textColor="#FFFFFF"
             android:textSize="9sp"
             android:textStyle="bold"
@@ -75,7 +78,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="⚒️ 620 XP"
+                android:text="620 XP"
+            android:drawableStart="@drawable/ic_wp_anvil"
+            android:drawablePadding="3dp"
+            android:drawableTint="#F1F5F9"
                 android:textColor="#F1F5F9"
                 android:textSize="10sp"
                 android:textStyle="bold" />
@@ -127,11 +133,12 @@
             android:gravity="center_vertical"
             android:padding="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📋"
-                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_wp_list"
+                android:tint="#FF8A57"
+                android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -167,11 +174,12 @@
             android:gravity="center_vertical"
             android:padding="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="✅"
-                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_wp_check"
+                android:tint="#FF8A57"
+                android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -215,11 +223,12 @@
             android:gravity="center_vertical"
             android:padding="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔥"
-                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_wp_flame"
+                android:tint="#FF8A57"
+                android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -255,11 +264,12 @@
             android:gravity="center_vertical"
             android:padding="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🎯"
-                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_wp_target"
+                android:tint="#FF8A57"
+                android:importantForAccessibility="no" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -302,7 +312,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🛡️ 8 blocked"
+            android:text="8 blocked"
+            android:drawableStart="@drawable/ic_wp_shield"
+            android:drawablePadding="3dp"
+            android:drawableTint="#94A3B8"
             android:textColor="#94A3B8"
             android:textSize="10sp" />
 

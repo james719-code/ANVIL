@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -59,7 +60,7 @@ fun AboutScreen(
             PageHeader(
                 eyebrow = "Information",
                 title = "About",
-                subtitle = "App goals, tech details, values, and credit.",
+                subtitle = "Goals, tech and credits",
                 onBack = onBack
             )
             
@@ -245,7 +246,7 @@ fun AboutScreen(
                         icon = Icons.Outlined.AccountBalanceWallet,
                         iconTint = InfoBlue,
                         title = "Budget Tracker",
-                        description = "Cash, GCash, loans & expenses"
+                        description = "Wallets, loans & expenses"
                     )
                 }
                 
@@ -439,11 +440,19 @@ fun AboutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Made with ❤️ in the Philippines",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Made with",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        androidx.compose.material3.Icon(Icons.Filled.Favorite, contentDescription = "love", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        Text(
+                            text = "in the Philippines",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} ANVIL",

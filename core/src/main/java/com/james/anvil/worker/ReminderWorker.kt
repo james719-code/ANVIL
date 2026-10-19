@@ -181,8 +181,11 @@ class ReminderWorker(
     }
 
     private fun isSameDay(time1: Long, time2: Long): Boolean {
-        val dayMillis = 86400000L
-        return time1 / dayMillis == time2 / dayMillis
+        val first = Calendar.getInstance().apply { timeInMillis = time1 }
+        val second = Calendar.getInstance().apply { timeInMillis = time2 }
+        return first.get(Calendar.ERA) == second.get(Calendar.ERA) &&
+            first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
+            first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
     }
 
     @SuppressLint("MissingPermission")
@@ -210,21 +213,21 @@ class ReminderWorker(
         val (title, content, priority) = when (stage) {
             ReminderStage.NEAR_DEADLINE -> {
                 Triple(
-                    "⏰ Task Deadline Near!",
+                    "Task deadline near",
                     "'$taskType: ${task.title}' is due in ${formatTimeRemaining(timeLeft)}! Complete it to stay on track.",
                     NotificationCompat.PRIORITY_HIGH
                 )
             }
             ReminderStage.OVERDUE -> {
                 Triple(
-                    "⚠️ Task Overdue: ${task.title}",
+                    "Task overdue: ${task.title}",
                     "The deadline for $taskType '${task.title}' has passed. Tap to finish or update.",
                     NotificationCompat.PRIORITY_HIGH
                 )
             }
             ReminderStage.HALFWAY -> {
                 Triple(
-                    "⏱️ Halfway Point!",
+                    "Halfway to the deadline",
                     "You are halfway to the deadline for $taskType: ${task.title}",
                     NotificationCompat.PRIORITY_DEFAULT
                 )
@@ -245,7 +248,7 @@ class ReminderWorker(
         } else null
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_anvil_glyph)
             .setContentTitle(title)
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))

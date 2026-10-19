@@ -63,7 +63,7 @@ fun GearEquipmentScreen(
                 PageHeader(
                     eyebrow = "Loadout",
                     title = "Equipment",
-                    subtitle = "Equip gear earned from combat and keep bonuses visible.",
+                    subtitle = "Equip gear earned in combat",
                     onBack = onBack
                 )
             }
@@ -131,12 +131,6 @@ private fun EquipSlotCard(
     modifier: Modifier = Modifier,
     onUnequip: (Long) -> Unit
 ) {
-    val slotEmoji = when (slot) {
-        GearSlot.WEAPON -> "\u2694\uFE0F"
-        GearSlot.ARMOR -> "\uD83D\uDEE1\uFE0F"
-        GearSlot.ACCESSORY -> "\uD83D\uDC8D"
-    }
-
     val borderColor = if (item != null) rarityColor(item.rarity) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
 
     AnvilCard(
@@ -150,7 +144,7 @@ private fun EquipSlotCard(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(slotEmoji, fontSize = 24.sp)
+            androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.gearSlotIcon(slot), contentDescription = slot.name, modifier = Modifier.size(26.dp), tint = if (item != null) rarityColor(item.rarity) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             Spacer(Modifier.height(4.dp))
             Text(
                 slot.name,
@@ -204,14 +198,7 @@ private fun GearItemCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Slot icon
-            Text(
-                when (item.slot) {
-                    GearSlot.WEAPON -> "\u2694\uFE0F"
-                    GearSlot.ARMOR -> "\uD83D\uDEE1\uFE0F"
-                    GearSlot.ACCESSORY -> "\uD83D\uDC8D"
-                },
-                fontSize = 28.sp
-            )
+            androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.gearSlotIcon(item.slot), contentDescription = item.slot.name, modifier = Modifier.size(30.dp), tint = rColor)
 
             Spacer(Modifier.width(12.dp))
 

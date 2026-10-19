@@ -12,6 +12,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.AccountTree
@@ -173,7 +176,7 @@ fun ForgeProfileScreen(
                 PageHeader(
                     eyebrow = "Progression",
                     title = "The Forge",
-                    subtitle = "Level, achievements, gear, and skill upgrades tied to your output.",
+                    subtitle = "Level, achievements, gear and skills",
                     onBack = onNavigateBack
                 )
             }
@@ -385,7 +388,7 @@ private fun LevelHeroCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (xpForNextLevel > 0) "$totalXp / $xpForNextLevel XP" else "✦ Maxed",
+                        text = if (xpForNextLevel > 0) "$totalXp / $xpForNextLevel XP" else "Maxed",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = goldText
@@ -509,7 +512,7 @@ private fun LevelRoadmapCard(currentLevel: Int) {
                         )
                         if (themeUnlock != null) {
                             Text(
-                                text = "🎨 Unlocks: $themeUnlock theme",
+                                text = "Unlocks: $themeUnlock theme",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isUnlocked) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                             )
@@ -578,18 +581,20 @@ private fun AchievementsGallery(
             Spacer(modifier = Modifier.height(DesignTokens.SpacingSm))
 
             // Grid of achievement badges
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.height(
-                    // Calculate height based on rows needed
-                    ((achievements.size + 3) / 4 * 96).dp
-                ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false
-            ) {
-                items(achievements) { achievement ->
-                    AchievementBadge(achievement)
+            // Three per row: four columns were too narrow and broke titles mid-word
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                achievements.chunked(3).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowItems.forEach { achievement ->
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                AchievementBadge(achievement)
+                            }
+                        }
+                        repeat(3 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
+                    }
                 }
             }
         }
@@ -600,6 +605,7 @@ private fun AchievementsGallery(
 private fun AchievementBadge(achievement: Achievement) {
     Column(
         modifier = Modifier
+            .fillMaxSize()
             .background(
                 if (achievement.isUnlocked)
                     ForgedGold.copy(alpha = 0.08f)
@@ -610,10 +616,12 @@ private fun AchievementBadge(achievement: Achievement) {
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = if (achievement.isUnlocked) achievement.icon else "🔒",
-            fontSize = 24.sp,
-            textAlign = TextAlign.Center
+        androidx.compose.material3.Icon(
+            imageVector = if (achievement.isUnlocked) com.james.anvil.ui.theme.AppIcons.achievementIcon(achievement.icon)
+            else androidx.compose.material.icons.Icons.Outlined.Lock,
+            contentDescription = if (achievement.isUnlocked) achievement.title else "Locked",
+            tint = if (achievement.isUnlocked) ForgedGold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(26.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -822,7 +830,7 @@ fun ForgeLevelCard(
                     )
                 } else {
                     Text(
-                        text = "✦ Maximum level reached",
+                        text = "Maximum level reached",
                         style = MaterialTheme.typography.labelSmall,
                         color = ForgedGold.copy(alpha = 0.7f)
                     )

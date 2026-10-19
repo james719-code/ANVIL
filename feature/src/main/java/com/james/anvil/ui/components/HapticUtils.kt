@@ -347,7 +347,7 @@ class CelebrationState {
     var message by mutableStateOf("")
         private set
     
-    fun show(message: String = "Great job! 🎉") {
+    fun show(message: String = "Great job!") {
         this.message = message
         this.isShowing = true
     }

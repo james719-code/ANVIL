@@ -39,89 +39,89 @@ class AchievementManager(context: Context) {
         lifetimeCoins: Int = 0
     ): List<Achievement> {
         val definitions = listOf(
-            AchievementDef(AchievementId.FIRST_TASK, "First Forging", "Complete your first task", "⚒️") {
+            AchievementDef(AchievementId.FIRST_TASK, "First Forging", "Complete your first task", "forge") {
                 completedTaskCount >= 1
             },
-            AchievementDef(AchievementId.TASK_MASTER_10, "Apprentice Smith", "Complete 10 tasks", "🔨") {
+            AchievementDef(AchievementId.TASK_MASTER_10, "Apprentice Smith", "Complete 10 tasks", "hammer") {
                 completedTaskCount >= 10
             },
-            AchievementDef(AchievementId.TASK_MASTER_50, "Journeyman Smith", "Complete 50 tasks", "⚔️") {
+            AchievementDef(AchievementId.TASK_MASTER_50, "Journeyman Smith", "Complete 50 tasks", "gavel") {
                 completedTaskCount >= 50
             },
-            AchievementDef(AchievementId.TASK_MASTER_100, "Master Smith", "Complete 100 tasks", "🏆") {
+            AchievementDef(AchievementId.TASK_MASTER_100, "Master Smith", "Complete 100 tasks", "trophy") {
                 completedTaskCount >= 100
             },
-            AchievementDef(AchievementId.STREAK_3, "Spark Keeper", "Maintain a 3-day streak", "🔥") {
+            AchievementDef(AchievementId.STREAK_3, "Spark Keeper", "Maintain a 3-day streak", "flame") {
                 longestStreak >= 3
             },
-            AchievementDef(AchievementId.STREAK_7, "Flame Guardian", "Maintain a 7-day streak", "🌟") {
+            AchievementDef(AchievementId.STREAK_7, "Flame Guardian", "Maintain a 7-day streak", "star") {
                 longestStreak >= 7
             },
-            AchievementDef(AchievementId.STREAK_30, "Inferno Master", "Maintain a 30-day streak", "💎") {
+            AchievementDef(AchievementId.STREAK_30, "Inferno Master", "Maintain a 30-day streak", "gem") {
                 longestStreak >= 30
             },
-            AchievementDef(AchievementId.STREAK_100, "Eternal Flame", "Maintain a 100-day streak", "👑") {
+            AchievementDef(AchievementId.STREAK_100, "Eternal Flame", "Maintain a 100-day streak", "crown") {
                 longestStreak >= 100
             },
-            AchievementDef(AchievementId.LEVEL_5, "Rising Artisan", "Reach level 5", "⬆️") {
+            AchievementDef(AchievementId.LEVEL_5, "Rising Artisan", "Reach level 5", "levelup") {
                 currentLevel >= 5
             },
-            AchievementDef(AchievementId.LEVEL_10, "Legendary Artificer", "Reach level 10", "🌠") {
+            AchievementDef(AchievementId.LEVEL_10, "Legendary Artificer", "Reach level 10", "sparkle") {
                 currentLevel >= 10
             },
-            AchievementDef(AchievementId.BUDGET_LOGGER, "Coin Counter", "Log 10 budget entries", "💰") {
+            AchievementDef(AchievementId.BUDGET_LOGGER, "Coin Counter", "Log 10 budget entries", "coins") {
                 budgetEntryCount >= 10
             },
-            AchievementDef(AchievementId.BUDGET_PRO, "Treasurer", "Log 50 budget entries", "🏦") {
+            AchievementDef(AchievementId.BUDGET_PRO, "Treasurer", "Log 50 budget entries", "bank") {
                 budgetEntryCount >= 50
             },
-            AchievementDef(AchievementId.FOCUS_FIRST, "First Spark", "Complete your first focus session", "⏱️") {
+            AchievementDef(AchievementId.FOCUS_FIRST, "First Spark", "Complete your first focus session", "timer") {
                 focusSessionCount >= 1
             },
-            AchievementDef(AchievementId.FOCUS_10, "Deep Focus", "Complete 10 focus sessions", "🎯") {
+            AchievementDef(AchievementId.FOCUS_10, "Deep Focus", "Complete 10 focus sessions", "focus") {
                 focusSessionCount >= 10
             },
-            AchievementDef(AchievementId.FOCUS_HOUR, "Hour of Power", "Accumulate 60 minutes of focus", "⚡") {
+            AchievementDef(AchievementId.FOCUS_HOUR, "Hour of Power", "Accumulate 60 minutes of focus", "bolt") {
                 totalFocusMinutes >= 60
             },
-            AchievementDef(AchievementId.BONUS_5, "Overachiever", "Complete 5 bonus tasks", "🌱") {
+            AchievementDef(AchievementId.BONUS_5, "Overachiever", "Complete 5 bonus tasks", "sprout") {
                 bonusTaskCount >= 5
             },
-            AchievementDef(AchievementId.ICE_EARNED, "Frost Shield", "Earn your first Ice", "🧊") {
+            AchievementDef(AchievementId.ICE_EARNED, "Frost Shield", "Earn your first Ice", "ice") {
                 iceCount >= 1
             },
-            AchievementDef(AchievementId.LOAN_CLEARED, "Debt Free", "Clear a loan completely", "✅") {
+            AchievementDef(AchievementId.LOAN_CLEARED, "Debt Free", "Clear a loan completely", "done") {
                 loansCleared >= 1
             },
             // RPG Achievements
-            AchievementDef(AchievementId.FIRST_MONSTER_SLAIN, "Monster Slayer", "Defeat your first monster", "\uD83D\uDC79") {
+            AchievementDef(AchievementId.FIRST_MONSTER_SLAIN, "Monster Slayer", "Defeat your first monster", "monster") {
                 monstersDefeated >= 1
             },
-            AchievementDef(AchievementId.MONSTER_HUNTER_10, "Monster Hunter", "Defeat 10 monsters", "\uD83D\uDDE1\uFE0F") {
+            AchievementDef(AchievementId.MONSTER_HUNTER_10, "Monster Hunter", "Defeat 10 monsters", "hunter") {
                 monstersDefeated >= 10
             },
-            AchievementDef(AchievementId.BOSS_SLAYER, "Boss Slayer", "Defeat a boss monster", "\uD83D\uDC32") {
+            AchievementDef(AchievementId.BOSS_SLAYER, "Boss Slayer", "Defeat a boss monster", "boss") {
                 bossesDefeated >= 1
             },
-            AchievementDef(AchievementId.QUEST_STARTER, "Quest Starter", "Complete your first quest", "\uD83D\uDCDC") {
+            AchievementDef(AchievementId.QUEST_STARTER, "Quest Starter", "Complete your first quest", "scroll") {
                 questsCompleted >= 1
             },
-            AchievementDef(AchievementId.QUEST_MASTER_25, "Quest Master", "Complete 25 quests", "\uD83C\uDFC6") {
+            AchievementDef(AchievementId.QUEST_MASTER_25, "Quest Master", "Complete 25 quests", "trophy") {
                 questsCompleted >= 25
             },
-            AchievementDef(AchievementId.FULL_GEAR_SET, "Fully Equipped", "Equip all 3 gear slots", "\uD83D\uDEE1\uFE0F") {
+            AchievementDef(AchievementId.FULL_GEAR_SET, "Fully Equipped", "Equip all 3 gear slots", "shield") {
                 equippedGearSlots >= 3
             },
-            AchievementDef(AchievementId.SKILL_TREE_10, "Skill Master", "Unlock 10 skills", "\uD83C\uDF32") {
+            AchievementDef(AchievementId.SKILL_TREE_10, "Skill Master", "Unlock 10 skills", "tree") {
                 unlockedSkills >= 10
             },
-            AchievementDef(AchievementId.SAVINGS_FIRST_GOAL, "First Treasure", "Complete a savings goal", "\uD83C\uDF81") {
+            AchievementDef(AchievementId.SAVINGS_FIRST_GOAL, "First Treasure", "Complete a savings goal", "treasure") {
                 savingsGoalsCompleted >= 1
             },
-            AchievementDef(AchievementId.SAVINGS_MASTER_5, "Treasure Hoarder", "Complete 5 savings goals", "\uD83D\uDCB0") {
+            AchievementDef(AchievementId.SAVINGS_MASTER_5, "Treasure Hoarder", "Complete 5 savings goals", "hoard") {
                 savingsGoalsCompleted >= 5
             },
-            AchievementDef(AchievementId.FORGE_COINS_1000, "Coin Collector", "Accumulate 1000 lifetime coins", "\uD83E\uDE99") {
+            AchievementDef(AchievementId.FORGE_COINS_1000, "Coin Collector", "Accumulate 1000 lifetime coins", "coins") {
                 lifetimeCoins >= 1000
             }
         )

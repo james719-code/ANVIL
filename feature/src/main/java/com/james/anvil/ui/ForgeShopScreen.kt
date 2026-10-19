@@ -120,7 +120,7 @@ fun ForgeShopScreen(
                 PageHeader(
                     eyebrow = "Rewards",
                     title = "Forge Shop",
-                    subtitle = "Spend earned coins on passes, boosts, and streak protection.",
+                    subtitle = "Spend coins on passes and boosts",
                     onBack = onBack
                 )
             }

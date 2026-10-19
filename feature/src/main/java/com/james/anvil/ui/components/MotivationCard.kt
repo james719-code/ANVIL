@@ -96,10 +96,7 @@ fun MotivationCard(
                         ) {
                              // Simple Fire/Flame Icon using built-in icons or just text/emoji if custom icon unavailable
                              // Using standard icons for safety, or emoji if consistent with design
-                             Text(
-                                 text = "🔥", 
-                                 fontSize = 14.sp
-                             )
+                             androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.flame, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(16.dp))
                              Text(
                                  text = "$streak",
                                  style = MaterialTheme.typography.titleMedium.copy(

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-colour ANVIL mark. Used as the themed (monochrome) launcher layer, the notification
+     small icon, and tinted in-app. Same geometry as ic_launcher_foreground. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.72"
+        android:scaleY="0.72"
+        android:translateX="0"
+        android:translateY="3">
+        <path
+            android:pathData="M54,38L30,90"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="9"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M54,38L78,90"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="9"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M14,68Q26,60 38,59L94,59L94,69Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M54,10Q54.9,18.1 63,19Q54.9,19.9 54,28Q53.1,19.9 45,19Q53.1,18.1 54,10Z" />
+    </group>
+</vector>

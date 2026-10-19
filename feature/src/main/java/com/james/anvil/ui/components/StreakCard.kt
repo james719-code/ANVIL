@@ -80,10 +80,7 @@ fun StreakCard(
                         .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "🔥",
-                        fontSize = 32.sp
-                    )
+                    androidx.compose.material3.Icon(com.james.anvil.ui.theme.AppIcons.flame, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(34.dp))
                 }
             }
         }
